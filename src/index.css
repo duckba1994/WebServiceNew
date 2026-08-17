@@ -1,0 +1,138 @@
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html, body {
+  margin: 0;
+  font-family: 'IBM Plex Sans Thai', 'Tahoma', 'Leelawadee UI', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  background-color: #f8fafc;
+}
+* { font-family: 'IBM Plex Sans Thai', 'Tahoma', 'Leelawadee UI', sans-serif; }
+
+/* animation ตัวอย่างสำหรับ form slide-in */
+.form-slide-enter { animation: slideDown 0.3s ease forwards; }
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ตัวเลข/รหัสเอกสาร — ใช้ในหน้าตารางข้อมูล เช่น แผนขาย */
+.mono {
+  font-family: 'IBM Plex Mono', ui-monospace, monospace;
+  font-variant-numeric: tabular-nums;
+}
+
+/* animation สำหรับ drawer แก้ไขข้อมูล (เลื่อนเข้าจากขวา + ฉากหลังจาง) */
+.drawer-slide-in { animation: drawerSlideIn 0.24s cubic-bezier(0.22, 1, 0.36, 1); }
+@keyframes drawerSlideIn {
+  from { transform: translateX(100%); }
+  to   { transform: translateX(0); }
+}
+.backdrop-fade-in { animation: backdropFadeIn 0.18s ease; }
+@keyframes backdropFadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+.modal-pop { animation: modalPop 0.2s cubic-bezier(0.22, 1, 0.36, 1); }
+@keyframes modalPop {
+  from { opacity: 0; transform: translateY(8px) scale(0.98); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* ══════════ เอกสารพิมพ์ใบจองสินค้า (พิมพ์ / บันทึกเป็น PDF) ══════════ */
+/* บนหน้าจอ: ซ่อนไว้นอกจอ (ยัง render อยู่เพื่อให้พิมพ์ได้) */
+.print-root {
+  position: absolute;
+  left: -99999px;
+  top: 0;
+}
+@media print {
+  /* ซ่อนทุกอย่างของแอป แล้วแสดงเฉพาะเอกสารพิมพ์ */
+  body * { visibility: hidden; }
+  .print-root, .print-root * { visibility: visible; }
+  .print-root { position: absolute; left: 0; top: 0; width: 100%; }
+  @page { size: A4 portrait; margin: 9mm; }
+  html, body { background: #fff !important; }
+}
+@page {
+  size: A4;
+  margin: 0; /* กำหนดขอบกระดาษพิมพ์เป็น 0 เพื่อมาคุมขอบด้วย padding ใน .bkp แทน */
+}
+
+/* กระดาษ A4 ของเอกสาร — อ้างอิงฟอร์มลงทะเบียน (P)FM-BC/SL-001/12 ; บีบให้พอดี 1 หน้า A4 */
+.bkp {
+/* ขนาด A4 มาตรฐาน */
+  width: 210mm;
+  min-height: 297mm;
+  
+  /* ขอบกระดาษ (ซ้าย 8 + ขวา 8 = 16mm) เนื้อหาด้านในจะกว้าง 194mm พอดี */
+  padding: 8mm; 
+  
+  /* จัดให้อยู่กึ่งกลางเวลาดูบนหน้าจอเว็บ */
+  margin: 10mm auto; 
+  background-color: #fff;
+  box-shadow: 0 0 5px rgba(0,0,0,0.2); /* ใส่เงาเล็กน้อยให้ดูเป็นแผ่นกระดาษบนจอ (ไม่ติดไปตอนพิมพ์) */
+  box-sizing: border-box; /* สำคัญมาก: เพื่อให้รวม padding เข้าไปในขนาด 210mm */
+
+  /* A4 กว้าง 210mm - ขอบ 2x8mm */
+  /* width: 194mm;  */
+  color: #000;
+  font-family: 'TH Sarabun New', 'Sarabun', 'IBM Plex Sans Thai', Tahoma, sans-serif;
+  font-size: 8.7px;
+  line-height: 1.12;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+
+/* 3. การตั้งค่าเฉพาะเวลาที่กดสั่งพิมพ์ */
+@media print {
+  body {
+    margin: 0;
+    padding: 0;
+    background-color: transparent;
+  }
+  .bkp {
+    margin: 0; /* เอา margin ที่ใช้จัดกึ่งกลางบนจอออก */
+    box-shadow: none; /* เอาเงาออกเวลาพิมพ์ */
+    page-break-after: always; /* บังคับขึ้นกระดาษแผ่นใหม่เมื่อจบ 1 หน้า (กรณีมีหลายหน้า) */
+  }
+}
+
+.bkp * { box-sizing: border-box; font-family: inherit; }
+.bkp .bkp-title { font-size: 13px; font-weight: 700; }
+.bkp .bkp-co { font-size: 11px; font-weight: 700; line-height: 1.05; }
+.bkp .bkp-sub { font-size: 7.5px; color: #333; }
+.bkp .bkp-num { font-variant-numeric: tabular-nums; }
+
+/* กรอบ / ตารางฟอร์ม */
+.bkp .bkp-frame { border: 1px solid #000; }
+.bkp .bkp-secbar {
+  /* background: #d9d9d9; */
+  color: #000;
+  font-weight: 700;
+  font-size: 9px;
+  padding: 1px 4px;
+  border-bottom: 1px solid #000;
+}
+.bkp .bkp-secbar .bkp-sub { color: #333; font-weight: 400; }
+.bkp table { width: 100%; border-collapse: collapse; }
+.bkp td, .bkp th { border: 0.6px solid #555; padding: 1px 4px; vertical-align: top; }
+.bkp .bkp-noborder td, .bkp .bkp-noborder th { border: 0; padding: 0 3px; }
+.bkp .bkp-lbl { color: #333; font-size: 7.6px; }
+.bkp .bkp-val { font-weight: 700; }
+.bkp .bkp-q { font-weight: 700; }
+.bkp .bkp-fill { border-bottom: 0.6px dotted #666; min-width: 24px; display: inline-block; }
+
+/* ช่องติ๊ก */
+.bkp .bkp-ck { font-family: 'Segoe UI Symbol', 'DejaVu Sans', sans-serif; font-size: 9px; }
+.bkp .bkp-ckrow { display: flex; flex-wrap: wrap; gap: 0 9px; }
+.bkp .bkp-ckitem { white-space: nowrap; }
+
+/* กล่องลงนาม */
+.bkp .bkp-signgrid { display: flex; }
+.bkp .bkp-sign { border: 0.6px solid #555; padding: 2px 4px; font-size: 7.6px; flex: 1; }
+.bkp .bkp-sign .bkp-nm { font-weight: 700; font-size: 9px; margin-top: 1px; }
+.bkp .bkp-foot { font-size: 6.8px; color: #333; margin-top: 2px; }
