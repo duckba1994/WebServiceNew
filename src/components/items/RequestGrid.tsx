@@ -664,7 +664,12 @@ export function RequestGrid({
           item={view}
           onClose={() => setViewKey(null)}
           onPickAction={onAction ? (action) => setConfirm({ item: view, action }) : undefined}
+          // ฟอร์มในแท็บ (ดำเนินการ/ปิดงานรับเรื่อง/สำรวจ) ยิง action ตรงผ่าน onAction
+          // ไม่ต้องผ่านกล่องยืนยัน — panel เป็นคนกำหนด code/fields เอง
+          onStepSubmit={onAction ? (action, fields) => onAction(view, action, '', fields) : undefined}
           actionPending={actionPending}
+          notice={notice}
+          onDismissNotice={onDismissNotice}
         />
       )}
 
@@ -677,7 +682,8 @@ export function RequestGrid({
           onConfirm={async (note, fields) => {
             await onAction?.(confirm.item, confirm.action, note, fields);
             setConfirm(null);
-            setViewKey(null); // ใบเปลี่ยนสถานะแล้ว ปิดหน้ารายละเอียดที่ค้างอยู่
+            // ไม่ปิดหน้ารายละเอียด — ให้ stepper เดินหน้าโชว์ขั้นถัดไป (รับเรื่อง → ดำเนินการ)
+            // ถ้าใบหลุดจากลิสต์ (ย้ายคิว/ถูกกรอง) view จะกลายเป็น null แล้ว modal ปิดเอง
           }}
         />
       )}

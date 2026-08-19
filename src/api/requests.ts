@@ -1,5 +1,6 @@
 import { apiGet, apiSend } from './client';
 import {
+  RequestDetailResponse,
   RequestDirection,
   RequestListResponse,
   RequestModule,
@@ -62,6 +63,14 @@ export const fetchRequestModules = (token?: string, includeWorkflow = false): Pr
 // นิยาม workflow ของโมดูลเดียว — จำนวนขั้น/ชื่อขั้น/สถานะ มาจาก backend ทั้งหมด
 export const fetchRequestWorkflow = (module: string, token?: string): Promise<RequestWorkflow> =>
   apiGet<RequestWorkflow>(`/Requests/workflow?module=${encodeURIComponent(module)}`, token);
+
+// ใบเต็ม 1 ใบ + logs (timeline) + workflow — โหลดตอนเปิดหน้ารายละเอียด (กดดวงตา)
+// list ไม่ส่งข้อมูลพวกนี้มา เพราะเปิดดูจริงทีละใบ (ดู API_SPEC_REQUESTS_V2.md §4)
+export const fetchRequestDetail = (module: string, docNo: string, token?: string): Promise<RequestDetailResponse> =>
+  apiGet<RequestDetailResponse>(
+    `/Requests/${encodeURIComponent(module)}/${encodeURIComponent(docNo)}`,
+    token
+  );
 
 // ── กดทำรายการกับใบแจ้งเรื่อง ─────────────────────────────────
 // POST /api/v1/Requests/{module}/{docNo}/action

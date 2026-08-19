@@ -103,6 +103,43 @@ export interface RequestListItem {
   ownerType: RequestOwnerType | null;
   availableActions: RequestAction[] | null;
   resolution: RequestResolution | null;
+  // ── เพิ่มใน API v2.3 — มาทั้งใน list และ detail ──
+  // optional เพราะ backend เก่า/บาง endpoint อาจยังไม่ส่ง (อย่าพึ่งว่ามีเสมอ)
+  phoneNumber?: string | null; // เบอร์ผู้แจ้ง — Mgr โทรถามก่อนตัดสินใจ
+  comName?: string | null; // เครื่องที่แจ้ง
+  remark?: string | null; // หมายเหตุที่ผู้แจ้งเขียนเพิ่ม
+  updatedDate?: string | null; // เวลาใบขยับล่าสุด — ทำป้าย "ค้าง N วัน" ได้
+  attachmentCount?: number | null; // จำนวนไฟล์แนบ (0–3)
+}
+
+// ── ประวัติการดำเนินการรายเหตุการณ์ (timeline) ────────────────
+// GET /Requests/{module}/{docNo} ส่ง logs มาเรียงเก่า→ใหม่ แบบ insert-only
+// action ใช้ code เดียวกับใน availableActions (create/approve/not_approve/
+// receive/service/survey/close/cancel) → หน้าเว็บเลือกไอคอน/สีจากค่านี้
+export interface RequestLog {
+  step: number | null;
+  action: string;
+  actionLabel: string | null; // ป้ายไทยของเหตุการณ์ (ไม่ส่ง → fallback เป็น action)
+  actionByName: string | null;
+  actionByDepartment: string | null; // แยก Mgr ผู้แจ้ง vs Mgr ปลายทาง (เคส PS อนุมัติ 2 รอบ)
+  actionDate: string | null;
+  note: string | null; // เหตุผล — สำคัญตอน not_approve (ยังอาจเป็น null จนกว่า DB เก็บ note ได้)
+}
+
+export interface RequestAttachment {
+  fileId: number | string;
+  fileName: string;
+  url: string | null;
+}
+
+// GET /Requests/{module}/{docNo} — item เต็ม ห่อไว้ พร้อม logs + workflow + attachments
+// item = shape เดียวกับ item ในลิสต์เป๊ะ (availableActions/isMyTurn/ownerType คำนวณ
+// สำหรับคนที่เปิดดู) เอาไปใช้ component เดิมได้เลย
+export interface RequestDetailResponse {
+  item: RequestListItem;
+  logs: RequestLog[] | null; // timeline เรียงเก่า→ใหม่
+  workflow: RequestWorkflow | null; // steps ครบทุกขั้น — เอา merge กับ logs วาดขั้นที่ยังไม่ถึง
+  attachments: RequestAttachment[] | null; // url อาจเป็น null (ยังไม่มี endpoint เสิร์ฟไฟล์)
 }
 
 export interface RequestStatusSummary {

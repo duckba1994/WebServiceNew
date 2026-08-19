@@ -121,23 +121,81 @@ POST /api/v1/Requests/{module}/{docNo}/action
 
 ---
 
-## 4. endpoint รายใบ + ประวัติ
+## 4. ⭐ endpoint รายใบ + ประวัติ (timeline)  ← **พร้อมทำ / รอเส้นนี้อยู่**
+
+> หน้ารายละเอียด (กดดวงตา) จะเปลี่ยนเป็น **timeline** ว่าใครทำอะไรไปแล้วบ้าง
+> (แจ้ง → อนุมัติ → รับเรื่อง → ดำเนินการ → …) ตอนนี้หน้าเว็บวาด timeline จาก
+> `resolution` ได้แค่บรรทัดเดียวคือ "แจ้งเรื่อง" เพราะ list ไม่มีข้อมูล "ใครอนุมัติ เมื่อไร"
+> เส้นนี้คือแหล่งข้อมูลของ timeline — เนื้อหานี้ขยายจาก §11.5
 
 ```
 GET /api/v1/Requests/{module}/{docNo}
 ```
-คืนข้อมูลใบเต็ม + `logs` (ประวัติทุกครั้งที่สถานะเปลี่ยน เรียงเก่า→ใหม่) + `attachments`
+รับแค่ `module` + `docNo` ตาม path (auth ด้วย Bearer เหมือนเส้นอื่น) คืน **ใบเต็ม + `logs` + `workflow` + `attachments`**
+
+### 4.1 หัวใบ — ใช้ shape เดียวกับ item ในลิสต์ แต่เติม 4 ฟิลด์
+
+`item` เดิมทุกฟิลด์ (`requestBy` / `departmentName` / `jobStatus` / `jobStatusName` / `wfStep` /
+`wfStepTotal` / `wfStepName` / `phase` / `phaseName` / `ownerType` / `currentDepartmentName` /
+`availableActions` / `resolution` …) **บวกอีก 4 ตัวที่ยังขาด**:
+
+| ฟิลด์ | ชนิด | ทำไม (คนอนุมัติต้องใช้) |
+|---|---|---|
+| `phoneNumber` | string? | โทรถามผู้แจ้ง / ส่งต่อให้ช่าง — **มีใน DB แล้ว** (§11.4) |
+| `comName` | string? | เครื่องไหน — ทั้งใบวนรอบเครื่องนี้ — **มีใน DB แล้ว** (§11.4) |
+| `remark` | string? | หมายเหตุที่ผู้แจ้งเขียนเพิ่ม — **มีใน DB แล้ว** (§11.4) |
+| `updatedDate` | ISO datetime? | ทำป้าย "ค้าง 3 วัน" ได้ (§11.7) |
+
+### 4.2 ⭐ `logs` — ตัว timeline (เรียงเก่า→ใหม่, insert-only)
 
 ```json
 "logs": [
-  { "step": 1, "action": "create",  "actionByName": "วิชิต เทียนทอง", "actionDate": "2026-06-15T09:00:00", "note": null },
-  { "step": 1, "action": "approve", "actionByName": "หัวหน้าแผนก IT",  "actionDate": "2026-06-15T10:20:00", "note": null }
+  { "step": 1, "action": "create",  "actionLabel": "แจ้งเรื่อง",
+    "actionByName": "วิชิต เทียนทอง", "actionByDepartment": "ฝ่ายวางแผน",
+    "actionDate": "2026-08-18T17:17:00", "note": null },
+  { "step": 1, "action": "approve", "actionLabel": "อนุมัติ",
+    "actionByName": "สมชาย (Mgr PL)",  "actionByDepartment": "ฝ่ายวางแผน",
+    "actionDate": "2026-08-18T18:02:00", "note": null },
+  { "step": 2, "action": "receive", "actionLabel": "รับเรื่อง",
+    "actionByName": "ช่างเอ (IT)",     "actionByDepartment": "แผนก IT",
+    "actionDate": "2026-08-19T08:10:00", "note": null }
 ]
 ```
 
-**เหตุผล**: ตอนนี้ list แบก `detail` (ยาวได้ 1000 ตัวอักษร) + `resolution` object เต็ม ๆ มาทุกแถว
-ทั้งที่ผู้ใช้เปิดดูจริงแค่ใบเดียว — ที่ 77 ใบไม่รู้สึก ที่ 5,000 ใบคือหลาย MB ต่อการเปิดหน้าหนึ่งครั้ง
+| ฟิลด์ | ชนิด | ทำไมต้องมี |
+|---|---|---|
+| `step` | int? | ขั้นที่เกิดเหตุการณ์ |
+| `action` | string | รหัสเหตุการณ์ — **ใช้ code เดียวกับใน `availableActions`** (`create` / `approve` / `not_approve` / `receive` / `service` / `survey` / `close` / `cancel`) → หน้าเว็บเลือกไอคอน+สีจากค่านี้ |
+| `actionLabel` | string? | ป้ายไทยของเหตุการณ์ — ส่งมาเลย หน้าเว็บจะได้**ไม่ hardcode** ต่อแผนก (ถ้าไม่ส่ง หน้าเว็บ fallback เป็น `action`) |
+| `actionByName` | string? | ชื่อไทยผู้ทำ — บรรทัดหลักของแต่ละจุดในไทม์ไลน์ |
+| `actionByDepartment` | string? | แผนกผู้ทำ — **จำเป็นสำหรับเคส `PS` ที่อนุมัติ 2 รอบ** (step 1 = Mgr ผู้แจ้ง, step 3 = Mgr ปลายทาง) ต้องแยกว่าใครอนุมัติขั้นไหน |
+| `actionDate` | ISO datetime? | เวลาที่ทำ |
+| `note` | string? | เหตุผล — **สำคัญมากตอน `not_approve`** (ขึ้นกับ §11.3 ต้องมีคอลัมน์เก็บ `note` ก่อน ถ้ายังไม่มีส่ง `null` มาได้ ไทม์ไลน์ยังขึ้นครบ) |
+
+**ทำได้ทันทีโดยยังไม่ต้องมีตาราง log ใหม่** — `create`/`approve`/`receive`/`service`/`close`
+ดึงจาก `BC_IT_WFRequest` (`Approved` / `ApproveBy` / `ApproveDate` รายขั้น) ได้เลย
+เฉพาะ `note` เท่านั้นที่ต้องรอ §11.3
+
+### 4.3 `workflow` ของโมดูลนั้น — เพื่อวาดขั้นที่ยังไม่ถึง
+
+แนบ object `workflow` (`steps` ครบทุกขั้น เหมือน §1.1) มากับ detail ด้วย
+→ หน้าเว็บ merge `logs` (ขั้นที่ทำแล้ว) กับ `workflow.steps` (ทุกขั้น) เพื่อวาดบันได 1→N
+โดยขั้นที่ยังไม่ถึงเป็น**สีจาง**
+
+> **ทำไมต้องแนบมากับ detail:** หน้า outbox เรียกรวมทุกแผนก API ส่ง `workflow: null` (§8ค)
+> หน้าเว็บจึงไม่มี steps ของใบนั้นในมือ — แนบมาให้เลยจะได้ไม่ต้องยิง `/workflow` ซ้ำ
+
+### 4.4 `attachments` (§11.6 — ถ้าพร้อม ไม่ใช่ตัวบล็อกของ timeline)
+
+```json
+"attachments": [ { "fileId": 1, "fileName": "error.png", "url": "/files/..." } ]
+```
+
+### 4.5 ผลพลอยได้ — ลดขนาด list
+
 มีเส้นนี้แล้ว list จะตัด `detail` เหลือ 100 ตัวอักษรแรกและตัด `resolution` ออกได้
+(ตอนนี้ list แบก `detail` ยาวได้ 1000 ตัวอักษร + `resolution` เต็ม ๆ มาทุกแถว —
+ที่ 77 ใบไม่รู้สึก ที่ 5,000 ใบคือหลาย MB ต่อการเปิดหน้าหนึ่งครั้ง)
 
 ---
 
