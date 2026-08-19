@@ -40,3 +40,54 @@ export async function apiGet<T>(path: string, token?: string): Promise<T> {
   if (!res.ok) throw new Error(`โหลดข้อมูลไม่สำเร็จ (HTTP ${res.status})`);
   return res.json();
 }
+
+// รูปแบบ error กลางของ API — message เป็นภาษาไทยที่เอาไปแสดงให้ผู้ใช้อ่านได้เลย
+interface ApiErrorBody {
+  statusCode?: number;
+  message?: string;
+  traceId?: string;
+}
+
+export class ApiError extends Error {
+  readonly status: number;
+  readonly traceId?: string;
+  constructor(message: string, status: number, traceId?: string) {
+    super(message);
+    this.name = 'ApiError';
+    this.status = status;
+    this.traceId = traceId;
+  }
+}
+
+// helper สำหรับ POST/PUT + JSON body
+// ต่างจาก apiGet ตรงที่ "ต้อง" ดึง message จาก body มาโยนต่อ — เพราะ 409 ของ
+// action endpoint บอกเหตุผลที่ผู้ใช้ต้องอ่าน (อนุมัติไปแล้ว / ไม่ใช่คิวแผนกนี้ / สิทธิ์ไม่ถึง)
+// ถ้ากลืนไว้แล้วโชว์แค่ "HTTP 409" ผู้ใช้จะไม่รู้ว่าต้องทำอะไรต่อ
+export async function apiSend<T>(
+  path: string,
+  method: string,
+  payload: unknown,
+  token?: string
+): Promise<T> {
+  const res = await apiFetch(path, {
+    method,
+    token,
+    contentType: 'application/json',
+    body: JSON.stringify(payload ?? {}),
+  });
+
+  if (!res.ok) {
+    let message = `ทำรายการไม่สำเร็จ (HTTP ${res.status})`;
+    let traceId: string | undefined;
+    try {
+      const body = (await res.json()) as ApiErrorBody;
+      if (body?.message) message = body.message;
+      traceId = body?.traceId;
+    } catch {
+      // ตอบกลับไม่ใช่ JSON — ใช้ข้อความ default
+    }
+    throw new ApiError(message, res.status, traceId);
+  }
+
+  return res.json() as Promise<T>;
+}

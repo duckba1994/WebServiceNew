@@ -8,8 +8,11 @@ import {
   IconBan,
   IconBell,
 } from '@tabler/icons-react';
-import { RequestListItem } from '../../types/requestList';
-import { fmtDate, fmtDateTime, jobStatusMeta } from '../../data/requestListData';
+import { RequestAction, RequestListItem } from '../../types/requestList';
+import { fmtDate, fmtDateTime, jobStatusMeta, stepText } from '../../data/requestListData';
+import { PHASE_META, phaseOf, phaseLabel, isRequesterSide } from '../../data/requestPhase';
+import { actionBtnClass } from './RequestActionDialog';
+import { fieldSpec } from '../../data/requestActionFields';
 
 type Meta = { label: string; color: string; bg: string; border: string };
 
@@ -53,16 +56,21 @@ function buildTimeline(item: RequestListItem) {
   return steps;
 }
 
-// ── รายละเอียดใบแจ้งเรื่อง (อ่านอย่างเดียว) ────────────────────
-// ยังไม่มีปุ่มดำเนินการ เพราะ Requests API ตอนนี้มีแค่ endpoint ดึงรายการ
-// (ยังไม่มี endpoint รับเรื่อง/อนุมัติ/ปิดงาน — ดู API_SPEC_REQUEST_FLOW.md §4.3)
+// ── รายละเอียดใบแจ้งเรื่อง ─────────────────────────────────────
+// ปุ่มท้ายหน้ามาจาก item.availableActions ที่ API ส่งมา ไม่ได้ฝังไว้ในโค้ด
+// → แผนกใหม่มีปุ่มอะไร หน้านี้ขึ้นให้เองโดยไม่ต้องแก้อะไร
 export function RequestDetailModal({
   item,
   onClose,
+  onPickAction,
+  actionPending,
 }: {
   item: RequestListItem;
   onClose: () => void;
+  onPickAction?: (action: RequestAction) => void; // ไม่ส่งมา = อ่านอย่างเดียว
+  actionPending?: boolean;
 }) {
+  const actions = onPickAction ? item.availableActions ?? [] : [];
   const status = jobStatusMeta(item);
   const timeline = buildTimeline(item);
   const r = item.resolution;
@@ -86,17 +94,22 @@ export function RequestDetailModal({
         </div>
 
         <div className="flex flex-wrap items-center gap-2 border-b border-gray-100 bg-slate-50 px-5 py-3">
+          <span className="mono rounded-md border border-gray-200 bg-white px-2 py-0.5 text-[11.5px] font-bold text-slate-700">
+            {item.module}
+          </span>
+          {/* จังหวะงานแบบข้ามแผนก + สถานะตามที่แผนกนั้นเรียก */}
+          <Pill meta={{ ...PHASE_META[phaseOf(item)], label: phaseLabel(item) }} />
           <Pill meta={status} dot />
-          {item.isMyTurn && (
+          {(item.isMyTurn || isRequesterSide(item)) && (
             <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-300 bg-amber-50 px-2.5 py-0.5 text-[11.5px] font-bold text-amber-700">
               <IconBell size={13} />
-              ถึงคิวแผนกเรา
+              {isRequesterSide(item) ? 'รอแผนกผู้แจ้งลงมือ' : 'ถึงคิวแผนกเรา'}
             </span>
           )}
           {item.wfStep !== null && (
-            <span className="mono rounded-full border border-gray-200 bg-white px-2.5 py-0.5 text-[11.5px] font-semibold text-slate-500">
-              step {item.wfStep}
-              {item.wfStatus ? ` · ${item.wfStatus}` : ''}
+            <span className="rounded-full border border-gray-200 bg-white px-2.5 py-0.5 text-[11.5px] font-semibold text-slate-500">
+              ขั้นที่ <span className="mono">{stepText(item)}</span>
+              {item.wfStepName ? ` · ${item.wfStepName}` : ''}
             </span>
           )}
         </div>
@@ -111,10 +124,13 @@ export function RequestDetailModal({
             <div className="col-span-2">
               <DetailRow label="ขั้นตอนปัจจุบัน">{item.description || '—'}</DetailRow>
             </div>
+            {/* เรื่องที่ผู้แจ้งขอมา — เน้นไว้เพราะเป็นสิ่งที่คนอนุมัติต้องอ่านก่อนตัดสินใจ
+                (ไม่มีปุ่มลัดในตารางแล้ว ทุกการอนุมัติต้องเปิดมาอ่านตรงนี้) */}
             <div className="col-span-2">
-              <DetailRow label="รายละเอียดที่แจ้ง">
-                <span className="whitespace-pre-wrap">{item.detail || '—'}</span>
-              </DetailRow>
+              <span className="mb-1 block text-[11.5px] font-semibold text-gray-500">รายละเอียดที่แจ้ง</span>
+              <div className="rounded-lg border border-gray-200 bg-slate-50 px-3.5 py-3 text-[13px] leading-relaxed text-gray-800">
+                <span className="whitespace-pre-wrap">{item.detail || '— (ผู้แจ้งไม่ได้กรอกรายละเอียด)'}</span>
+              </div>
             </div>
           </div>
 
@@ -170,6 +186,35 @@ export function RequestDetailModal({
             </ol>
           </div>
         </div>
+
+        {/* ปุ่มดำเนินการ — [] = ตอนนี้ผู้ใช้คนนี้กดอะไรกับใบนี้ไม่ได้ (ไม่ใช่คิวเรา /
+            สิทธิ์ไม่ถึง / ใบปิดแล้ว) API เป็นคนตัดสิน หน้าเว็บแค่เรนเดอร์ตามที่ได้รับ */}
+        {actions.length > 0 && (
+          <div className="flex shrink-0 flex-wrap items-center justify-end gap-2 border-t border-gray-200 bg-slate-50 px-5 py-3">
+            {actions.map((a) => {
+              const needs = a.requiredFields ?? [];
+              return (
+                <button
+                  key={a.code}
+                  type="button"
+                  disabled={actionPending}
+                  onClick={() => onPickAction?.(a)}
+                  title={
+                    needs.length > 0
+                      ? `${a.label} — ต้องกรอก ${needs.map((f) => fieldSpec(f).label).join(', ')}`
+                      : a.label
+                  }
+                  className={`rounded-lg border px-4 py-2 text-[13px] font-semibold transition disabled:cursor-not-allowed disabled:opacity-50 ${actionBtnClass(
+                    a.style
+                  )}`}
+                >
+                  {a.label}
+                  {needs.length > 0 && <span className="ml-1 opacity-70">…</span>}
+                </button>
+              );
+            })}
+          </div>
+        )}
       </div>
     </div>
   );

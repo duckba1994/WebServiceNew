@@ -1,25 +1,83 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { IconBell } from '@tabler/icons-react';
 import { Layout } from '../components/layout/Layout';
-import { RequestGrid } from '../components/items/RequestGrid';
+import { RequestGrid, SummaryCardSpec } from '../components/items/RequestGrid';
 import { StatusTabs } from './MyItems';
 import { INCOMING_COLUMNS } from '../data/requestListData';
-import { StatusFilter } from '../types/requestList';
+import { PHASE_META, phaseIndex } from '../data/requestPhase';
+import { RequestAction, RequestListItem, RequestPhase, StatusFilter } from '../types/requestList';
 import { useRequestList } from '../hooks/useRequestList';
+import { useRequestAction } from '../hooks/useRequestAction';
 import { useAuth } from '../context/AuthContext';
 
-// เรื่องที่แจ้งเข้ามาที่แผนกตัวเอง — GET /Requests/incoming
-// รวมใบที่ยังไม่ถึงคิวเรา (แผนกอื่นยังไม่อนุมัติ) ด้วย → ใช้ onlyMyTurn คัดเฉพาะที่ต้องลงมือ
+// ── เรื่องที่แจ้งเข้ามาที่แผนกตัวเอง — GET /Requests/incoming ────
+// หน้านี้คือคิวงานจริงของแผนกปลายทาง: รับเรื่อง → ดำเนินการ → ปิดงาน
+// ปุ่มแต่ละขั้นมาจาก item.availableActions ทั้งหมด ไม่มี hardcode ต่อขั้น
+//
+// รวมใบที่ยังไม่ถึงคิวเรา (ต้นทางยังไม่อนุมัติ) ด้วย → ใช้ onlyMyTurn คัดเฉพาะที่ต้องลงมือ
 export function Inbox() {
   const { user } = useAuth();
   const [status, setStatus] = useState<StatusFilter>('Open');
   const [onlyMyTurn, setOnlyMyTurn] = useState(false);
+  const [phase, setPhase] = useState<RequestPhase | null>(null);
 
-  const { items, summary, departId, loading, error, reload } = useRequestList(
-    'incoming',
-    { module: 'IT', status, onlyMyTurn, sortBy: 'RequestDate', sortDir: 'Desc' },
-    user?.token
-  );
+  const { items, phaseSummary, totalCount, departId, loading, error, reload, applyItem } =
+    useRequestList(
+      'incoming',
+      {
+        module: 'IT',
+        status,
+        onlyMyTurn,
+        phase: phase ? [phase] : undefined,
+        sortBy: 'RequestDate',
+        sortDir: 'Desc',
+      },
+      user?.token
+    );
+
+  const { run, pending, notice, dismissNotice } = useRequestAction(user?.token);
+
+  // สำเร็จ → แทนแถวเดิมให้เห็นผลทันที แล้วโหลดใหม่ให้ยอดสรุปตรงกับของจริง
+  const handleAction = async (
+    item: RequestListItem,
+    action: RequestAction,
+    note: string,
+    fields?: Record<string, string | number>
+  ) => {
+    const res = await run(item, action, note, fields);
+    if (res) applyItem(res.item);
+    reload();
+  };
+
+  // การ์ดสร้างจาก phaseSummary ที่ API ส่งมา — ยอดไม่ขยับตอนกรอง phase
+  // จึงใช้เป็น badge ที่บอกความจริงได้แม้กำลังกรองอยู่
+  const summaryCards = useMemo<SummaryCardSpec[]>(() => {
+    const grandTotal = phaseSummary.reduce((sum, p) => sum + p.count, 0);
+    const cards: SummaryCardSpec[] = [
+      {
+        key: 'all',
+        label: 'ทั้งหมด',
+        value: grandTotal,
+        color: '#475569',
+        bg: '#f1f5f9',
+        active: phase === null,
+        onClick: () => setPhase(null),
+      },
+    ];
+    for (const p of [...phaseSummary].sort((a, b) => phaseIndex(a.phase) - phaseIndex(b.phase))) {
+      const meta = PHASE_META[p.phase] ?? PHASE_META.other;
+      cards.push({
+        key: p.phase,
+        label: p.phaseName || meta.short,
+        value: p.count,
+        color: meta.color,
+        bg: meta.bg,
+        active: phase === p.phase,
+        onClick: () => setPhase((cur) => (cur === p.phase ? null : p.phase)),
+      });
+    }
+    return cards;
+  }, [phaseSummary, phase]);
 
   return (
     <Layout
@@ -29,13 +87,22 @@ export function Inbox() {
       <RequestGrid
         columns={INCOMING_COLUMNS}
         items={items}
-        summary={summary}
+        totalCount={totalCount}
+        summaryCards={summaryCards}
         loading={loading}
         error={error}
         onReload={reload}
+        onAction={handleAction}
+        actionPending={pending}
+        notice={notice}
+        onDismissNotice={dismissNotice}
         searchPlaceholder="ค้นหาเลขที่ / ผู้แจ้ง / รายละเอียด..."
         emptyText={
-          onlyMyTurn ? 'ไม่มีงานที่ถึงคิวแผนกนี้ตอนนี้' : 'ยังไม่มีเรื่องแจ้งเข้ามาที่แผนกนี้'
+          onlyMyTurn
+            ? 'ไม่มีงานที่ถึงคิวแผนกนี้ตอนนี้'
+            : phase
+            ? 'ไม่มีใบในจังหวะงานนี้'
+            : 'ยังไม่มีเรื่องแจ้งเข้ามาที่แผนกนี้'
         }
         toolbar={
           <>

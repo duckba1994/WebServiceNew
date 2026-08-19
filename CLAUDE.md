@@ -3,7 +3,7 @@
 Guidance for Claude Code when working in this repository.
 
 ## Project Overview
-**ระบบใบรับเรื่อง** (Request Intake System, package name `businessapp`) — an internal organization app where staff open a "ใบรับเรื่อง" (request ticket) and route it to the responsible department (HR / PL / SV / IT), then track it to completion. React 18 + TypeScript single-page app bootstrapped with Create React App (`react-scripts`). Not currently a git repository (no `.git` folder present, though `.gitignore` exists). See `PROJECT_STRUCTURE.md` for the system overview (departments + example requests).
+**ระบบใบรับเรื่อง** (Request Intake System, package name `businessapp`) — an internal organization app where staff open a "ใบรับเรื่อง" (request ticket) and route it to the responsible department (HR / PL / SV / IT), then track it to completion. React 18 + TypeScript single-page app bootstrapped with Create React App (`react-scripts`). Git repository, default branch `main`. See `PROJECT_STRUCTURE.md` for the system overview (departments + example requests), `API_NAMING.md` for the mandatory API field-naming rule, and `API_SPEC_REQUEST_FLOW.md` / `API_SPEC_REQUESTS_V2.md` for what is still pending from backend.
 
 **Departments (request destinations)** — each has its own accent color and department-specific form fields:
 - **HR** `#2d7d46` — e.g. request salary certificate, issue warning letter to a driver
@@ -30,18 +30,23 @@ src/
 ├── config.ts            # API_BASE_URL / API_PREFIX / apiUrl()
 ├── index.tsx, index.css
 ├── api/
-│   ├── client.ts          # apiFetch/apiGet — single entry for all calls (Bearer + 401→auth:unauthorized event)
+│   ├── client.ts          # apiFetch/apiGet/apiSend — single entry for all calls (Bearer + 401→auth:unauthorized event); apiSend throws ApiError carrying the API's Thai `message` + traceId
 │   ├── auth.ts           # login() — calls the backend auth endpoint (noAuthEvent: 401 = bad credentials)
 │   ├── salesPlan.ts       # fetchSalesPlans / fetchSalesPlanLines
 │   ├── booking.ts         # fetchBookings(query, token) — GET /Bookings + BookingQuery (BookingNo/date ranges/CustomerName/MachineID/StatusDoc/showDataAll → query params)
-│   └── masterData.ts      # fetch<Salesmen|ContactChannels|LeadSources|Customers|Provinces|MachineTypes|MachineModels|PlanStatuses> + Booking master data: fetch<Purposes|PlanTypes|JobCharacters|JobGroups|JobGroupDetails|PresentWorks|OperatorServiceTypes|FuelConditions|SurveyWorkSites|SurveyWorkSiteDetails|MachineConditions|DriverConditions|DocumentBookings|TechnicianConditions|CreditTypes|CarAssignmentsPL|CarVerificationsSV>
+│   ├── requests.ts        # fetchRequestList / fetchRequestModules / fetchRequestWorkflow / postRequestAction
+│   ├── itRequest.ts       # IT request form submit
+│   └── masterData.ts      # fetch<Salesmen|ContactChannels|LeadSources|Customers|Provinces|MachineTypes|MachineModels|PlanStatuses> + fetchDepartments + Booking master data: fetch<Purposes|PlanTypes|JobCharacters|JobGroups|JobGroupDetails|PresentWorks|OperatorServiceTypes|FuelConditions|SurveyWorkSites|SurveyWorkSiteDetails|MachineConditions|DriverConditions|DocumentBookings|TechnicianConditions|CreditTypes|CarAssignmentsPL|CarVerificationsSV>
 ├── components/
-│   ├── items/            # ItemTable, StatCard
+│   ├── items/            # ItemTable, StatCard, RequestGrid (shared outgoing/incoming table), RequestDetailModal, RequestActionDialog (confirm + dynamic form built from an action's requiredFields, then POST)
 │   ├── layout/            # Layout, Sidebar, Topbar
 │   └── ui/                # Badge, DynamicList, FileUpload, PriorityPicker, FormControls (shared work-page form controls), ColumnFilter (shared Excel-style per-column AutoFilter — used by SalesPlan + Booking), SearchSelect (THE searchable combobox — every page must import this one, never re-implement)
 ├── context/
 │   └── AuthContext.tsx    # AuthProvider / useAuth()
 ├── hooks/                 # data-fetching hooks (keep fetch/loading/error OUT of page components)
+│   ├── useRequestList.ts  # THE request-list hook for both boxes — returns items/summary/phaseSummary/workflow/paging/totalCount; outgoing may omit `module` (= all modules), incoming must send it
+│   ├── useRequestAction.ts # POST /Requests/{module}/{docNo}/action — surfaces the API's Thai `message` for both success and 409/400/403
+│   ├── useDepartments.ts  # GET /MasterData/departments
 │   ├── useMasterData.ts   # loads all master-data lists for the sales-plan form (+ loading/error/reload)
 │   ├── useSalesPlanDocs.ts # loads plan headers + selected-plan lines
 │   └── useBookings.ts     # loads booking list from GET /Bookings with server-side BookingQuery (refetch on query change) → BookingRow + loading/error/reload
@@ -52,6 +57,10 @@ src/
 │   ├── menuData.ts       # company info + work-order menu groups (drives the Sidebar)
 │   ├── resourceData.ts   # dashboard machine/driver status meta + summary counts + mock rows
 │   ├── salesPlanData.ts  # sales-plan columns/presets/status meta + mock rows
+│   ├── requestListData.ts # request-list columns/presets + cellText/compareRequests + requestKey (module+docNo) + jobStatusMeta
+│   ├── requestActionFields.ts # ⚠️ SHIM: ชื่อฟิลด์ → label/type/options for action forms (solve/hw/serviceScore/kpi…) + optional field groups. Delete when the API sends field metadata (API_SPEC_REQUESTS_V2.md §10)
+│   ├── requestPhase.ts   # PRESENTATION ONLY for phases: PHASE_META colors, PHASE_ORDER, phaseOf/phaseLabel/isRequesterSide. The WFStatus→phase mapping lives in the backend (API v2) — never reintroduce it here
+│   ├── requestData.ts / requestForm.ts # IT request create form
 │   └── salesPlanForm.ts  # PURE form logic: PlanFormState, toPlanForm, REQUIRED_FIELDS, validatePlanForm, buildPlanFormOptions
 ├── pages/
 │   ├── Login.tsx
@@ -60,12 +69,14 @@ src/
 │   ├── Booking.tsx       # work page: list view (standard grid — sort/filter/resize/column-preset/pagination, per-row edit·print·cancel in "จัดการ" col, data from useBookings) + 9-section create form (ADD) + approval view (edit button): 4-step workflow, each step shows that WinForms section's data (ส่วนที่ 1 ผู้จอง / 2 PL / 3 SV / 4 แจ้งจอง+สรุป PL·SV) + audit; approve/reject only at bottom
 │   ├── Delivery.tsx      # work page: list view + 9-section create form (PL/SV reply box, extra equipment)
 │   ├── CreateItem.tsx
-│   ├── MyItems.tsx
-│   └── Inbox.tsx
+│   ├── MyItems.tsx       # "เรื่องที่แจ้งออกไป" (outbox) — ALL destination modules in one grid + phase KPI cards + "รอเราลงมือ" filter
+│   └── Inbox.tsx         # "เรื่องแจ้งเข้ามา" — the target department's work queue (receive → service → close): single module + phase KPI cards + onlyMyTurn
 ├── types/
 │   ├── booking.ts
 │   ├── delivery.ts
 │   ├── item.ts
+│   ├── request.ts        # IT request create form
+│   ├── requestList.ts    # RequestListItem + RequestWorkflow / RequestAction / RequestPhaseSummary / RequestActionResult (API field names — do NOT rename)
 │   ├── masterData.ts
 │   ├── resource.ts
 │   ├── salesPlan.ts
@@ -83,6 +94,11 @@ src/
 - **Layout**: `Layout.tsx` composes `Sidebar` and `Topbar` around a `<main>` outlet; it's the single common parent for both, so cross-component UI state (e.g. sidebar open/closed) is owned here and passed down as props rather than via a new context. `Layout` accepts `title` and optional `subtitle` shown in the Topbar.
 - **Sidebar/menu**: dark-navy sidebar (`bg-[#0b1220]`) whose grouped menu comes from `MENU_GROUPS`/`SYSTEM_MENU` in `src/data/menuData.ts`. Most menu items are placeholders (no `to` yet) rendered as buttons — fill in `to` as real pages are built (WinForms → Web migration). The Sidebar is now the ONLY navigation to work pages (per user decision, 31 Jul 2026 the Dashboard menu tiles were dropped in favour of the resource-status dashboard). User info + logout live in the Topbar (deliberate deviation from the design mockup so logout stays reachable when the sidebar is hidden).
 - **Dashboard** (`src/pages/Dashboard.tsx`): the main page is an operational resource-status dashboard — 6 machine-status summary cards, an "active machines" table, and a driver-status panel with a certificate-expiry warning. All figures come from `src/data/resourceData.ts` (mock until the API is wired). Note `TOTAL_MACHINES` is a standalone fleet total, deliberately NOT the sum of the six status counts.
+
+- **Request pages (outbox / inbox) — cross-department workflows**: every department runs its own workflow with a different number of steps (2–6) and a different `JobStatus` code set, and one department can send requests to any other. **Never count or color by `JobStatus` across modules** — the same code means different things per department (SQA `1` = waiting to be received, everyone else `1` = waiting for manager approval; PS repeats codes `2` and `3` across two steps each; the terminal "closed" code differs per department). The cross-department vocabulary is **`phase`**, which the API (v2) derives from the DB's `WFStatus` column and sends per item (`waiting_approve` / `waiting_accept` / `in_progress` / `waiting_review` / `waiting_close` / `closed` / `cancelled` / `other`) plus a `phaseSummary` block. Rules: **that mapping belongs to the backend — do not recreate it in the frontend**; KPI cards are built from `phaseSummary`, never a hardcoded list of 8 (a department without a Survey step must not show an empty "รอประเมิน" card); an unknown phase renders as **`other`, never guessed into `closed`**; `phaseSummary` is unaffected by the `phase` filter, so card badges stay truthful while a filter is active.
+- **Requester-side steps**: several workflows loop back to the requesting department at the end (`Survey`, `Received-Service`, `Request-Close-Job`) — so an outbox ticket can be finished by the target department yet sit waiting on *us*. The API sends `ownerType` (`requester` / `target` / `null` when closed); `isRequesterSide()` reads it and drives the "รอเราลงมือ" filter. Never infer this from `WFStatus` — PS has `Approved-Request` on both the requester side (step 1) and the target side (step 3).
+- **Rows spanning modules**: `docNo` is only unique *within* a module. Any list mixing modules must key rows with `requestKey(row)` (`module::docNo`), never `docNo` alone.
+- **Action buttons are data, not code**: every button on a request comes from `item.availableActions` (`code` / `label` / `style` / `requireNote` / `requiredFields`) — **never hardcode a button per department or per step**, and never invent an `action` string; send back exactly the `code` the API gave. `[]` means the user can do nothing right now (not our turn / insufficient permission / already closed) — render no buttons and don't try to work out why. Buttons are UX only: the backend re-checks permission on every POST. **There is deliberately no action button in the grid row** (per user decision, 19 Aug 2026): every action lives only in `RequestDetailModal`, so an approver has to open the ticket and read what was actually requested before deciding — approving straight from a table row is not a real decision. The row's eye button is accented when `availableActions` is non-empty so actionable tickets are still easy to spot. An action with a non-empty `requiredFields` opens a form in `RequestActionDialog`; because the API sends field *names* only (no type/options/labels), `src/data/requestActionFields.ts` supplies the missing metadata — a name it doesn't know still renders as a plain text input rather than blocking the action. Empty strings are stripped before POST (`cleanFieldValues`) because the API treats an omitted field as "keep the existing DB value", so sending `""` would silently wipe it. Every action is irreversible, so `RequestActionDialog` always confirms first. After an action: `applyItem(res.item)` to update the row instantly, then `reload()` because `phaseSummary` is computed server-side. A 409 means someone else moved the ticket — show the API's `message` and reload.
 
 ## Adding a New Work Page (WinForms → Web migration)
 Confirmed pattern (per user decision, 29 Jul 2026) — every new work-order page must follow this. `src/pages/SalesPlan.tsx` is the reference implementation.

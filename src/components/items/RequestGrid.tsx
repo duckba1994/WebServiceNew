@@ -16,10 +16,13 @@ import {
   IconAlertTriangle,
   IconRefresh,
   IconBell,
+  IconCircleCheck,
+  IconX,
 } from '@tabler/icons-react';
 import { ColumnFilter } from '../ui/ColumnFilter';
 import { RequestDetailModal } from './RequestDetailModal';
-import { RequestListItem, RequestStatusSummary } from '../../types/requestList';
+import { RequestActionDialog } from './RequestActionDialog';
+import { RequestAction, RequestListItem, RequestStatusSummary } from '../../types/requestList';
 import {
   RequestColumn,
   ReqPresetKey,
@@ -30,7 +33,20 @@ import {
   compareRequests,
   jobStatusMeta,
   matchesSearch,
+  requestKey,
 } from '../../data/requestListData';
+import { PHASE_META, phaseOf, isRequesterSide } from '../../data/requestPhase';
+
+// การ์ดสรุปที่หน้าเรียกส่งเข้ามาเอง (เช่น การ์ดตามจังหวะงานของหน้าแจ้งออกไป)
+export interface SummaryCardSpec {
+  key: string;
+  label: string;
+  value: number;
+  color: string;
+  bg: string;
+  active?: boolean;
+  onClick?: () => void;
+}
 
 const PAGE_SIZES: (number | 'all')[] = [20, 50, 100, 'all'];
 const MIN_COL_WIDTH = 90;
@@ -53,20 +69,39 @@ export function RequestGrid({
   columns: allColumns,
   items: data,
   summary,
+  summaryCards,
+  totalCount,
   loading,
   error,
   onReload,
   toolbar,
+  onAction,
+  actionPending,
+  notice,
+  onDismissNotice,
   searchPlaceholder = 'ค้นหาเลขที่ / ผู้แจ้ง / รายละเอียด...',
   emptyText = 'ไม่พบรายการ',
 }: {
   columns: RequestColumn[];
   items: RequestListItem[];
   summary?: RequestStatusSummary[];
+  // ส่งมาแทน summary ได้ — ใช้เมื่อหน้าอยากนับด้วยเกณฑ์ของตัวเอง (เช่น จังหวะงาน)
+  summaryCards?: SummaryCardSpec[];
+  totalCount?: number; // จำนวนก่อนถูกกรองในหน้า (ไม่ส่ง = นับจาก items)
   loading?: boolean;
   error?: string | null;
   onReload?: () => void;
   toolbar?: React.ReactNode; // ตัวกรองที่ส่งไปให้ API (สถานะ / เฉพาะคิวเรา)
+  // กดปุ่มดำเนินการ — ไม่ส่งมา = ตารางอ่านอย่างเดียว (ไม่มีปุ่มโผล่)
+  onAction?: (
+    item: RequestListItem,
+    action: RequestAction,
+    note: string,
+    fields?: Record<string, string | number>
+  ) => void | Promise<void>;
+  actionPending?: boolean;
+  notice?: { kind: 'success' | 'error'; text: string } | null;
+  onDismissNotice?: () => void;
   searchPlaceholder?: string;
   emptyText?: string;
 }) {
@@ -78,9 +113,19 @@ export function RequestGrid({
   const [filters, setFilters] = useState<Record<string, Set<string>>>({});
   const [openFilter, setOpenFilter] = useState<string | null>(null);
   const [colWidths, setColWidths] = useState<Record<string, number>>({});
-  // เก็บเลขที่ใบ ไม่ใช่ตัว object — พอ refetch แล้ว object จะเป็นตัวใหม่
-  const [viewDocNo, setViewDocNo] = useState<string | null>(null);
-  const view = useMemo(() => data.find((r) => r.docNo === viewDocNo) ?? null, [data, viewDocNo]);
+  // เก็บคีย์ของแถว ไม่ใช่ตัว object — พอ refetch แล้ว object จะเป็นตัวใหม่
+  // ต้องใช้ module+docNo เพราะตารางรวมหลายแผนก docNo ซ้ำกันได้
+  const [viewKey, setViewKey] = useState<string | null>(null);
+  const view = useMemo(() => data.find((r) => requestKey(r) === viewKey) ?? null, [data, viewKey]);
+  // ใบ + ปุ่มที่กำลังรอยืนยัน (การอนุมัติย้อนกลับไม่ได้ จึงต้องถามก่อนเสมอ)
+  const [confirm, setConfirm] = useState<{ item: RequestListItem; action: RequestAction } | null>(null);
+
+  // ตั้งใจไม่มีปุ่มดำเนินการในตาราง — ทุก action ต้องเปิดใบเข้าไปกดข้างใน
+  // เพื่อบังคับให้คนอนุมัติได้อ่านก่อนว่าลูกน้องขออะไรมา (ตัดสินใจจากแถวเดียวไม่พอ)
+  const hasAction = React.useCallback(
+    (row: RequestListItem): boolean => !!onAction && (row.availableActions?.length ?? 0) > 0,
+    [onAction]
+  );
 
   const columns = useMemo(
     () => allColumns.filter((c) => REQ_COLUMN_PRESETS[preset].groups.includes(c.group)),
@@ -198,6 +243,17 @@ export function RequestGrid({
     switch (col.kind) {
       case 'status':
         return <Pill meta={jobStatusMeta(row)} dot />;
+      case 'phase':
+        // ชื่อจังหวะใช้ phaseName จาก API (cellText คืนมาให้แล้ว) สีมาจากตาราง UI
+        return <Pill meta={{ ...PHASE_META[phaseOf(row)], label: text }} />;
+      case 'module':
+        // รหัสโมดูล = แผนกปลายทาง (IT / AF / PL / GA …) — คอลัมน์ที่สำคัญที่สุด
+        // ของตารางที่รวมทุกแผนกไว้ด้วยกัน
+        return (
+          <span className="mono rounded-md border border-gray-200 bg-slate-50 px-2 py-0.5 text-[11.5px] font-bold text-slate-700">
+            {row.module}
+          </span>
+        );
       case 'turn':
         return row.isMyTurn ? (
           <span className="inline-flex items-center gap-1 rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-[11px] font-bold text-amber-700">
@@ -207,6 +263,19 @@ export function RequestGrid({
         ) : (
           <span className="text-[11.5px] text-slate-400">รอแผนกอื่น</span>
         );
+      case 'ourTurn':
+        // ใบที่ workflow วนกลับมาหาผู้แจ้ง (Survey / Received-Service /
+        // Request-Close-Job) — งานเสร็จหมดแล้วรอแค่เรากดปิด ถ้าไม่ชี้ให้เห็นจะค้างเงียบ
+        return isRequesterSide(row) ? (
+          <span className="inline-flex items-center gap-1 rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-[11px] font-bold text-amber-700">
+            <IconBell size={12} />
+            รอเรา
+          </span>
+        ) : (
+          <span className="text-[11.5px] text-slate-400">—</span>
+        );
+      case 'step':
+        return text ? <span className="mono text-slate-600">{text}</span> : blank;
       case 'mono':
         return text ? <span className="mono font-semibold text-accent">{text}</span> : blank;
       case 'date':
@@ -220,13 +289,29 @@ export function RequestGrid({
     <div className="flex h-full flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
       {/* ===== สรุปตามสถานะ (มาจาก summary ของ API — นับจากชุดที่กรองแล้ว) ===== */}
       <div className="flex shrink-0 flex-wrap items-center gap-2.5 border-b border-gray-200 bg-white px-5 py-3">
-        <SummaryCard label="ทั้งหมด" value={data.length} color="#475569" bg="#f1f5f9" />
-        {myTurnCount > 0 && (
-          <SummaryCard label="ถึงคิวแผนกเรา" value={myTurnCount} color="#b45309" bg="#fffbeb" />
+        {summaryCards ? (
+          summaryCards.map((c) => (
+            <SummaryCard
+              key={c.key}
+              label={c.label}
+              value={c.value}
+              color={c.color}
+              bg={c.bg}
+              active={c.active}
+              onClick={c.onClick}
+            />
+          ))
+        ) : (
+          <>
+            <SummaryCard label="ทั้งหมด" value={data.length} color="#475569" bg="#f1f5f9" />
+            {myTurnCount > 0 && (
+              <SummaryCard label="ถึงคิวแผนกเรา" value={myTurnCount} color="#b45309" bg="#fffbeb" />
+            )}
+            {(summary ?? []).map((s) => (
+              <SummaryCard key={s.jobStatus} label={s.jobStatusName} value={s.count} color="#0f172a" bg="#f8fafc" />
+            ))}
+          </>
         )}
-        {(summary ?? []).map((s) => (
-          <SummaryCard key={s.jobStatus} label={s.jobStatusName} value={s.count} color="#0f172a" bg="#f8fafc" />
-        ))}
         {onReload && (
           <button
             onClick={onReload}
@@ -283,6 +368,9 @@ export function RequestGrid({
       <div className="flex shrink-0 flex-wrap items-center gap-3 border-b border-gray-200 bg-slate-50 px-5 py-1.5 text-xs">
         <span className="text-slate-500">
           ตาราง <b className="text-gray-900">{rows.length}</b> รายการ
+          {totalCount !== undefined && totalCount !== rows.length && (
+            <> จากทั้งหมด <b className="text-gray-900">{totalCount}</b></>
+          )}
         </span>
 
         <button
@@ -330,6 +418,33 @@ export function RequestGrid({
               className="ml-auto rounded border border-red-300 bg-white px-2.5 py-1 text-[11.5px] font-semibold text-red-700 transition hover:bg-red-100"
             >
               ลองใหม่
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* ===== ผลของการกดปุ่ม — message เป็นข้อความไทยจาก API ตรง ๆ ===== */}
+      {notice && (
+        <div
+          className={`flex shrink-0 items-center gap-2 border-b px-5 py-2.5 text-[12.5px] font-semibold ${
+            notice.kind === 'success'
+              ? 'border-emerald-200 bg-emerald-50 text-emerald-800'
+              : 'border-red-200 bg-red-50 text-red-700'
+          }`}
+        >
+          {notice.kind === 'success' ? (
+            <IconCircleCheck size={16} className="shrink-0" />
+          ) : (
+            <IconAlertTriangle size={16} className="shrink-0" />
+          )}
+          {notice.text}
+          {onDismissNotice && (
+            <button
+              onClick={onDismissNotice}
+              title="ปิดข้อความ"
+              className="ml-auto rounded p-1 opacity-60 transition hover:bg-white/60 hover:opacity-100"
+            >
+              <IconX size={14} />
             </button>
           )}
         </div>
@@ -444,7 +559,7 @@ export function RequestGrid({
               )}
               {displayRows.map((row) => (
                 <tr
-                  key={row.docNo}
+                  key={requestKey(row)}
                   className={`group transition-colors hover:bg-slate-50 ${row.isMyTurn ? 'bg-amber-50/40' : 'bg-white'}`}
                 >
                   {columns.map((col) => {
@@ -478,11 +593,17 @@ export function RequestGrid({
                     style={{ width: 64, minWidth: 64, maxWidth: 64 }}
                   >
                     <div className="flex items-center justify-center">
+                      {/* ปุ่มเดียวคือ "เปิดใบ" — ใบที่กดดำเนินการได้จะเน้นสีไว้
+                          ให้หาเจอ แต่ยังต้องเปิดเข้าไปอ่านก่อนถึงจะกดอนุมัติได้ */}
                       <button
                         type="button"
-                        onClick={() => setViewDocNo(row.docNo)}
-                        title="ดูรายละเอียด"
-                        className="inline-flex h-6 w-6 items-center justify-center rounded-md border border-gray-200 bg-white text-slate-500 opacity-60 transition hover:border-accent hover:bg-[#eef4fb] hover:text-accent group-hover:opacity-100"
+                        onClick={() => setViewKey(requestKey(row))}
+                        title={hasAction(row) ? `เปิดใบ ${row.docNo} เพื่ออ่านและดำเนินการ` : 'ดูรายละเอียด'}
+                        className={`inline-flex h-6 w-6 items-center justify-center rounded-md border transition ${
+                          hasAction(row)
+                            ? 'border-accent bg-[#eef4fb] text-accent hover:bg-[#dce9f8]'
+                            : 'border-gray-200 bg-white text-slate-500 opacity-60 hover:border-accent hover:bg-[#eef4fb] hover:text-accent group-hover:opacity-100'
+                        }`}
                       >
                         <IconEye size={14} />
                       </button>
@@ -538,21 +659,72 @@ export function RequestGrid({
         </div>
       )}
 
-      {view && <RequestDetailModal item={view} onClose={() => setViewDocNo(null)} />}
+      {view && (
+        <RequestDetailModal
+          item={view}
+          onClose={() => setViewKey(null)}
+          onPickAction={onAction ? (action) => setConfirm({ item: view, action }) : undefined}
+          actionPending={actionPending}
+        />
+      )}
+
+      {confirm && (
+        <RequestActionDialog
+          item={confirm.item}
+          action={confirm.action}
+          pending={!!actionPending}
+          onCancel={() => setConfirm(null)}
+          onConfirm={async (note, fields) => {
+            await onAction?.(confirm.item, confirm.action, note, fields);
+            setConfirm(null);
+            setViewKey(null); // ใบเปลี่ยนสถานะแล้ว ปิดหน้ารายละเอียดที่ค้างอยู่
+          }}
+        />
+      )}
     </div>
   );
 }
 
-function SummaryCard({ label, value, color, bg }: { label: string; value: number; color: string; bg: string }) {
-  return (
-    <div className="flex items-center gap-2 rounded-xl border border-gray-200 px-3 py-1.5">
+function SummaryCard({
+  label,
+  value,
+  color,
+  bg,
+  active,
+  onClick,
+}: {
+  label: string;
+  value: number;
+  color: string;
+  bg: string;
+  active?: boolean;
+  onClick?: () => void;
+}) {
+  const body = (
+    <>
       <span
         className="mono flex h-7 min-w-[28px] items-center justify-center rounded-lg px-1.5 text-[13px] font-bold"
         style={{ background: bg, color }}
       >
         {value}
       </span>
-      <span className="text-[11.5px] font-medium text-slate-500">{label}</span>
-    </div>
+      <span className={`text-[11.5px] font-medium ${active ? 'text-gray-900' : 'text-slate-500'}`}>{label}</span>
+    </>
+  );
+
+  if (!onClick) {
+    return <div className="flex items-center gap-2 rounded-xl border border-gray-200 px-3 py-1.5">{body}</div>;
+  }
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      title={`ดูเฉพาะ ${label}`}
+      className={`flex items-center gap-2 rounded-xl border px-3 py-1.5 transition ${
+        active ? 'border-accent bg-[#eef4fb] shadow-sm' : 'border-gray-200 bg-white hover:border-gray-300 hover:bg-slate-50'
+      }`}
+    >
+      {body}
+    </button>
   );
 }
