@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   IconX,
   IconBell,
@@ -7,6 +7,10 @@ import {
   IconAlertTriangle,
   IconLoader2,
   IconPaperclip,
+  IconPencil,
+  IconDeviceFloppy,
+  IconTrash,
+  IconPhotoPlus,
 } from '@tabler/icons-react';
 import {
   RequestAction,
@@ -15,11 +19,25 @@ import {
   RequestListItem,
   RequestLog,
 } from '../../types/requestList';
-import { fmtDateTime, jobStatusMeta } from '../../data/requestListData';
+import { fmtDate, fmtDateTime, jobStatusMeta } from '../../data/requestListData';
 import { isRequesterSide } from '../../data/requestPhase';
 import { actionBtnClass } from './RequestActionDialog';
 import { ActionFieldValues, cleanFieldValues, fieldSpec } from '../../data/requestActionFields';
 import { useRequestDetail } from '../../hooks/useRequestDetail';
+import { useRequestEdit } from '../../hooks/useRequestEdit';
+import {
+  EDIT_FIELDS,
+  RequestEditForm,
+  canEditRequest,
+  editBlockedReason,
+  hasFormChanges,
+  toEditForm,
+  toUpdatePayload,
+  validateEditForm,
+} from '../../data/requestEdit';
+import { IT_ATTACHMENT_SLOTS, IT_ATTACH_EXTENSIONS, ItAttachment } from '../../api/itRequest';
+import { useItAttachments } from '../../hooks/useItAttachments';
+import { useAuthedImage } from '../../hooks/useAuthedImage';
 import { useAuth } from '../../context/AuthContext';
 
 type Meta = { label: string; color: string; bg: string; border: string };
@@ -65,7 +83,7 @@ const STEP_TABS: StepTab[] = [
   { key: 'general', label: 'General', reachedStep: 0, logAction: 'create', actionCodes: [] },
   { key: 'receive', label: 'รับเรื่อง', reachedStep: 2, logAction: 'receive', actionCodes: ['receive'] },
   { key: 'service', label: 'ดำเนินการ', reachedStep: 3, logAction: 'service', actionCodes: [] },
-  { key: 'closeReceive', label: 'ปิดงานรับเรื่อง', reachedStep: 3, logAction: 'service', actionCodes: [] },
+  { key: 'closeReceive', label: 'ปิดงานรับเรื่อง', reachedStep: 3, logAction: 'closeReceive', actionCodes: [] },
   { key: 'survey', label: 'สำรวจความพึงพอใจ', reachedStep: 4, logAction: 'survey', actionCodes: [] },
   { key: 'close', label: 'ปิดงาน', reachedStep: 5, logAction: 'close', actionCodes: [] },
 ];
@@ -99,6 +117,7 @@ export function RequestDetailModal({
   item,
   onClose,
   onPickAction,
+  onEdited,
   onStepSubmit,
   actionPending,
   notice,
@@ -107,6 +126,8 @@ export function RequestDetailModal({
   item: RequestListItem;
   onClose: () => void;
   onPickAction?: (action: RequestAction) => void; // ไม่ส่งมา = อ่านอย่างเดียว
+  // ใบถูกแก้ไขสำเร็จ — ส่งแถวที่อัปเดตแล้วกลับให้ลิสต์เอาไปแทนของเดิม
+  onEdited?: (item: RequestListItem) => void;
   // ยิง action จากฟอร์มในแท็บ (ดำเนินการ/ปิดงานรับเรื่อง/สำรวจ) ตรง ไม่ผ่านกล่องยืนยัน
   onStepSubmit?: (action: RequestAction, fields: ActionFieldValues) => void | Promise<void>;
   actionPending?: boolean;
@@ -115,13 +136,29 @@ export function RequestDetailModal({
   onDismissNotice?: () => void;
 }) {
   const { user } = useAuth();
-  // ส่ง updatedDate เป็น refreshKey — หลังกด action ใบขยับ ค่าเปลี่ยน → โหลด detail ใหม่
+  // โหลด detail ใหม่เมื่อ: ใบขยับ (updatedDate/wfStep) หรือเพิ่งกดปุ่มในแท็บ (refreshTick)
+  // ต้องมี refreshTick เพราะ saveService/service ไม่เลื่อน step และไม่แตะ updatedDate
+  // (= MAX(ApproveDate)) → ถ้าไม่บังคับโหลด จะไม่เห็น servicedBy / ค่าที่เพิ่งบันทึก
+  const [refreshTick, setRefreshTick] = useState(0);
+  // ต้อง stable — ส่งลงไปเป็น dep ของ useItAttachments (ไม่งั้น callback ใหม่ทุก render)
+  const bumpRefresh = React.useCallback(() => setRefreshTick((t) => t + 1), []);
   const { detail, loading: detailLoading } = useRequestDetail(
     item.module,
     item.docNo,
     user?.token,
-    item.updatedDate ?? item.wfStep
+    `${item.updatedDate ?? ''}|${item.wfStep ?? ''}|${refreshTick}`
   );
+
+  // ยิง action จากฟอร์มในแท็บ แล้วบังคับโหลดใบใหม่เพื่อดึงค่าที่เพิ่งบันทึกกลับมา
+  const submitStep = async (action: RequestAction, fields: ActionFieldValues) => {
+    await onStepSubmit?.(action, fields);
+    setRefreshTick((t) => t + 1);
+    // กด "ดำเนินการเสร็จ" (service ไม่เลื่อน step) → เด้งไปแท็บปิดงานรับเรื่องเลย
+    if (action.code === 'service') {
+      const i = STEP_TABS.findIndex((t) => t.key === 'closeReceive');
+      if (i !== -1) setSelected(i);
+    }
+  };
 
   // item เต็มจาก detail (คำนวณสำหรับคนที่เปิดดู) — ถ้ายังโหลดไม่เสร็จใช้ตัวจากลิสต์ไปก่อน
   const full = detail?.item ?? item;
@@ -138,30 +175,40 @@ export function RequestDetailModal({
     return found;
   };
 
+  // "ดำเนินการเสร็จ" (service) ไม่เลื่อน step แต่ประทับ servicedBy → ถือว่าแท็บดำเนินการ "ทำแล้ว"
+  const serviceDone = !!(full.resolution?.servicedBy || lastLogOf('service')?.actionByName);
+  const tabState = (t: StepTab): StepState => {
+    const base = stepStateOf(t, item.wfStep, closed);
+    if (t.key === 'service' && serviceDone && base === 'current') return 'done';
+    return base;
+  };
+
   // tab เริ่มต้น = ขั้นปัจจุบัน (ตัวแรกที่ state = current) ไม่งั้นตัวสุดท้ายที่ทำแล้ว
   const defaultTab = useMemo(() => {
-    const cur = STEP_TABS.findIndex((t) => stepStateOf(t, item.wfStep, closed) === 'current');
+    const cur = STEP_TABS.findIndex((t) => tabState(t) === 'current');
     if (cur !== -1) return cur;
     let lastDone = 0;
     STEP_TABS.forEach((t, i) => {
-      if (stepStateOf(t, item.wfStep, closed) === 'done') lastDone = i;
+      if (tabState(t) === 'done') lastDone = i;
     });
     return lastDone;
-  }, [item.wfStep, closed]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [item.wfStep, closed, serviceDone]);
 
   const [selected, setSelected] = useState(defaultTab);
 
   // เดิน stepper ไปขั้นปัจจุบันเมื่อ wfStep เปลี่ยน (เช่นหลังกดรับเรื่อง → ไปแท็บดำเนินการ)
   // ไม่ override ตอนผู้ใช้กดดูแท็บอื่นเอง เพราะ wfStep ไม่เปลี่ยน effect จึงไม่ยิง
   const currentIndex = useMemo(
-    () => STEP_TABS.findIndex((t) => stepStateOf(t, item.wfStep, closed) === 'current'),
-    [item.wfStep, closed]
+    () => STEP_TABS.findIndex((t) => tabState(t) === 'current'),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [item.wfStep, closed, serviceDone]
   );
   useEffect(() => {
     if (currentIndex !== -1) setSelected(currentIndex);
   }, [currentIndex]);
   const activeTab = STEP_TABS[selected] ?? STEP_TABS[0];
-  const activeState = stepStateOf(activeTab, item.wfStep, closed);
+  const activeState = tabState(activeTab);
   const activeLog = lastLogOf(activeTab.logAction);
   // ปุ่มที่โชว์ในแท็บนี้ = availableActions กรองด้วย actionCodes ของแท็บ
   // (แท็บรับเรื่องจึงเหลือแค่ปุ่มรับเรื่อง, แท็บดำเนินการไม่มีปุ่ม workflow)
@@ -171,6 +218,41 @@ export function RequestDetailModal({
   // ปุ่มอนุมัติ/ไม่อนุมัติ (ขั้น MGR ต้นสังกัด) — โชว์ในแท็บ General เพราะขั้นอนุมัติ
   // เกิดก่อนสาย workflow ฝั่งปลายทาง กด MGR ต้องอ่านข้อมูลใบก่อนตัดสินใจ
   const approveActions = actions.filter((a) => ['approve', 'not_approve', 'reject'].includes(a.code));
+
+  // ── แก้ไขข้อมูลใบ (ก่อนปลายทางกดรับงาน) ──────────────────────
+  // สิทธิ์มาจาก item.canEdit ที่ API ส่งมา (ยังไม่ส่ง → fallback กติกาใน requestEdit.ts)
+  const {
+    save: saveEdit,
+    pending: editPending,
+    notice: editNotice,
+    dismissNotice: dismissEditNotice,
+  } = useRequestEdit(user?.token);
+  const [editing, setEditing] = useState(false);
+  const editable = !!onEdited && canEditRequest(full, user);
+  // ใบขยับระหว่างที่ฟอร์มเปิดค้างอยู่ (ปลายทางเพิ่งกดรับเรื่อง) → ปิดฟอร์มทิ้งเอง
+  useEffect(() => {
+    if (!editable) setEditing(false);
+  }, [editable]);
+
+  // รูปแนบมีผลทันทีทีละช่อง (คนละ endpoint) — ปุ่มนี้บันทึกเฉพาะข้อความ
+  const submitEdit = async (form: RequestEditForm) => {
+    // ไม่ได้แก้อะไรเลย → ไม่ต้องยิง API ให้เปลืองรอบ
+    if (!hasFormChanges(toEditForm(full), form)) {
+      setEditing(false);
+      return;
+    }
+    const updated = await saveEdit(full, toUpdatePayload(full, form));
+    if (updated) {
+      onEdited?.(updated);
+      setEditing(false);
+    }
+    // สำเร็จก็โหลดใหม่ (ดึง logs/รูปล่าสุด), 403/409 ยิ่งต้องโหลด — จอเก่าไปแล้ว
+    setRefreshTick((t) => t + 1);
+  };
+
+  // แถบข้อความรวม — action กับ edit ใช้แถบเดียวกัน (ที่ว่างในหัว modal มีแถบเดียว)
+  const bannerNotice = notice ?? editNotice;
+  const dismissBanner = notice ? onDismissNotice : dismissEditNotice;
 
   return (
     <div className="fixed inset-0 z-40 flex items-center justify-center p-4">
@@ -218,7 +300,7 @@ export function RequestDetailModal({
           <div className="overflow-x-auto pb-1">
             <ol className="flex min-w-max items-start">
               {STEP_TABS.map((t, i) => {
-                const state = stepStateOf(t, item.wfStep, closed);
+                const state = tabState(t);
                 const done = state === 'done';
                 const current = state === 'current';
                 const isSel = i === selected;
@@ -280,22 +362,22 @@ export function RequestDetailModal({
         </div>
 
         {/* ผลของการกดปุ่ม — message ไทยจาก API (สำเร็จ/ error) โชว์ในตัว modal */}
-        {notice && (
+        {bannerNotice && (
           <div
             className={`flex shrink-0 items-center gap-2 border-b px-5 py-2.5 text-[12.5px] font-semibold ${
-              notice.kind === 'success'
+              bannerNotice.kind === 'success'
                 ? 'border-emerald-200 bg-emerald-50 text-emerald-800'
                 : 'border-red-200 bg-red-50 text-red-700'
             }`}
           >
-            {notice.kind === 'success' ? (
+            {bannerNotice.kind === 'success' ? (
               <IconCircleCheck size={16} className="shrink-0" />
             ) : (
               <IconAlertTriangle size={16} className="shrink-0" />
             )}
-            <span className="min-w-0 flex-1">{notice.text}</span>
-            {onDismissNotice && (
-              <button onClick={onDismissNotice} title="ปิดข้อความ" className="rounded p-1 opacity-60 transition hover:bg-white/60 hover:opacity-100">
+            <span className="min-w-0 flex-1">{bannerNotice.text}</span>
+            {dismissBanner && (
+              <button onClick={dismissBanner} title="ปิดข้อความ" className="rounded p-1 opacity-60 transition hover:bg-white/60 hover:opacity-100">
                 <IconX size={14} />
               </button>
             )}
@@ -310,6 +392,18 @@ export function RequestDetailModal({
               {activeTab.key !== 'general' && (
                 <Pill meta={STATE_CHIP[activeState]} dot={activeState === 'current'} />
               )}
+              {/* แก้ไขข้อมูลใบได้จนกว่าปลายทางจะกดรับงาน — คนในแผนกผู้แจ้ง (รวม Mgr) เท่านั้น */}
+              {activeTab.key === 'general' && editable && !editing && (
+                <button
+                  type="button"
+                  onClick={() => setEditing(true)}
+                  title="แก้ไขข้อมูลใบ — ทำได้จนกว่าปลายทางจะกดรับงาน"
+                  className="ml-auto inline-flex items-center gap-1.5 rounded-lg border border-accent/30 bg-accent/5 px-3 py-1.5 text-[12.5px] font-semibold text-accent transition hover:bg-accent/10"
+                >
+                  <IconPencil size={14} />
+                  แก้ไขข้อมูล
+                </button>
+              )}
             </div>
 
             {activeTab.key === 'general' ? (
@@ -318,6 +412,12 @@ export function RequestDetailModal({
                 full={full}
                 attachments={detail?.attachments ?? null}
                 approveLogs={logs.filter((l) => l.action === 'approve')}
+                editing={editing}
+                editPending={editPending}
+                editHint={onEdited && !editable ? editBlockedReason(full, user) : null}
+                onEditCancel={() => setEditing(false)}
+                onEditSubmit={submitEdit}
+                onAttachmentsChanged={bumpRefresh}
               />
             ) : activeTab.key === 'service' ? (
               <ServicePanel
@@ -325,25 +425,38 @@ export function RequestDetailModal({
                 actions={actions}
                 resolution={r}
                 pending={!!actionPending}
-                onSubmit={onStepSubmit}
+                onSubmit={onStepSubmit ? submitStep : undefined}
+                serviceLog={lastLogOf('service')}
                 onNext={() => {
                   const i = STEP_TABS.findIndex((t) => t.key === 'closeReceive');
                   if (i !== -1) setSelected(i);
                 }}
               />
             ) : activeTab.key === 'closeReceive' ? (
-              <ClosePanel state={activeState} resolution={r} pending={!!actionPending} onSubmit={onStepSubmit} />
+              <ClosePanel state={activeState} resolution={r} pending={!!actionPending} onSubmit={onStepSubmit ? submitStep : undefined} />
             ) : activeTab.key === 'survey' ? (
-              <SurveyPanel state={activeState} pending={!!actionPending} onSubmit={onStepSubmit} />
+              <SurveyPanel
+                state={activeState}
+                resolution={r}
+                surveyLog={lastLogOf('survey')}
+                pending={!!actionPending}
+                onSubmit={onStepSubmit ? submitStep : undefined}
+              />
             ) : activeTab.key === 'close' ? (
-              <KpiPanel state={activeState} pending={!!actionPending} onSubmit={onStepSubmit} />
+              <KpiPanel
+                state={activeState}
+                resolution={r}
+                closeLog={lastLogOf('close')}
+                pending={!!actionPending}
+                onSubmit={onStepSubmit ? submitStep : undefined}
+              />
             ) : (
               <StepPanel tab={activeTab} state={activeState} log={activeLog} resolution={r} />
             )}
 
             {/* ปุ่มอนุมัติ/ไม่อนุมัติ ในแท็บ General — ผ่านกล่องยืนยันเหมือน action อื่น
                 โผล่เมื่อ API ส่ง approve มาใน availableActions (เป็นคิวของ MGR ผู้อนุมัติ) */}
-            {activeTab.key === 'general' && onPickAction && approveActions.length > 0 && (
+            {activeTab.key === 'general' && !editing && onPickAction && approveActions.length > 0 && (
               <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-gray-100 pt-4">
                 {approveActions.map((a) => (
                   <button
@@ -477,13 +590,15 @@ function ServicePanel({
   pending,
   onSubmit,
   onNext,
+  serviceLog,
 }: {
   state: StepState;
   actions: RequestAction[];
   resolution: RequestListItem['resolution'];
   pending: boolean;
   onSubmit?: (action: RequestAction, fields: ActionFieldValues) => void | Promise<void>;
-  onNext?: () => void; // ไปแท็บปิดงานรับเรื่อง (แค่สลับแท็บ ไม่ยิงปิด)
+  onNext?: () => void; // ไปแท็บปิดงานรับเรื่อง (การส่งต่อทำที่นั่นด้วย closeReceive)
+  serviceLog?: RequestLog | null; // fallback ชื่อ/เวลา ถ้า resolution ยังไม่คืน servicedBy
 }) {
   const [mode, setMode] = useState('');
   const [vendor, setVendor] = useState('');
@@ -492,32 +607,52 @@ function ServicePanel({
   const [planDate, setPlanDate] = useState('');
   const [touched, setTouched] = useState(false);
 
+  // เติมฟอร์มจากค่าที่บันทึกไว้ (resolution) — resolution จะเปลี่ยน reference เฉพาะตอน
+  // โหลด detail ใหม่ (เปิดใบ / หลังเซฟ) ระหว่างพิมพ์ไม่ refetch จึงไม่ล้างที่พิมพ์ค้าง
+  // ตั้งเฉพาะช่องที่ API คืนค่ามา (กัน API ที่ยังไม่คืน exVendor มาล้างของที่พิมพ์)
+  useEffect(() => {
+    if (!resolution) return;
+    if (resolution.repairStatus) setMode(resolution.repairStatus);
+    if (resolution.exVendor) setVendor(resolution.exVendor);
+    if (resolution.exContact) setPhone(resolution.exContact);
+    if (resolution.exPrNo) setRefPr(resolution.exPrNo);
+    if (resolution.exPlanDate) setPlanDate(String(resolution.exPlanDate).slice(0, 10));
+  }, [resolution]);
+
   if (state === 'upcoming') {
     return <p className="text-[12.5px] text-slate-400">ยังไม่ถึงขั้นนี้ — จะกรอกได้เมื่อรับเรื่องแล้ว</p>;
   }
 
-  // แท็บนี้เก็บแค่ "บันทึกรายละเอียด" (saveService) — ไม่ปิดใบ
-  // การปิด (service → Survey) อยู่ที่แท็บปิดงานรับเรื่องเท่านั้น เพราะ
-  // "ดำเนินการเสร็จ" ในโมเดลนี้ = จบงานซ่อมแล้วไปกรอกปิดงาน ไม่ใช่ปิดทันที
-  const saveAction = actions.find((a) => a.code === 'saveService');
-  // ถ้าถึง step 3 (มี service ให้กดได้) ก็ถือว่าแก้ไขได้ แม้ backend จะไม่ส่ง saveService มา
-  const editable = !!saveAction || actions.some((a) => a.code === 'service');
+  // step 3 (มี saveService/service ให้กด) = แก้ไขได้ · พอ service ถูกยิงจากแท็บปิดงานรับเรื่อง
+  // แล้ว step เลื่อน 3→4 availableActions หาย → ปุ่มหายเอง แล้วแท็บนี้กลายเป็น read-only
+  // service ไม่เลื่อน step แต่ประทับ ServiceBy/ServiceDate → ใช้ servicedBy เป็นตัวบอกว่า
+  // "ดำเนินการเสร็จแล้ว" (ถาวรจาก API ไม่ใช่ state ชั่วคราว) แล้วซ่อนปุ่ม เหลือแค่ปิดงานรับเรื่อง
+  const serviceBy = resolution?.servicedBy || serviceLog?.actionByName || null;
+  const serviceAt = resolution?.servicedDate || serviceLog?.actionDate || null;
+  const serviceDone = !!serviceBy;
+  const svc = actions.filter((a) => a.code === 'saveService' || a.code === 'service');
+  const editable = !serviceDone && svc.length > 0;
 
+  // ทำเสร็จแล้ว (ปุ่มหายไป) → โชว์ชื่อผู้ดำเนินการ + ข้อมูลที่บันทึกไว้ อ่านอย่างเดียว
   if (!editable) {
-    const rp = resolution?.repairStatus;
+    const rs = resolution;
     return (
       <div className="grid grid-cols-2 gap-x-5 gap-y-4">
-        <DetailRow label="การดำเนินการ">{rp || '—'}</DetailRow>
-        <div className="col-span-2 text-[11.5px] text-slate-400">
-          รายละเอียดส่งบริษัท / เบอร์ / กำหนดเสร็จ ระบบยังไม่ส่งกลับมาแสดง
-        </div>
+        <DetailRow label="ผู้ดำเนินการ">{serviceBy || '—'}</DetailRow>
+        <DetailRow label="วันที่ดำเนินการ">{serviceAt ? fmtDateTime(serviceAt) : '—'}</DetailRow>
+        <DetailRow label="การดำเนินการ">{rs?.repairStatus || mode || '—'}</DetailRow>
+        <DetailRow label="ส่งบริษัท">{rs?.exVendor || vendor || '—'}</DetailRow>
+        <DetailRow label="เบอร์โทร">{rs?.exContact || phone || '—'}</DetailRow>
+        <DetailRow label="Ref PR">{rs?.exPrNo || refPr || '—'}</DetailRow>
+        <DetailRow label="วันที่กำหนดเสร็จ">
+          {rs?.exPlanDate ? fmtDate(rs.exPlanDate) : planDate ? fmtDate(planDate) : '—'}
+        </DetailRow>
       </div>
     );
   }
 
-  // ชื่อฟิลด์ตาม backend: repairStatus(ดำเนินการ) · exVendor(ส่งบริษัท) · exContact(เบอร์) · exPrNo · exPlanDate
-  // ตัดค่าว่างออกก่อนยิง — API ถือว่า "ไม่ส่ง = คงค่าเดิม" ส่ง "" ไปคือล้างค่า
-  const vendorMissing = vendor.trim() === '';
+  // ฟิลด์ทั้งชุด optional (ส่งเท่าที่กรอก) — ตัดค่าว่างก่อนยิง เพราะ API ถือว่า
+  // "ไม่ส่ง = คงค่าเดิมใน DB" ส่ง "" ไปคือล้างค่าเดิมโดยไม่ตั้งใจ
   const collect = (): ActionFieldValues =>
     cleanFieldValues({
       repairStatus: mode,
@@ -526,9 +661,10 @@ function ServicePanel({
       exPrNo: refPr,
       exPlanDate: planDate ? `${planDate}T00:00:00` : '',
     }) ?? {};
+  const vendorMissing = vendor.trim() === '';
   const submit = (a: RequestAction) => {
     setTouched(true);
-    if (vendorMissing) return; // exVendor บังคับ (requiredFields ของทั้งสองปุ่ม)
+    if (vendorMissing) return; // "ส่งบริษัท" (exVendor) บังคับพิมพ์ทุกครั้ง
     onSubmit?.(a, collect());
   };
 
@@ -572,29 +708,20 @@ function ServicePanel({
       )}
 
       <div className="col-span-2 flex flex-wrap items-center gap-2 border-t border-gray-100 pt-4">
-        {saveAction && (
+        {svc.map((a) => (
           <button
+            key={a.code}
             type="button"
             disabled={pending}
-            onClick={() => submit(saveAction)}
+            onClick={() => submit(a)}
             className={`rounded-lg border px-4 py-2 text-[13px] font-semibold transition disabled:cursor-not-allowed disabled:opacity-50 ${actionBtnClass(
-              saveAction.style
+              a.style
             )}`}
           >
-            {saveAction.label}
+            {a.label}
           </button>
-        )}
-        {onNext && (
-          <button
-            type="button"
-            disabled={pending}
-            onClick={onNext}
-            className="rounded-lg border border-accent bg-accent px-4 py-2 text-[13px] font-semibold text-white transition hover:bg-[#17539f] disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            ดำเนินการเสร็จ → ปิดงานรับเรื่อง
-          </button>
-        )}
-        <span className="text-[11.5px] text-slate-400">บันทึกได้เรื่อย ๆ · การปิดใบทำที่แท็บ “ปิดงานรับเรื่อง”</span>
+        ))}
+        <span className="text-[11.5px] text-slate-400">บันทึกได้เรื่อย ๆ · กด “ดำเนินการเสร็จ” แล้วไปปิดงานรับเรื่องที่แท็บถัดไป</span>
       </div>
     </div>
   );
@@ -602,7 +729,8 @@ function ServicePanel({
 
 // ── Tab ปิดงานรับเรื่อง — สรุปผลแล้วปิดขั้นดำเนินการ ────────────
 // ช่อง: แนวทางการแก้ไข · สาเหตุหลัก · สาเหตุรอง · รายละเอียดการดำเนินการ · หมายเหตุ
-// ยิง action 'service' (ดำเนินการเสร็จ) พร้อมฟิลด์ solve/hw/hwDetail/repairDetail (+closeRemark)
+// ยิง action 'closeReceive' → เขียน Solve/HW/HWDetail/RepairDetail/Remark + CloseBy/Date
+// แล้วเลื่อน step 3→4 (Survey) ส่งต่อให้ผู้แจ้งประเมิน
 const CLOSE_SOLVE = ['บริการซ่อม/แก้ไข', 'ให้คำปรึกษา/แนะนำ', 'ติดตั้ง/ตั้งค่า', 'เปลี่ยน/เพิ่มอุปกรณ์', 'ส่งซ่อมภายนอก', 'อื่น ๆ'];
 const CLOSE_CAUSE_MAIN = ['Hardware', 'Software'];
 const CLOSE_CAUSE_SUB = ['Computer', 'Notebook', 'Printer', 'Network', 'Software', 'อื่น ๆ'];
@@ -664,13 +792,17 @@ function ClosePanel({
     return <p className="text-[12.5px] text-slate-400">ยังไม่ถึงขั้นนี้ — จะปิดงานได้เมื่อดำเนินการแล้ว</p>;
   }
 
-  // ขั้นที่ทำแล้ว — โชว์สรุปที่บันทึกไว้ (เท่าที่ resolution ส่งมา) แบบอ่านอย่างเดียว
+  // ขั้นที่ทำแล้ว — โชว์สรุปที่บันทึกไว้ อ่านอย่างเดียว
+  // (solution=solve · hw · hwDetail · resolutionDetail=repairDetail · closedBy/closedDate)
   if (state === 'done') {
     const r = resolution;
     return (
       <div className="grid grid-cols-2 gap-x-5 gap-y-4">
+        <DetailRow label="ผู้ปิดงานรับเรื่อง">{r?.closedBy || '—'}</DetailRow>
+        <DetailRow label="วันที่ปิดงานรับเรื่อง">{r?.closedDate ? fmtDateTime(r.closedDate) : '—'}</DetailRow>
         <DetailRow label="แนวทางการแก้ไข">{r?.solution || '—'}</DetailRow>
-        <DetailRow label="สถานะ/สาเหตุ">{r?.repairStatus || '—'}</DetailRow>
+        <DetailRow label="สาเหตุหลัก">{r?.hw || '—'}</DetailRow>
+        <DetailRow label="สาเหตุรอง">{r?.hwDetail || '—'}</DetailRow>
         <div className="col-span-2">
           <DetailRow label="รายละเอียดการดำเนินการ">
             <span className="whitespace-pre-wrap">{r?.resolutionDetail || '—'}</span>
@@ -687,8 +819,9 @@ function ClosePanel({
     setTouched(true);
     if (blocked) return;
     onSubmit?.(
-      { code: 'service', label: 'ปิดงานรับเรื่อง', style: 'success', requireNote: false, requiredFields: [] },
-      cleanFieldValues({ solve, hw: causeMain, hwDetail: causeSub, repairDetail: detail, closeRemark: remark }) ?? {}
+      { code: 'closeReceive', label: 'ปิดงานรับเรื่อง', style: 'success', requireNote: false, requiredFields: [] },
+      // บังคับ solve/hw/hwDetail/repairDetail · remark ไม่บังคับ
+      cleanFieldValues({ solve, hw: causeMain, hwDetail: causeSub, repairDetail: detail, remark }) ?? {}
     );
   };
 
@@ -732,13 +865,16 @@ function ClosePanel({
 }
 
 // ── Tab สำรวจความพึงพอใจ — 5 หัวข้อ × 5 ระดับ รวม 25 คะแนน ─────
-// ยิง action 'survey' พร้อม serviceScore (คะแนนรวม 1–25) + surveyRemark
-const SURVEY_QUESTIONS = [
-  'ให้บริการด้วยความสุภาพและเป็นมิตร',
-  'ความรวดเร็วในการให้บริการ',
-  'เจ้าหน้าที่กระตือรือร้น และตั้งใจทำงาน',
-  'ได้รับบริการตรงตามที่คาดหวัง',
-  'การแนะนำขั้นตอนและให้ความรู้ในเรื่องที่ให้บริการ',
+// ยิง action 'survey' พร้อม surveyRatings (คะแนนรายข้อ 1–5) + surveyRemark
+// backend คำนวณ ServiceScore/ServiceTotal/ServicePercentage แล้วติ๊กรายข้อลง
+// BC_IT_Service_Survey ให้เอง — หน้าเว็บไม่ต้องส่งคะแนนรวม
+// key = ชื่อฟิลด์ใน surveyRatings ที่ API รับ (ห้ามเปลี่ยนชื่อ) · เรียงตามข้อ 1–5
+const SURVEY_QUESTIONS: { key: string; text: string }[] = [
+  { key: 'friendlyService', text: 'ให้บริการด้วยความสุภาพและเป็นมิตร' },
+  { key: 'fastService', text: 'ความรวดเร็วในการให้บริการ' },
+  { key: 'focusService', text: 'เจ้าหน้าที่กระตือรือร้น และตั้งใจทำงาน' },
+  { key: 'directService', text: 'ได้รับบริการตรงตามที่คาดหวัง' },
+  { key: 'serviceKnowledge', text: 'การแนะนำขั้นตอนและให้ความรู้ในเรื่องที่ให้บริการ' },
 ];
 const SURVEY_LEVELS = [
   { v: 5, t: 'ดีมาก' },
@@ -749,12 +885,79 @@ const SURVEY_LEVELS = [
 ];
 const SURVEY_MAX = SURVEY_QUESTIONS.length * 5; // 25
 
+// ตารางคะแนนรายหัวข้อ — ใช้ทั้งตอนกรอก (radio) และตอนอ่านผลย้อนหลัง (readOnly = จุดทึบ)
+// อ่านผลใช้จุดแทน radio disabled เพราะ radio ที่ถูก disable จะจาง จนดูไม่ออกว่าติ๊กข้อไหน
+function SurveyTable({
+  scores,
+  disabled,
+  readOnly,
+  onPick,
+}: {
+  scores: number[];
+  disabled?: boolean;
+  readOnly?: boolean;
+  onPick?: (i: number, v: number) => void;
+}) {
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full min-w-[520px] border-separate border-spacing-0 text-[12px]">
+        <thead>
+          <tr className="text-slate-600">
+            <th className="border-b border-gray-200 px-2 py-2 text-left font-semibold">หัวข้อ</th>
+            {SURVEY_LEVELS.map((lv) => (
+              <th key={lv.v} className="border-b border-gray-200 px-1 py-2 text-center font-semibold">
+                {lv.t}
+                <div className="mono text-[10.5px] text-slate-400">({lv.v})</div>
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {SURVEY_QUESTIONS.map((q, i) => (
+            <tr key={q.key}>
+              <td className="border-b border-gray-100 px-2 py-2 text-gray-800">
+                <span className="mono mr-1.5 text-slate-400">{i + 1}</span>
+                {q.text}
+              </td>
+              {SURVEY_LEVELS.map((lv) => (
+                <td key={lv.v} className="border-b border-gray-100 px-1 py-2 text-center">
+                  {readOnly ? (
+                    <span
+                      title={scores[i] === lv.v ? lv.t : undefined}
+                      className={`inline-block h-3.5 w-3.5 rounded-full border ${
+                        scores[i] === lv.v ? 'border-accent bg-accent' : 'border-gray-200 bg-slate-50'
+                      }`}
+                    />
+                  ) : (
+                    <input
+                      type="radio"
+                      name={`q${i}`}
+                      checked={scores[i] === lv.v}
+                      disabled={disabled}
+                      onChange={() => onPick?.(i, lv.v)}
+                      className="h-4 w-4 cursor-pointer accent-accent"
+                    />
+                  )}
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 function SurveyPanel({
   state,
+  resolution,
+  surveyLog,
   pending,
   onSubmit,
 }: {
   state: StepState;
+  resolution: RequestListItem['resolution'];
+  surveyLog?: RequestLog | null;
   pending: boolean;
   onSubmit?: (action: RequestAction, fields: ActionFieldValues) => void | Promise<void>;
 }) {
@@ -765,14 +968,47 @@ function SurveyPanel({
   if (state === 'upcoming') {
     return <p className="text-[12.5px] text-slate-400">ยังไม่ถึงขั้นนี้ — จะประเมินได้เมื่อปิดงานรับเรื่องแล้ว</p>;
   }
+  // ประเมินแล้ว → โชว์ข้อมูลที่บันทึก + ผู้ประเมิน/เวลา (อ่านอย่างเดียว)
   if (state === 'done') {
-    return <p className="text-[12.5px] text-emerald-700">ส่งผลประเมินแล้ว</p>;
+    const rs = resolution;
+    const by = rs?.surveyBy || surveyLog?.actionByName || null;
+    const at = rs?.surveyDate || surveyLog?.actionDate || null;
+    // คะแนนรายหัวข้อจาก backend — เรียงตามลำดับคำถามบนจอ (ข้อที่ไม่ได้ส่งมา = 0 → ไม่ติ๊ก)
+    const rated = SURVEY_QUESTIONS.map((q) => Number(rs?.surveyRatings?.[q.key]) || 0);
+    const hasRatings = rated.some((v) => v > 0);
+    // serviceScore ไม่มาแต่มีคะแนนรายข้อ → รวมเองได้ ไม่ต้องโชว์ขีด
+    const score = rs?.serviceScore ?? (hasRatings ? rated.reduce((a, v) => a + v, 0) : null);
+    const pctDone = rs?.servicePercentage ?? (score != null ? Math.round((score / SURVEY_MAX) * 100) : null);
+    return (
+      <div>
+        <div className="grid grid-cols-2 gap-x-5 gap-y-4">
+          <DetailRow label="ผู้ประเมิน">{by || '—'}</DetailRow>
+          <DetailRow label="วันที่ประเมิน">{at ? fmtDateTime(at) : '—'}</DetailRow>
+          <DetailRow label="คะแนนที่ได้">{score != null ? `${score} / ${SURVEY_MAX}` : '—'}</DetailRow>
+          <DetailRow label="คิดเป็น">{pctDone != null ? `${pctDone}%` : '—'}</DetailRow>
+        </div>
+
+        {hasRatings && (
+          <div className="mt-5">
+            <p className={SVC_LABEL}>คะแนนที่ให้แต่ละหัวข้อ</p>
+            <SurveyTable scores={rated} readOnly />
+          </div>
+        )}
+
+        <div className="mt-5">
+          <DetailRow label="ข้อเสนอแนะอื่น ๆ">
+            <span className="whitespace-pre-wrap">{rs?.surveyRemark || '—'}</span>
+          </DetailRow>
+        </div>
+      </div>
+    );
   }
 
   const total = scores.reduce((s, v) => s + v, 0);
   const answered = scores.every((v) => v > 0);
   const pct = Math.round((total / SURVEY_MAX) * 100);
-  const needRemark = answered && total < 20 && remark.trim() === '';
+  // คะแนน < 20 ต้องมีข้อเสนอแนะยาวอย่างน้อย 20 ตัวอักษร (ไม่งั้น API ตอบ 400)
+  const needRemark = answered && total < 20 && remark.trim().length < 20;
   const blocked = !answered || needRemark;
 
   const setScore = (i: number, v: number) => setScores((prev) => prev.map((x, k) => (k === i ? v : x)));
@@ -780,51 +1016,25 @@ function SurveyPanel({
   const submit = () => {
     setTouched(true);
     if (blocked) return;
+    // ส่งคะแนน "รายข้อ" (1–5) เป็น surveyRatings เพื่อให้ backend ติ๊กระดับที่เลือกลง
+    // BC_IT_Service_Survey ได้ — แต่ต้องส่ง serviceScore (ผลรวม 1–25) ไปด้วยเสมอ
+    // เพราะ action `survey` บังคับฟิลด์นี้ (ไม่ส่ง = 400 "ที่ขาด: serviceScore")
+    const surveyRatings: Record<string, number> = {};
+    SURVEY_QUESTIONS.forEach((q, i) => {
+      surveyRatings[q.key] = scores[i];
+    });
     onSubmit?.(
       { code: 'survey', label: 'ส่งผลประเมิน', style: 'primary', requireNote: false, requiredFields: [] },
-      cleanFieldValues({ serviceScore: total, surveyRemark: remark }) ?? { serviceScore: total }
+      cleanFieldValues({ serviceScore: total, surveyRatings, surveyRemark: remark }) ?? {
+        serviceScore: total,
+        surveyRatings,
+      }
     );
   };
 
   return (
     <div>
-      <div className="overflow-x-auto">
-        <table className="w-full min-w-[520px] border-separate border-spacing-0 text-[12px]">
-          <thead>
-            <tr className="text-slate-600">
-              <th className="border-b border-gray-200 px-2 py-2 text-left font-semibold">หัวข้อ</th>
-              {SURVEY_LEVELS.map((lv) => (
-                <th key={lv.v} className="border-b border-gray-200 px-1 py-2 text-center font-semibold">
-                  {lv.t}
-                  <div className="mono text-[10.5px] text-slate-400">({lv.v})</div>
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {SURVEY_QUESTIONS.map((q, i) => (
-              <tr key={i}>
-                <td className="border-b border-gray-100 px-2 py-2 text-gray-800">
-                  <span className="mono mr-1.5 text-slate-400">{i + 1}</span>
-                  {q}
-                </td>
-                {SURVEY_LEVELS.map((lv) => (
-                  <td key={lv.v} className="border-b border-gray-100 px-1 py-2 text-center">
-                    <input
-                      type="radio"
-                      name={`q${i}`}
-                      checked={scores[i] === lv.v}
-                      disabled={pending}
-                      onChange={() => setScore(i, lv.v)}
-                      className="h-4 w-4 cursor-pointer accent-accent"
-                    />
-                  </td>
-                ))}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      <SurveyTable scores={scores} disabled={pending} onPick={setScore} />
 
       <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-1 rounded-lg border border-gray-200 bg-slate-50 px-3.5 py-2.5 text-[12.5px]">
         <span className="text-slate-500">คะแนนเต็ม <b className="mono text-gray-800">{SURVEY_MAX}</b></span>
@@ -836,7 +1046,9 @@ function SurveyPanel({
       <div className="mt-4">
         <label className={SVC_LABEL}>
           ข้อเสนอแนะอื่น ๆ
-          {answered && total < 20 && <span className="text-rose-600"> * (คะแนนต่ำกว่า 20 ต้องระบุ)</span>}
+          {answered && total < 20 && (
+            <span className="text-rose-600"> * (คะแนนต่ำกว่า 20 ต้องระบุอย่างน้อย 20 ตัวอักษร — ตอนนี้ {remark.trim().length})</span>
+          )}
         </label>
         <textarea
           rows={2}
@@ -849,7 +1061,7 @@ function SurveyPanel({
 
       {touched && blocked && (
         <p className="mt-2 text-[11.5px] font-semibold text-rose-600">
-          {!answered ? 'กรุณาให้คะแนนครบทั้ง 5 ข้อ' : 'คะแนนต่ำกว่า 20 ต้องระบุข้อเสนอแนะ'}
+          {!answered ? 'กรุณาให้คะแนนครบทั้ง 5 ข้อ' : 'คะแนนต่ำกว่า 20 ต้องระบุข้อเสนอแนะอย่างน้อย 20 ตัวอักษร'}
         </p>
       )}
 
@@ -878,12 +1090,25 @@ const KPI_CASES = [
 ];
 const KPI_RESULTS = ['ตาม KPI', 'ตก KPI', 'ยกเลิก', 'ยังไม่ถึงกำหนด'];
 
+// สีป้ายผล KPI — ผลที่ backend ส่งมานอกลิสต์ (แผนกอื่น) ใช้สีกลาง ไม่เดาความหมาย
+function kpiChipStyle(kpi: string): React.CSSProperties {
+  if (kpi === 'ตาม KPI') return { background: '#ecfdf5', color: '#047857' };
+  if (kpi === 'ตก KPI') return { background: '#fef2f2', color: '#b91c1c' };
+  if (kpi === 'ยกเลิก') return { background: '#f1f5f9', color: '#475569' };
+  return { background: '#fffbeb', color: '#b45309' };
+}
+
 function KpiPanel({
   state,
+  resolution,
+  closeLog,
   pending,
   onSubmit,
 }: {
   state: StepState;
+  resolution: RequestListItem['resolution'];
+  // fallback ชื่อ/เวลา ถ้า backend ยังไม่คืน jobClosedBy/jobClosedDate
+  closeLog?: RequestLog | null;
   pending: boolean;
   onSubmit?: (action: RequestAction, fields: ActionFieldValues) => void | Promise<void>;
 }) {
@@ -894,11 +1119,23 @@ function KpiPanel({
   if (state === 'upcoming') {
     return <p className="text-[12.5px] text-slate-400">ยังไม่ถึงขั้นนี้ — จะปิดงานได้เมื่อผ่านขั้นก่อนหน้า</p>;
   }
-  if (state === 'done') {
-    return <p className="text-[12.5px] text-emerald-700">ปิดงานแล้ว</p>;
-  }
 
-  const [selRow, selCol] = sel ? sel.split(':').map(Number) : [-1, -1];
+  // ปิดงานแล้ว = ตารางเดิมแบบอ่านอย่างเดียว ติ๊กช่องที่บันทึกไว้ (ไม่สรุปเป็นข้อความ)
+  // ผู้ใช้จะได้เห็นหน้าตาเหมือนตอนกดปิดเป๊ะ ๆ ว่าเลือกกรณีไหน ผลอะไร
+  const done = state === 'done';
+  const rs = resolution;
+  const closedBy = rs?.jobClosedBy || closeLog?.actionByName || null;
+  const closedAt = rs?.jobClosedDate || closeLog?.actionDate || null;
+  const hasTiming = !!(rs?.kpiStartDate || rs?.kpiDueDate || rs?.kpiUsedHours != null);
+
+  // ช่องที่ติ๊ก: ตอนปิดแล้วอ่านจาก resolution, ตอนกำลังกรอกอ่านจาก state
+  const savedRow = done && rs?.caseNo ? Number(rs.caseNo) - 1 : -1;
+  const savedCol = done && rs?.kpi ? KPI_RESULTS.indexOf(rs.kpi) : -1;
+  const [selRow, selCol] = done
+    ? [savedRow, savedCol]
+    : sel
+    ? (sel.split(':').map(Number) as [number, number])
+    : [-1, -1];
   const blocked = sel === '';
 
   const submit = () => {
@@ -906,12 +1143,33 @@ function KpiPanel({
     if (blocked) return;
     onSubmit?.(
       { code: 'close', label: 'ปิดงาน', style: 'success', requireNote: false, requiredFields: [] },
+      // ช่องที่เลือกในตาราง = caseNo (แถว, ฐาน 1) + kpi (คอลัมน์) — ส่งข้อความผล KPI
+      // ไม่ใช่ index เพราะ DB เก็บเป็นข้อความ (ดู ACTION_FIELDS.kpi)
       cleanFieldValues({ caseNo: String(selRow + 1), kpi: KPI_RESULTS[selCol] }) ?? {}
     );
   };
 
   return (
     <div>
+      {done && (
+        <div className="mb-4 grid grid-cols-2 gap-x-5 gap-y-4 border-b border-gray-100 pb-4">
+          <DetailRow label="ผู้ปิดงาน">{closedBy || '—'}</DetailRow>
+          <DetailRow label="วันที่ปิดงาน">{closedAt ? fmtDateTime(closedAt) : '—'}</DetailRow>
+          {/* ตัวเลข KPI มาจาก backend เท่านั้น — แผนกที่ไม่มีเกณฑ์จะไม่ส่งมา ก็ไม่ต้องโชว์ */}
+          {hasTiming && (
+            <>
+              <DetailRow label="เริ่มนับ KPI">{rs?.kpiStartDate ? fmtDateTime(rs.kpiStartDate) : '—'}</DetailRow>
+              <DetailRow label="ครบกำหนด / เวลาที่ใช้">
+                <span className="mono">
+                  {rs?.kpiDueDate ? fmtDateTime(rs.kpiDueDate) : '—'}
+                  {rs?.kpiUsedHours != null && ` · ใช้ไป ${rs.kpiUsedHours} ชม.`}
+                </span>
+              </DetailRow>
+            </>
+          )}
+        </div>
+      )}
+
       <div className="overflow-x-auto">
         <table className="w-full min-w-[560px] border-separate border-spacing-0 text-[12px]">
           <thead>
@@ -926,10 +1184,11 @@ function KpiPanel({
           </thead>
           <tbody>
             {KPI_CASES.map((desc, row) => (
-              <tr key={row}>
+              <tr key={row} className={done && selRow === row ? 'bg-emerald-50/60' : undefined}>
                 <td className="border-b border-gray-100 px-2 py-2 align-top text-gray-800">
                   <span className="mono mr-1.5 text-slate-400">{row + 1}</span>
-                  {desc}
+                  {/* เกณฑ์ที่ backend คืนมา (caseName) ชนะลิสต์ในโค้ดเสมอ — เกณฑ์อาจถูกแก้ทีหลัง */}
+                  {done && selRow === row && rs?.caseName ? rs.caseName : desc}
                 </td>
                 {KPI_RESULTS.map((res, col) => (
                   <td key={col} className="border-b border-gray-100 px-1 py-2 text-center align-top">
@@ -937,9 +1196,10 @@ function KpiPanel({
                       type="radio"
                       name="kpi-matrix"
                       checked={selRow === row && selCol === col}
-                      disabled={pending}
+                      disabled={pending || done}
+                      readOnly={done}
                       onChange={() => setSel(`${row}:${col}`)}
-                      className="h-4 w-4 cursor-pointer accent-accent"
+                      className={`h-4 w-4 accent-accent ${done ? '' : 'cursor-pointer'}`}
                     />
                   </td>
                 ))}
@@ -949,19 +1209,39 @@ function KpiPanel({
         </table>
       </div>
 
-      {touched && blocked && (
+      {/* ปิดแล้วแต่ backend ยังไม่คืน caseNo/kpi → ตารางจะว่างทั้งตาราง บอกไปตรง ๆ ดีกว่าปล่อยงง */}
+      {done && (selRow < 0 || selCol < 0) && (
+        <p className="mt-2 text-[11.5px] text-slate-400">
+          ไม่มีผล KPI ที่บันทึกไว้
+          {rs?.kpi && selCol < 0 && (
+            <>
+              {' '}
+              — ผลที่บันทึก:{' '}
+              <span className="rounded-md px-1.5 py-0.5 font-semibold" style={kpiChipStyle(rs.kpi)}>
+                {rs.kpi}
+              </span>
+            </>
+          )}
+        </p>
+      )}
+
+      {!done && touched && blocked && (
         <p className="mt-2 text-[11.5px] font-semibold text-rose-600">เลือกผล KPI 1 ช่องก่อนปิดงาน</p>
       )}
 
       <div className="mt-4 flex items-center gap-2 border-t border-gray-100 pt-4">
-        <button
-          type="button"
-          disabled={pending || !onSubmit}
-          onClick={submit}
-          className="rounded-lg border border-emerald-600 bg-emerald-600 px-4 py-2 text-[13px] font-semibold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          ปิดงาน
-        </button>
+        {done ? (
+          <span className="text-[12px] font-semibold text-emerald-700">ปิดใบเรียบร้อย</span>
+        ) : (
+          <button
+            type="button"
+            disabled={pending || !onSubmit}
+            onClick={submit}
+            className="rounded-lg border border-emerald-600 bg-emerald-600 px-4 py-2 text-[13px] font-semibold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            ปิดงาน
+          </button>
+        )}
       </div>
     </div>
   );
@@ -974,13 +1254,40 @@ function GeneralPanel({
   full,
   attachments,
   approveLogs,
+  editing,
+  editPending,
+  editHint,
+  onEditCancel,
+  onEditSubmit,
+  onAttachmentsChanged,
 }: {
   item: RequestListItem;
   full: RequestListItem;
   attachments: RequestAttachment[] | null;
   approveLogs: RequestLog[];
+  editing?: boolean;
+  editPending?: boolean;
+  // เหตุผลที่ปุ่มแก้ไขไม่ขึ้น (null = แก้ได้ หรือไม่ต้องบอก)
+  editHint?: string | null;
+  onEditCancel?: () => void;
+  onEditSubmit?: (form: RequestEditForm) => void | Promise<void>;
+  onAttachmentsChanged?: () => void;
 }) {
   const imgs = attachments ?? [];
+
+  if (editing && onEditSubmit) {
+    return (
+      <RequestEditPanel
+        item={full}
+        attachments={imgs}
+        pending={!!editPending}
+        onCancel={() => onEditCancel?.()}
+        onSubmit={onEditSubmit}
+        onAttachmentsChanged={onAttachmentsChanged}
+      />
+    );
+  }
+
   return (
     <div className="grid grid-cols-2 gap-x-5 gap-y-4">
       <DetailRow label="เลขใบแจ้งเรื่อง">
@@ -998,34 +1305,16 @@ function GeneralPanel({
         </div>
       </div>
 
-      {/* รูปภาพ (ถ้ามี) — url ยังเป็น null (ระบบยังไม่มีที่เสิร์ฟไฟล์) จึงโชว์ชื่อไฟล์ไปก่อน
-          พอ backend ส่ง url มา จะเรนเดอร์เป็นรูปจริงเอง */}
+      {/* รูปภาพ — เสิร์ฟผ่าน API ที่ต้องใช้ token จึงโหลดเป็น blob เอง (ดู AttachmentThumb) */}
       <div className="col-span-2">
         <span className="mb-1.5 block text-[11.5px] font-semibold text-gray-500">รูปภาพ</span>
         {imgs.length === 0 ? (
           <span className="text-[13px] text-slate-400">— ไม่มีรูปแนบ</span>
         ) : (
           <div className="flex flex-wrap gap-2">
-            {imgs.map((f) =>
-              f.url ? (
-                <a key={f.fileId} href={f.url} target="_blank" rel="noreferrer" className="block">
-                  <img
-                    src={f.url}
-                    alt={f.fileName}
-                    className="h-24 w-24 rounded-lg border border-gray-200 object-cover transition hover:opacity-90"
-                  />
-                </a>
-              ) : (
-                <span
-                  key={f.fileId}
-                  title="ยังแสดงรูปไม่ได้ (ระบบยังไม่มีที่เสิร์ฟไฟล์)"
-                  className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-slate-50 px-2.5 py-1.5 text-[12px] text-gray-700"
-                >
-                  <IconPaperclip size={13} className="shrink-0 text-slate-400" />
-                  {f.fileName}
-                </span>
-              )
-            )}
+            {imgs.map((f) => (
+              <AttachmentThumb key={f.fileId} url={f.url} fileName={f.fileName} />
+            ))}
           </div>
         )}
       </div>
@@ -1052,6 +1341,348 @@ function GeneralPanel({
           </div>
         )}
       </div>
+
+      {/* แก้ไม่ได้ = บอกเหตุผลไปเลย ดีกว่าปล่อยให้หาปุ่มที่ไม่มี */}
+      {editHint && (
+        <p className="col-span-2 text-[12px] text-slate-400">— {editHint}</p>
+      )}
+    </div>
+  );
+}
+
+// ── รูปแนบแบบอ่านอย่างเดียว ────────────────────────────────────
+// ⚠️ <img src={url}> ตรง ๆ ใช้ไม่ได้ — endpoint รูปมี [Authorize] เบราว์เซอร์ไม่แนบ
+//    token ให้ จะได้ 401 เสมอ ต้องโหลดเป็น blob ผ่าน useAuthedImage
+function AttachmentThumb({ url, fileName }: { url: string | null; fileName: string }) {
+  const { user } = useAuth();
+  const src = useAuthedImage(url, user?.token);
+
+  if (!src) {
+    return (
+      <span
+        title={url ? 'กำลังโหลดรูป…' : 'ไม่มีไฟล์'}
+        className="inline-flex h-24 w-24 flex-col items-center justify-center gap-1 rounded-lg border border-gray-200 bg-slate-50 px-1.5 text-center"
+      >
+        <IconPaperclip size={15} className="text-slate-400" />
+        <span className="line-clamp-2 break-all text-[10px] text-slate-500">{fileName}</span>
+      </span>
+    );
+  }
+  return (
+    <a href={src} target="_blank" rel="noreferrer" className="block">
+      <img
+        src={src}
+        alt={fileName}
+        title={fileName}
+        className="h-24 w-24 rounded-lg border border-gray-200 object-cover transition hover:opacity-90"
+      />
+    </a>
+  );
+}
+
+// ── ฟอร์มแก้ไขข้อมูลใบ (แทนที่แผง General ชั่วคราว) ──────────────
+// ฟิลด์มาจาก EDIT_FIELDS ใน data/requestEdit.ts — ผู้แจ้ง/หน่วยงาน/วันที่แจ้ง
+// แก้ไม่ได้โดยตั้งใจ (เป็นตัวตนของใบ) จึงโชว์เป็นข้อความอ่านอย่างเดียวไว้ด้านบน
+function RequestEditPanel({
+  item,
+  attachments,
+  pending,
+  onCancel,
+  onSubmit,
+  onAttachmentsChanged,
+}: {
+  item: RequestListItem;
+  attachments: RequestAttachment[];
+  pending: boolean;
+  onCancel: () => void;
+  onSubmit: (form: RequestEditForm) => void | Promise<void>;
+  onAttachmentsChanged?: () => void;
+}) {
+  const [form, setForm] = useState<RequestEditForm>(() => toEditForm(item));
+  const [errors, setErrors] = useState<ReturnType<typeof validateEditForm>>({});
+
+  const set = (k: keyof RequestEditForm, v: string) => {
+    setForm((f) => ({ ...f, [k]: v }));
+    setErrors((e) => ({ ...e, [k]: undefined }));
+  };
+
+  const submit = () => {
+    const errs = validateEditForm(form);
+    setErrors(errs);
+    if (Object.keys(errs).length > 0) return;
+    onSubmit(form);
+  };
+
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="grid grid-cols-2 gap-x-5 gap-y-3 rounded-lg border border-gray-200 bg-slate-50 px-3.5 py-3">
+        <DetailRow label="ผู้แจ้งเรื่อง">{item.requestBy || '—'}</DetailRow>
+        <DetailRow label="หน่วยงาน">{item.departmentName || '—'}</DetailRow>
+        <DetailRow label="วันที่แจ้ง">{fmtDate(item.requestDate)}</DetailRow>
+        <DetailRow label="สถานะ">{item.jobStatusName || '—'}</DetailRow>
+      </div>
+
+      <div className="grid grid-cols-2 gap-x-5 gap-y-4">
+        {EDIT_FIELDS.map((f) => {
+          const value = form[f.key] ?? '';
+          const err = errors[f.key];
+          const cls = `w-full rounded-lg border bg-white px-3 py-2 text-[13px] text-gray-800 outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/20 disabled:bg-slate-50 ${
+            err ? 'border-red-300' : 'border-gray-200'
+          }`;
+          return (
+            <div key={f.key} className={f.span2 ? 'col-span-2' : ''}>
+              <div className="mb-1 flex items-baseline gap-1.5">
+                <span className="text-[11.5px] font-semibold text-gray-500">{f.label}</span>
+                {f.required && <span className="text-[11.5px] font-bold text-red-500">*</span>}
+                {f.maxLen && (
+                  <span className="mono ml-auto text-[10.5px] text-slate-400">
+                    {value.length}/{f.maxLen}
+                  </span>
+                )}
+              </div>
+              {f.kind === 'textarea' ? (
+                <textarea
+                  value={value}
+                  maxLength={f.maxLen}
+                  disabled={pending}
+                  rows={5}
+                  placeholder={f.placeholder}
+                  onChange={(e) => set(f.key, e.target.value)}
+                  className={`${cls} resize-y leading-relaxed`}
+                />
+              ) : (
+                <input
+                  type="text"
+                  value={value}
+                  maxLength={f.maxLen}
+                  disabled={pending}
+                  placeholder={f.placeholder}
+                  onChange={(e) => set(f.key, e.target.value)}
+                  className={cls}
+                />
+              )}
+              {err && <p className="mt-1 text-[11.5px] font-semibold text-red-600">{err}</p>}
+            </div>
+          );
+        })}
+      </div>
+
+      <AttachmentSlots
+        jobNo={item.docNo}
+        attachments={attachments}
+        onChanged={onAttachmentsChanged}
+      />
+
+      <p className="text-[11.5px] text-slate-400">
+        แก้ไขได้จนกว่าแผนก IT จะกดรับงาน — หลังจากนั้นต้องแจ้งกับผู้รับเรื่องโดยตรง
+      </p>
+
+      <div className="flex items-center gap-2 border-t border-gray-100 pt-4">
+        <button
+          type="button"
+          disabled={pending}
+          onClick={submit}
+          className="inline-flex items-center gap-1.5 rounded-lg border border-accent bg-accent px-4 py-2 text-[13px] font-semibold text-white transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {pending ? <IconLoader2 size={15} className="animate-spin" /> : <IconDeviceFloppy size={15} />}
+          บันทึกการแก้ไข
+        </button>
+        <button
+          type="button"
+          disabled={pending}
+          onClick={onCancel}
+          className="rounded-lg border border-gray-200 bg-white px-4 py-2 text-[13px] font-semibold text-slate-600 transition hover:bg-slate-50 disabled:opacity-50"
+        >
+          ยกเลิก
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ── รูปแนบ 3 ช่อง (ImgPath1/2/3) ────────────────────────────────
+// เป็น "ช่อง" ไม่ใช่ลิสต์ — เลือกไฟล์ทับช่องเดิม = เขียนทับ ไม่ใช่เพิ่มรูปที่ 4
+// อัปโหลด/ลบมีผลทันที (คนละ endpoint กับการแก้ข้อความ) จึงไม่รอปุ่มบันทึก
+// → ปุ่มลบต้องถามยืนยันก่อน เพราะกดแล้วไฟล์หายจริงทันที
+function AttachmentSlots({
+  jobNo,
+  attachments,
+  onChanged,
+}: {
+  jobNo: string;
+  attachments: RequestAttachment[];
+  onChanged?: () => void;
+}) {
+  const { user } = useAuth();
+  const { slotOf, upload, remove, busySlot, error, clearError } = useItAttachments(
+    jobNo,
+    attachments,
+    user?.token,
+    onChanged
+  );
+  const [confirmSlot, setConfirmSlot] = useState<number | null>(null);
+
+  return (
+    <div>
+      <div className="mb-1.5 flex items-baseline gap-1.5">
+        <span className="text-[11.5px] font-semibold text-gray-500">รูปภาพประกอบ</span>
+        <span className="text-[10.5px] text-slate-400">
+          (3 ช่อง — เลือกไฟล์ทับช่องเดิมได้ มีผลทันที ไม่ต้องกดบันทึก)
+        </span>
+      </div>
+
+      <div className="grid grid-cols-3 gap-2.5">
+        {IT_ATTACHMENT_SLOTS.map((slot) => (
+          <AttachmentSlot
+            key={slot}
+            slot={slot}
+            file={slotOf(slot)}
+            busy={busySlot === slot}
+            disabled={busySlot !== null}
+            confirming={confirmSlot === slot}
+            onPick={(f) => {
+              clearError();
+              setConfirmSlot(null);
+              upload(slot, f);
+            }}
+            onAskRemove={() => {
+              clearError();
+              setConfirmSlot(slot);
+            }}
+            onCancelRemove={() => setConfirmSlot(null)}
+            onRemove={async () => {
+              setConfirmSlot(null);
+              await remove(slot);
+            }}
+          />
+        ))}
+      </div>
+
+      {error && (
+        <p className="mt-1.5 flex items-center gap-1.5 text-[11.5px] font-semibold text-red-600">
+          <IconAlertTriangle size={13} className="shrink-0" />
+          {error}
+        </p>
+      )}
+      <p className="mt-1.5 text-[11px] text-slate-400">
+        รองรับ {IT_ATTACH_EXTENSIONS.join(' ')} · ไม่เกิน 10 MB ต่อรูป
+      </p>
+    </div>
+  );
+}
+
+function AttachmentSlot({
+  slot,
+  file,
+  busy,
+  disabled,
+  confirming,
+  onPick,
+  onAskRemove,
+  onCancelRemove,
+  onRemove,
+}: {
+  slot: number;
+  file?: ItAttachment;
+  busy: boolean;
+  disabled: boolean;
+  confirming: boolean;
+  onPick: (file: File) => void;
+  onAskRemove: () => void;
+  onCancelRemove: () => void;
+  onRemove: () => void;
+}) {
+  const { user } = useAuth();
+  const src = useAuthedImage(file?.url ?? null, user?.token);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  return (
+    <div className="relative aspect-square overflow-hidden rounded-xl border border-gray-200 bg-slate-50">
+      {file ? (
+        src ? (
+          <img src={src} alt={file.fileName} className="h-full w-full object-cover" />
+        ) : (
+          <div className="flex h-full w-full flex-col items-center justify-center gap-1 px-1.5 text-center">
+            <IconLoader2 size={16} className="animate-spin text-slate-400" />
+            <span className="line-clamp-2 break-all text-[10px] text-slate-500">{file.fileName}</span>
+          </div>
+        )
+      ) : (
+        <button
+          type="button"
+          disabled={disabled}
+          onClick={() => inputRef.current?.click()}
+          className="flex h-full w-full flex-col items-center justify-center gap-1.5 text-slate-400 transition hover:bg-white hover:text-accent disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          <IconPhotoPlus size={20} />
+          <span className="text-[11px] font-semibold">ช่องที่ {slot}</span>
+        </button>
+      )}
+
+      {/* มีรูปแล้ว: เปลี่ยนรูป (เขียนทับ) / ลบ */}
+      {file && !confirming && (
+        <div className="absolute right-1 top-1 flex gap-1">
+          <button
+            type="button"
+            disabled={disabled}
+            onClick={() => inputRef.current?.click()}
+            title={`เปลี่ยนรูปช่องที่ ${slot} (เขียนทับรูปเดิม)`}
+            className="flex h-6 w-6 items-center justify-center rounded-lg bg-slate-900/60 text-white transition hover:bg-slate-900 disabled:opacity-40"
+          >
+            <IconPhotoPlus size={13} />
+          </button>
+          <button
+            type="button"
+            disabled={disabled}
+            onClick={onAskRemove}
+            title={`ลบรูปช่องที่ ${slot}`}
+            className="flex h-6 w-6 items-center justify-center rounded-lg bg-slate-900/60 text-white transition hover:bg-red-600 disabled:opacity-40"
+          >
+            <IconTrash size={13} />
+          </button>
+        </div>
+      )}
+
+      {/* ลบแล้วเอาคืนไม่ได้ (ยิงจริงทันที) จึงถามยืนยันทับหน้ารูปก่อน */}
+      {confirming && (
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-slate-900/75 px-2 text-center">
+          <span className="text-[11.5px] font-semibold text-white">ลบรูปนี้?</span>
+          <div className="flex gap-1.5">
+            <button
+              type="button"
+              onClick={onRemove}
+              className="rounded-md bg-red-600 px-2.5 py-1 text-[11.5px] font-semibold text-white transition hover:bg-red-700"
+            >
+              ลบ
+            </button>
+            <button
+              type="button"
+              onClick={onCancelRemove}
+              className="rounded-md bg-white/90 px-2.5 py-1 text-[11.5px] font-semibold text-slate-700 transition hover:bg-white"
+            >
+              ยกเลิก
+            </button>
+          </div>
+        </div>
+      )}
+
+      {busy && (
+        <div className="absolute inset-0 flex items-center justify-center bg-white/70">
+          <IconLoader2 size={20} className="animate-spin text-accent" />
+        </div>
+      )}
+
+      <input
+        ref={inputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={(e) => {
+          const f = e.target.files?.[0];
+          e.target.value = ''; // เลือกไฟล์เดิมซ้ำได้
+          if (f) onPick(f);
+        }}
+      />
     </div>
   );
 }

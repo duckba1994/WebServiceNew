@@ -76,18 +76,51 @@ export async function apiSend<T>(
     body: JSON.stringify(payload ?? {}),
   });
 
-  if (!res.ok) {
-    let message = `ทำรายการไม่สำเร็จ (HTTP ${res.status})`;
-    let traceId: string | undefined;
-    try {
-      const body = (await res.json()) as ApiErrorBody;
-      if (body?.message) message = body.message;
-      traceId = body?.traceId;
-    } catch {
-      // ตอบกลับไม่ใช่ JSON — ใช้ข้อความ default
-    }
-    throw new ApiError(message, res.status, traceId);
-  }
+  if (!res.ok) await throwApiError(res);
+  return res.json() as Promise<T>;
+}
 
+// ดึง message ไทยจาก body มาโยนเป็น ApiError — ใช้ร่วมกันทั้ง apiSend/apiSendForm
+async function throwApiError(res: Response): Promise<never> {
+  let message = `ทำรายการไม่สำเร็จ (HTTP ${res.status})`;
+  let traceId: string | undefined;
+  try {
+    const body = (await res.json()) as ApiErrorBody;
+    if (body?.message) message = body.message;
+    traceId = body?.traceId;
+  } catch {
+    // ตอบกลับไม่ใช่ JSON — ใช้ข้อความ default
+  }
+  throw new ApiError(message, res.status, traceId);
+}
+
+// เหมือน apiSend แต่ไม่สนใจ body ที่ตอบกลับ — ใช้กับ endpoint ที่ตอบ 200 เปล่า ๆ
+// (เรียก res.json() กับ body ว่างจะ throw แล้วกลายเป็น "ล้มเหลว" ทั้งที่สำเร็จ)
+export async function apiSendNoContent(
+  path: string,
+  method: string,
+  payload: unknown,
+  token?: string
+): Promise<void> {
+  const res = await apiFetch(path, {
+    method,
+    token,
+    contentType: 'application/json',
+    body: JSON.stringify(payload ?? {}),
+  });
+  if (!res.ok) await throwApiError(res);
+}
+
+// helper สำหรับ POST/PUT + multipart/form-data (ฟอร์มที่มีไฟล์แนบ)
+// ⚠️ ห้ามตั้ง Content-Type เอง — ต้องปล่อยให้เบราว์เซอร์ใส่ boundary ให้
+//    (ถ้าตั้งเอง boundary จะหาย แล้ว server แกะฟอร์มไม่ออก)
+export async function apiSendForm<T>(
+  path: string,
+  method: string,
+  form: FormData,
+  token?: string
+): Promise<T> {
+  const res = await apiFetch(path, { method, token, body: form });
+  if (!res.ok) await throwApiError(res);
   return res.json() as Promise<T>;
 }

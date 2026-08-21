@@ -81,7 +81,7 @@ export interface RequestActionBody {
   note?: string | null;
   // ใส่เฉพาะที่ requiredFields ของ action นั้นระบุ (+ ฟิลด์เสริมที่ผู้ใช้กรอก)
   // ฟิลด์ที่ไม่ส่งไป = API คงค่าเดิมใน DB ไว้ ไม่ได้ล้างเป็น null
-  fields?: Record<string, string | number>;
+  fields?: Record<string, string | number | Record<string, number>>;
 }
 
 export const postRequestAction = (

@@ -23,6 +23,7 @@ import { ColumnFilter } from '../ui/ColumnFilter';
 import { RequestDetailModal } from './RequestDetailModal';
 import { RequestActionDialog } from './RequestActionDialog';
 import { RequestAction, RequestListItem, RequestStatusSummary } from '../../types/requestList';
+import { ActionFieldValues } from '../../data/requestActionFields';
 import {
   RequestColumn,
   ReqPresetKey,
@@ -76,6 +77,7 @@ export function RequestGrid({
   onReload,
   toolbar,
   onAction,
+  onEdited,
   actionPending,
   notice,
   onDismissNotice,
@@ -97,8 +99,10 @@ export function RequestGrid({
     item: RequestListItem,
     action: RequestAction,
     note: string,
-    fields?: Record<string, string | number>
+    fields?: ActionFieldValues
   ) => void | Promise<void>;
+  // แก้ไขข้อมูลใบสำเร็จ — ไม่ส่งมา = ปิดการแก้ไข (ตารางอ่านอย่างเดียว)
+  onEdited?: (item: RequestListItem) => void;
   actionPending?: boolean;
   notice?: { kind: 'success' | 'error'; text: string } | null;
   onDismissNotice?: () => void;
@@ -667,6 +671,7 @@ export function RequestGrid({
           // ฟอร์มในแท็บ (ดำเนินการ/ปิดงานรับเรื่อง/สำรวจ) ยิง action ตรงผ่าน onAction
           // ไม่ต้องผ่านกล่องยืนยัน — panel เป็นคนกำหนด code/fields เอง
           onStepSubmit={onAction ? (action, fields) => onAction(view, action, '', fields) : undefined}
+          onEdited={onEdited}
           actionPending={actionPending}
           notice={notice}
           onDismissNotice={onDismissNotice}

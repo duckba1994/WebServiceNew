@@ -1,6 +1,7 @@
 import { useCallback, useState } from 'react';
 import { postRequestAction } from '../api/requests';
 import { RequestAction, RequestActionResult, RequestListItem } from '../types/requestList';
+import { ActionFieldValues } from '../data/requestActionFields';
 
 export interface ActionNotice {
   kind: 'success' | 'error';
@@ -26,7 +27,7 @@ export function useRequestAction(token?: string) {
       item: RequestListItem,
       action: RequestAction,
       note: string,
-      fields?: Record<string, string | number>
+      fields?: ActionFieldValues
     ): Promise<RequestActionResult | null> => {
       setPending(true);
       setNotice(null);

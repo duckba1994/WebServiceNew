@@ -7,6 +7,7 @@ import { PHASE_META, isRequesterSide, phaseIndex } from '../data/requestPhase';
 import { RequestAction, RequestListItem, RequestPhase, StatusFilter } from '../types/requestList';
 import { useRequestList } from '../hooks/useRequestList';
 import { useRequestAction } from '../hooks/useRequestAction';
+import { ActionFieldValues } from '../data/requestActionFields';
 import { useAuth } from '../context/AuthContext';
 
 // ── เรื่องที่แผนกเราแจ้งออกไป ─────────────────────────────────
@@ -38,12 +39,16 @@ export function MyItems() {
     item: RequestListItem,
     action: RequestAction,
     note: string,
-    fields?: Record<string, string | number>
+    fields?: ActionFieldValues
   ) => {
     const res = await run(item, action, note, fields);
     if (res) applyItem(res.item);
     reload();
   };
+
+  // แก้ไขข้อมูลใบสำเร็จ (ก่อนปลายทางรับงาน) → แทนแถวเดิมทันที
+  // ไม่ต้อง reload: การแก้ข้อมูลไม่เลื่อนขั้น ยอดใน phaseSummary จึงไม่เปลี่ยน
+  const handleEdited = (updated: RequestListItem) => applyItem(updated);
 
   const ourTurnCount = useMemo(() => items.filter(isRequesterSide).length, [items]);
 
@@ -97,6 +102,7 @@ export function MyItems() {
         error={error}
         onReload={reload}
         onAction={handleAction}
+        onEdited={handleEdited}
         actionPending={pending}
         notice={notice}
         onDismissNotice={dismissNotice}

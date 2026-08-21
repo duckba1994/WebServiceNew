@@ -3,6 +3,7 @@ import { IconAlertTriangle, IconLoader2, IconChevronDown } from '@tabler/icons-r
 import { RequestAction, RequestListItem } from '../../types/requestList';
 import {
   ActionField,
+  ActionFieldValue,
   ActionFieldValues,
   cleanFieldValues,
   fieldSpec,
@@ -24,6 +25,10 @@ export const actionBtnClass = (style: string): string =>
 
 const INPUT_CLS =
   'w-full rounded-lg border border-gray-200 px-3 py-2 text-[13px] outline-none transition focus:border-accent';
+
+// ฟอร์มในกล่องนี้มีแต่ช่องค่าเดี่ยว — ฟิลด์แบบกลุ่ม (เช่น surveyRatings) วาดในแท็บของมันเอง
+const scalar = (v: ActionFieldValue | undefined): string | number | undefined =>
+  typeof v === 'string' || typeof v === 'number' ? v : undefined;
 
 // ── คะแนนความพึงพอใจ 1–25 ────────────────────────────────────
 // API รับเป็นตัวเลขเดียว 1–25 (เต็ม 25 = 5 หัวข้อ × 5 ระดับ) แต่ยังไม่ได้บอกว่า
@@ -223,7 +228,7 @@ export function RequestActionDialog({
                   key={name}
                   spec={fieldSpec(name)}
                   required
-                  value={values[name]}
+                  value={scalar(values[name])}
                   invalid={touched && missing.includes(name)}
                   onChange={set(name)}
                 />
@@ -254,7 +259,7 @@ export function RequestActionDialog({
                         key={name}
                         spec={fieldSpec(name)}
                         required={false}
-                        value={values[name]}
+                        value={scalar(values[name])}
                         invalid={false}
                         onChange={set(name)}
                       />

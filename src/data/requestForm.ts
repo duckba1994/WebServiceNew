@@ -16,14 +16,32 @@ export type FieldKind =
   | 'lineItems'; // ตารางรายการย่อย (เช่น รายการอะไหล่ + ราคา)
 
 // แหล่งข้อมูลของฟิลด์ kind='auto'
-// reporter/department = จากการ login ครั้งแรก, computer = ชื่อเครื่องจาก AD
-export type AutoSource = 'reporter' | 'department' | 'computer';
+// reporter/department = จากการ login ครั้งแรก, computer = ชื่อเครื่องจาก AD,
+// today = วันที่แจ้งเรื่อง (วันที่เปิดฟอร์ม — เวลาจริงกำหนดอีกครั้งตอนส่ง)
+export type AutoSource = 'reporter' | 'department' | 'computer' | 'today';
 
 export interface AutoFillValues {
   reporter: string;
   department: string;
   computer: string;
+  today: string;
 }
+
+// ตัวเลือกของ select — ใช้สตริงเปล่าได้ (value = label)
+// หรือ { value, label } เมื่อค่าที่ต้องส่งให้ API เป็นรหัส (id) ไม่ใช่ข้อความ
+export interface FieldOption {
+  value: string;
+  label: string;
+}
+export type FieldOptionDef = string | FieldOption;
+
+// แปลงตัวเลือกให้อยู่ในรูป { value, label } เสมอ
+export const fieldOptions = (options?: FieldOptionDef[]): FieldOption[] =>
+  (options ?? []).map((o) => (typeof o === 'string' ? { value: o, label: o } : o));
+
+// ข้อความที่ผู้ใช้เห็นของค่าที่เลือกไว้ (ค่าที่เก็บอาจเป็น id)
+export const optionLabel = (options: FieldOptionDef[] | undefined, value: string): string =>
+  fieldOptions(options).find((o) => o.value === value)?.label ?? value;
 
 export interface FieldDef {
   key: string;
@@ -33,13 +51,17 @@ export interface FieldDef {
   span2?: boolean;
   placeholder?: string;
   hint?: string;
-  options?: string[];
+  options?: FieldOptionDef[];
   // kind='auto' เท่านั้น
   auto?: AutoSource;
   // ดึงค่าอัตโนมัติไม่ได้ (เช่น AD ไม่ส่งชื่อเครื่องมา) → ให้ผู้ใช้พิมพ์เองแทนที่จะตัน
   fallbackEditable?: boolean;
   // kind='images' เท่านั้น — จำนวนรูปสูงสุด (ไม่ระบุ = ค่า default ของ ImageUpload)
   max?: number;
+  // kind='text'|'textarea' เท่านั้น — จำกัดความยาว + แสดงตัวนับตัวอักษร
+  maxLen?: number;
+  // kind='lineItems' เท่านั้น — ชุดคอลัมน์ของตาราง (ไม่ระบุ = 'purchase')
+  variant?: LineItemsVariant;
 }
 
 export interface DeptSection {
@@ -61,6 +83,8 @@ export interface DeptFormConfig {
   commonTitle?: string; // หัวข้อของส่วนกลาง (ไม่ระบุ = "ข้อมูลเรื่องที่แจ้ง")
   // แทรกส่วนกลางไว้ลำดับที่เท่าไรของ sections (0 = บนสุด, ไม่ระบุ = 0)
   commonPosition?: number;
+  // แผนกที่ไม่ใช้ฟิลด์ส่วนกลาง subject/detail — ใช้ค่าฟิลด์นี้เป็นชื่อเรื่องในหน้าสรุป
+  summaryKey?: string;
 }
 
 // ฟิลด์ส่วนกลางที่แผนกนี้ต้องกรอกจริง
@@ -70,13 +94,19 @@ export const commonFieldsOf = (cfg: DeptFormConfig): CommonField[] => cfg.common
 export const DETAIL_MAX_LEN = 1000;
 
 // ── รายการย่อย (line item) — ใช้กับฟิลด์ kind='lineItems' ──
+// ชุดคอลัมน์ของตารางรายการย่อย
+// purchase = รายการ/จำนวน/หน่วย/ราคา/ผู้ขาย/รวม (ใช้กับจัดซื้อ)
+// simple   = รายการ/จำนวน/หน่วย/หมายเหตุ (ไม่มีราคา)
+export type LineItemsVariant = 'purchase' | 'simple';
+
 export interface LineItem {
   id: string;
   name: string;
   qty: string;
   unit: string;
-  price: string; // ราคา/หน่วย
-  vendor: string; // ผู้ขาย / ร้านค้า
+  price: string; // ราคา/หน่วย (เฉพาะ variant='purchase')
+  vendor: string; // ผู้ขาย / ร้านค้า (เฉพาะ variant='purchase')
+  note: string; // หมายเหตุ (เฉพาะ variant='simple')
 }
 
 export const emptyLineItem = (): LineItem => ({
@@ -86,11 +116,37 @@ export const emptyLineItem = (): LineItem => ({
   unit: '',
   price: '',
   vendor: '',
+  note: '',
 });
 
 export const lineTotal = (li: LineItem): number => (Number(li.qty) || 0) * (Number(li.price) || 0);
 export const lineItemsTotal = (items: LineItem[]): number =>
   items.reduce((s, li) => s + lineTotal(li), 0);
+
+// ── ตัวเลือกของใบแจ้งเรื่อง PL ────────────────────────────
+// mockup ตามรายการที่ฝ่าย PL ให้มา (21 ส.ค. 2026) — value = id ของ master
+// ย้ายไปดึงจาก API เมื่อ backend เปิด endpoint master data ของ PL แล้ว
+export const PL_TYPES: FieldOption[] = [
+  { value: '1', label: 'ลูกค้าภายนอก' },
+  { value: '2', label: 'ลูกค้าภายใน' },
+  { value: '3', label: 'ภายในแผนก' },
+];
+
+// หมายเหตุ: ไม่มี id 8 — ตามรายการต้นทางที่ได้รับมา (ห้ามเลื่อน id ให้ต่อเนื่องเอง)
+export const PL_TOPICS: FieldOption[] = [
+  { value: '1', label: 'พนักงานขับรถ (พฤติกรรม)' },
+  { value: '2', label: 'อุบัติเหตุ' },
+  { value: '3', label: 'อุปกรณ์เสริม' },
+  { value: '4', label: 'การขนส่ง / ขนย้าย' },
+  { value: '5', label: 'พนักงานขับรถติดตามงานซ่อม' },
+  { value: '6', label: 'ข้อร้องเรียนลูกค้าภายนอก' },
+  { value: '7', label: 'ขอใช้พนักงานขับรถ / ขอใช้เครื่องจักร' },
+  { value: '9', label: 'สำรวจหน้างาน' },
+  { value: '10', label: 'ขอเอกสารพนักงาน / เอกสารเครื่องจักร' },
+  { value: '11', label: 'ขอลางาน' },
+  { value: '12', label: 'แจ้งเรื่องสภาพหน้างาน' },
+  { value: '13', label: 'อื่นๆ' },
+];
 
 export const UNIT_OPTIONS = ['ชิ้น', 'อัน', 'ชุด', 'กล่อง', 'เส้น', 'ลิตร', 'งาน'];
 
@@ -157,25 +213,68 @@ export const DEPT_FORMS: Record<string, DeptFormConfig> = {
     ],
   },
 
+  // ── ใบแจ้งเรื่อง PL (Product Packing & Logistics) ──────────
+  // ตามที่ตกลงไว้ (21 ส.ค. 2026): ผู้แจ้ง/หน่วยงาน/วันที่แจ้ง มาจากระบบ,
+  // ประเภท + เรื่องที่แจ้ง เลือกจากรายการ, ระบุเรื่องที่แจ้ง 1000 ตัวอักษร,
+  // เหตุผลการขอ 500 ตัวอักษร, รายการที่ขอกรอกได้หลายแถว และรูปไม่เกิน 3 รูป
   PL: {
-    tagline: 'พฤติกรรมคนขับ / สำรวจหน้างาน / เปลี่ยนคนขับ',
-    examples: 'แจ้งพฤติกรรมคนขับ, ขอสำรวจหน้างาน, ขอเปลี่ยนคนขับ',
-    categories: ['พฤติกรรมคนขับ', 'เปลี่ยนคนขับ', 'สำรวจหน้างาน', 'แผนงาน', 'อื่นๆ'],
+    tagline: 'พนักงานขับรถ / ขนส่ง-ขนย้าย / สำรวจหน้างาน',
+    examples: 'แจ้งพฤติกรรมพนักงานขับรถ, แจ้งอุบัติเหตุ, ขอใช้เครื่องจักร, ขอสำรวจหน้างาน',
+    categories: PL_TYPES.map((o) => o.label),
+    common: [], // ทุกฟิลด์ประกาศเองในส่วนของแผนก เพื่อคุมลำดับตามแบบฟอร์มจริง
+    summaryKey: 'topic', // ใช้ "เรื่องที่แจ้ง" เป็นชื่อเรื่องในหน้าสรุป
     sections: [
       {
-        title: 'ข้อมูลคนขับ / รถ',
+        title: 'ข้อมูลผู้แจ้ง',
         fields: [
-          { key: 'driverName', label: 'ชื่อคนขับ', kind: 'text', required: true, placeholder: 'ชื่อ-นามสกุลคนขับ' },
-          { key: 'plateNo', label: 'ทะเบียนรถ / เบอร์รถ', kind: 'text', required: true, placeholder: 'เช่น 70-1234' },
-          { key: 'project', label: 'โครงการ / ไซต์งาน', kind: 'text', required: true },
-          { key: 'incidentDate', label: 'วันที่เกิดเหตุ', kind: 'date', required: true },
-          { key: 'location', label: 'สถานที่เกิดเหตุ', kind: 'text', span2: true },
+          { key: 'reporterName', label: 'ผู้แจ้งเรื่อง', kind: 'auto', auto: 'reporter', required: true },
+          { key: 'reporterDept', label: 'หน่วยงาน', kind: 'auto', auto: 'department', required: true },
+          { key: 'requestDate', label: 'วันที่แจ้งเรื่อง', kind: 'auto', auto: 'today', required: true },
+          { key: 'dueDate', label: 'วันที่ต้องการใช้งาน', kind: 'date', required: true },
         ],
       },
       {
-        title: 'หลักฐานประกอบ',
+        title: 'ข้อมูลเรื่องที่แจ้ง',
         fields: [
-          { key: 'photos', label: 'รูปภาพประกอบ', kind: 'images', hint: '(แนบได้หลายรูป)', span2: true },
+          { key: 'requestType', label: 'ประเภท', kind: 'select', required: true, options: PL_TYPES },
+          { key: 'topic', label: 'เรื่องที่แจ้ง', kind: 'select', required: true, options: PL_TOPICS },
+          {
+            key: 'topicDetail',
+            label: 'ระบุเรื่องที่แจ้ง',
+            kind: 'textarea',
+            required: true,
+            span2: true,
+            maxLen: 1000,
+            placeholder: 'อธิบายรายละเอียดของเรื่องที่ต้องการแจ้ง',
+          },
+          {
+            key: 'reason',
+            label: 'เหตุผลการขอ',
+            kind: 'textarea',
+            required: true,
+            span2: true,
+            maxLen: 500,
+            placeholder: 'ระบุความจำเป็น / ผลกระทบหากไม่ได้รับ',
+          },
+        ],
+      },
+      {
+        title: 'รายการที่ขอ',
+        fields: [
+          {
+            key: 'items',
+            label: 'รายการ',
+            kind: 'lineItems',
+            variant: 'simple',
+            hint: '(ไม่บังคับ — เพิ่มได้มากกว่า 1 แถว)',
+            span2: true,
+          },
+        ],
+      },
+      {
+        title: 'รูปภาพประกอบ',
+        fields: [
+          { key: 'photos', label: 'รูปภาพ', kind: 'images', max: 3, hint: '(เพิ่มได้ไม่เกิน 3 รูป)', span2: true },
         ],
       },
     ],
@@ -317,7 +416,13 @@ export function validateRequestForm(f: RequestFormState): FormErrors {
   // ฟิลด์เฉพาะแผนก
   for (const sec of cfg.sections) {
     for (const fd of sec.fields) {
-      if (!fd.required) continue;
+      // ฟิลด์ไม่บังคับ แต่ถ้ามี maxLen ก็ยังต้องตรวจความยาว
+      if (!fd.required) {
+        const val = f.values[fd.key] || '';
+        if (fd.maxLen && val.length > fd.maxLen)
+          e[fd.key] = `${fd.label}ยาวเกิน ${fd.maxLen} ตัวอักษร (ตอนนี้ ${val.length})`;
+        continue;
+      }
       if (fd.kind === 'auto') {
         // ดึงมาไม่ได้ + พิมพ์เองไม่ได้ = ข้อมูลผู้ใช้ไม่ครบ ต้องบอกให้ชัด
         if (!(f.values[fd.key] || '').trim()) {
@@ -336,8 +441,17 @@ export function validateRequestForm(f: RequestFormState): FormErrors {
         if (f.images.length === 0) e[fd.key] = 'กรุณาแนบรูปอย่างน้อย 1 รูป';
         continue;
       }
-      if (!(f.values[fd.key] || '').trim()) e[fd.key] = `กรุณากรอก${fd.label}`;
+      const v = f.values[fd.key] || '';
+      if (!v.trim()) e[fd.key] = `กรุณากรอก${fd.label}`;
+      else if (fd.maxLen && v.length > fd.maxLen)
+        e[fd.key] = `${fd.label}ยาวเกิน ${fd.maxLen} ตัวอักษร (ตอนนี้ ${v.length})`;
     }
+  }
+
+  // PL: รายการที่ขอไม่บังคับกรอก แต่แถวที่กรอกชื่อแล้วต้องระบุจำนวน
+  if (f.departmentShort === 'PL') {
+    const filled = f.lineItems.filter((li) => li.name.trim() !== '');
+    if (filled.some((li) => !li.qty || Number(li.qty) <= 0)) e.items = 'กรุณาระบุจำนวนของทุกรายการ';
   }
 
   // จัดซื้อ: รายการที่กรอกชื่อแล้วต้องมีจำนวนและราคา
@@ -348,6 +462,20 @@ export function validateRequestForm(f: RequestFormState): FormErrors {
   }
 
   return e;
+}
+
+// ชื่อเรื่องที่ใช้แสดงในหน้าสรุปหลังส่ง — แผนกที่ไม่มีช่อง "เรื่อง"
+// (IT ใช้ต้นข้อความรายละเอียด, PL ใช้ "เรื่องที่แจ้ง" ผ่าน cfg.summaryKey)
+export function summaryTitle(f: RequestFormState): string {
+  const cfg = getDeptForm(f.departmentShort);
+  let fromKey = '';
+  if (cfg.summaryKey) {
+    const raw = (f.values[cfg.summaryKey] || '').trim();
+    // ค่าที่เก็บอาจเป็น id ของตัวเลือก — แสดงเป็นข้อความที่ผู้ใช้เลือกไว้
+    const fd = cfg.sections.flatMap((sec) => sec.fields).find((x) => x.key === cfg.summaryKey);
+    fromKey = raw ? optionLabel(fd?.options, raw) : '';
+  }
+  return f.subject.trim() || fromKey || f.detail.trim().slice(0, 40);
 }
 
 export const formatBaht = (n: number) =>

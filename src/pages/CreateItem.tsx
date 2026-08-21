@@ -17,7 +17,12 @@ import { RequestPriority } from '../types/request';
 import { DepartmentApi } from '../types/masterData';
 import { deptMeta, REQUEST_PRIORITY_META } from '../data/requestData';
 import { useDepartments } from '../hooks/useDepartments';
-import { createItRequest } from '../api/itRequest';
+import {
+  IT_ATTACHMENT_SLOTS,
+  checkItAttachment,
+  createItRequest,
+  uploadItAttachment,
+} from '../api/itRequest';
 import { useAuth } from '../context/AuthContext';
 import {
   FieldDef,
@@ -30,7 +35,14 @@ import {
   commonFieldsOf,
   DETAIL_MAX_LEN,
   DEPT_FORMS,
+  summaryTitle,
+  fieldOptions,
 } from '../data/requestForm';
+
+// จำนวนช่องรูปของใบ IT (ImgPath1/2/3) — ฟอร์มจำกัดที่ max: 3 อยู่แล้ว
+// แต่ต้องกันไว้อีกชั้นตอนอัป เผื่อ schema ฝั่งฟอร์มถูกแก้แล้วลืมช่องฝั่ง API
+const IT_IMAGE_SLOTS = IT_ATTACHMENT_SLOTS.length;
+
 
 const INPUT_CLS =
   'rounded-lg border border-gray-200 bg-slate-50 px-3 py-2 text-[13px] text-gray-800 outline-none transition focus:bg-white';
@@ -255,6 +267,11 @@ function RequestForm({
   const [saved, setSaved] = useState(false);
   const [sending, setSending] = useState(false);
   const [sendError, setSendError] = useState<string | null>(null);
+  // ผลของขั้นแนบรูป (ยิงหลังสร้างใบสำเร็จ) — ใบสร้างได้แล้วแม้รูปจะพลาด
+  // จึงต้องแยกสถานะออกจาก sendError ไม่ให้กลบผลว่า "ส่งใบเรียบร้อย"
+  const [docNo, setDocNo] = useState<string | null>(null);
+  const [uploading, setUploading] = useState<{ done: number; total: number } | null>(null);
+  const [uploadFailed, setUploadFailed] = useState<{ name: string; reason: string }[]>([]);
 
   const clearError = (key: string) =>
     setErrors((prev) => {
@@ -297,8 +314,9 @@ function RequestForm({
     }
 
     setSending(true);
+    setUploadFailed([]);
     try {
-      await createItRequest(
+      const jobNo = await createItRequest(
         {
           requestBy: f.values.reporterName ?? '',
           departid: user?.departid ?? '',
@@ -310,12 +328,47 @@ function RequestForm({
         },
         user?.token
       );
+      setDocNo(jobNo);
+      // ใบสร้างสำเร็จแล้ว — ตั้ง saved ก่อนอัปรูป ถึงรูปจะพลาดก็ไม่ทำให้ผลนี้หาย
       setSaved(true);
+      await uploadImages(jobNo);
     } catch (err) {
       setSendError(err instanceof Error ? err.message : 'บันทึกใบแจ้งเรื่องไม่สำเร็จ');
     } finally {
       setSending(false);
     }
+  };
+
+  // ── แนบรูปหลังสร้างใบ ────────────────────────────────────────
+  // endpoint สร้างใบเป็น JSON ล้วน แนบรูปพร้อมกันไม่ได้ → ต้องได้ jobNo ก่อน
+  // แล้วยิงทีละช่อง (slot 1-3) เรียงตามลำดับรูปที่ผู้ใช้เลือกไว้
+  // ยิงทีละใบเรียงกัน ไม่ยิงพร้อมกัน เพราะ backend เขียนคนละคอลัมน์ของแถวเดียวกัน
+  const uploadImages = async (jobNo: string | null) => {
+    if (f.images.length === 0) return;
+    if (!jobNo) {
+      // ใบถูกสร้างแล้วแต่ไม่รู้เลขที่ → แนบรูปต่อไม่ได้ ต้องบอก ไม่ใช่เงียบ
+      setUploadFailed(
+        f.images.map((img) => ({ name: img.name, reason: 'ไม่ทราบเลขที่ใบที่เพิ่งสร้าง' }))
+      );
+      return;
+    }
+    const failed: { name: string; reason: string }[] = [];
+    for (let i = 0; i < f.images.length && i < IT_IMAGE_SLOTS; i++) {
+      const img = f.images[i];
+      setUploading({ done: i, total: Math.min(f.images.length, IT_IMAGE_SLOTS) });
+      const bad = checkItAttachment(img);
+      if (bad) {
+        failed.push({ name: img.name, reason: bad });
+        continue;
+      }
+      try {
+        await uploadItAttachment(jobNo, i + 1, img, user?.token);
+      } catch (e) {
+        failed.push({ name: img.name, reason: e instanceof Error ? e.message : 'อัปโหลดไม่สำเร็จ' });
+      }
+    }
+    setUploading(null);
+    setUploadFailed(failed);
   };
 
   // เรนเดอร์ช่องกรอกตามชนิดฟิลด์ที่ประกาศไว้ใน schema ของแผนก
@@ -370,6 +423,7 @@ function RequestForm({
       case 'lineItems':
         return (
           <LineItemsTable
+            variant={fd.variant}
             value={f.lineItems}
             onChange={(items) => {
               setF((prev) => ({ ...prev, lineItems: items }));
@@ -379,16 +433,31 @@ function RequestForm({
             invalid={bad}
           />
         );
-      case 'textarea':
+      case 'textarea': {
+        const v = f.values[fd.key] ?? '';
         return (
-          <textarea
-            value={f.values[fd.key] ?? ''}
-            onChange={(e) => setValue(fd.key, e.target.value)}
-            rows={3}
-            placeholder={fd.placeholder}
-            className={`${common} resize-y`}
-          />
+          <>
+            <textarea
+              value={v}
+              // ตัดตาม maxLen (maxLength ไม่กันการวางข้อความยาวในบางเบราว์เซอร์)
+              onChange={(e) => setValue(fd.key, fd.maxLen ? e.target.value.slice(0, fd.maxLen) : e.target.value)}
+              maxLength={fd.maxLen}
+              rows={fd.maxLen && fd.maxLen > 500 ? 4 : 3}
+              placeholder={fd.placeholder}
+              className={`${common} resize-y`}
+            />
+            {fd.maxLen && (
+              <span
+                className={`mono self-end text-[11px] ${
+                  v.length >= fd.maxLen ? 'font-semibold text-amber-600' : 'text-gray-400'
+                }`}
+              >
+                {v.length}/{fd.maxLen}
+              </span>
+            )}
+          </>
         );
+      }
       case 'select':
         return (
           <select
@@ -397,9 +466,10 @@ function RequestForm({
             className={`${common} cursor-pointer`}
           >
             <option value="">-- เลือก --</option>
-            {(fd.options ?? []).map((o) => (
-              <option key={o} value={o}>
-                {o}
+            {/* ตัวเลือกอาจเก็บเป็นรหัส (id) — value = รหัสที่ส่งให้ API, label = ข้อความที่ผู้ใช้เห็น */}
+            {fieldOptions(fd.options).map((o) => (
+              <option key={o.value} value={o.value}>
+                {o.label}
               </option>
             ))}
           </select>
@@ -427,7 +497,8 @@ function RequestForm({
         return (
           <input
             value={f.values[fd.key] ?? ''}
-            onChange={(e) => setValue(fd.key, e.target.value)}
+            onChange={(e) => setValue(fd.key, fd.maxLen ? e.target.value.slice(0, fd.maxLen) : e.target.value)}
+            maxLength={fd.maxLen}
             placeholder={fd.placeholder}
             className={common}
           />
@@ -563,16 +634,49 @@ function RequestForm({
           </div>
           <h2 className="mt-4 text-lg font-bold text-gray-900">ส่งใบแจ้งเรื่องเรียบร้อย</h2>
           <p className="mt-1.5 text-[13px] text-slate-500">
-            {/* แผนกที่ไม่มีช่อง "เรื่อง" (เช่น IT) ใช้ต้นข้อความรายละเอียดแทน */}
-            เรื่อง "{f.subject.trim() || f.detail.trim().slice(0, 40)}" ถูกส่งไปยัง {dep.departmentName} แล้ว
+            {/* แผนกที่ไม่มีช่อง "เรื่อง": IT ใช้ต้นข้อความรายละเอียด, PL ใช้ "เรื่องที่แจ้ง" */}
+            เรื่อง "{summaryTitle(f)}" ถูกส่งไปยัง {dep.departmentName} แล้ว
             ติดตามสถานะได้ที่เมนู "เรื่องที่แจ้งออกไป"
           </p>
-          {/* รูปยังส่งไม่ได้ — endpoint ยังไม่มีช่องรับไฟล์ ต้องบอกให้ผู้ใช้รู้ ไม่ใช่เงียบ */}
-          {f.images.length > 0 && (
-            <p className="mt-2 flex items-center gap-1.5 text-[12px] font-semibold text-amber-700">
-              <IconAlertTriangle size={14} className="shrink-0" />
-              รูปภาพ {f.images.length} รูปยังไม่ถูกส่ง (ระบบยังไม่รองรับการแนบไฟล์)
+          {docNo && (
+            <p className="mono mt-2 rounded-lg border border-gray-200 bg-slate-50 px-3 py-1 text-[12.5px] font-bold text-gray-800">
+              เลขที่ใบ {docNo}
             </p>
+          )}
+
+          {/* ── ผลของขั้นแนบรูป (ยิงหลังสร้างใบ) ──────────────────
+              ใบสร้างสำเร็จแล้วเสมอเมื่อมาถึงจอนี้ — รูปพลาดเป็นเรื่องแยก
+              ต้องบอกให้ชัดว่ารูปไหนไม่ขึ้นและเพราะอะไร แล้วชี้ทางแก้ต่อ */}
+          {uploading && (
+            <p className="mt-2 flex items-center gap-1.5 text-[12px] font-semibold text-slate-500">
+              <IconLoader2 size={14} className="shrink-0 animate-spin" />
+              กำลังแนบรูป {uploading.done + 1}/{uploading.total}...
+            </p>
+          )}
+          {!uploading && f.images.length > 0 && uploadFailed.length === 0 && (
+            <p className="mt-2 flex items-center gap-1.5 text-[12px] font-semibold text-emerald-700">
+              <IconCheck size={14} className="shrink-0" />
+              แนบรูป {Math.min(f.images.length, IT_IMAGE_SLOTS)} รูปเรียบร้อย
+            </p>
+          )}
+          {!uploading && uploadFailed.length > 0 && (
+            <div className="mt-2 w-full rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-left">
+              <p className="flex items-center gap-1.5 text-[12px] font-bold text-amber-800">
+                <IconAlertTriangle size={14} className="shrink-0" />
+                แนบรูปไม่สำเร็จ {uploadFailed.length} รูป — ใบถูกส่งแล้ว
+              </p>
+              <ul className="mt-1 flex flex-col gap-0.5">
+                {uploadFailed.map((x, i) => (
+                  <li key={i} className="text-[11.5px] text-amber-800">
+                    • {x.name} — {x.reason}
+                  </li>
+                ))}
+              </ul>
+              <p className="mt-1.5 text-[11.5px] text-amber-700">
+                แนบใหม่ได้ที่เมนู "เรื่องที่แจ้งออกไป" → เปิดใบ → ปุ่มแก้ไขข้อมูล
+                (ทำได้จนกว่าแผนก IT จะกดรับงาน)
+              </p>
+            </div>
           )}
           <div className="mt-5 flex gap-2.5">
             <button
@@ -587,6 +691,9 @@ function RequestForm({
                 setErrors({});
                 setSendError(null);
                 setSaved(false);
+                setDocNo(null);
+                setUploadFailed([]);
+                setUploading(null);
               }}
               style={{ backgroundColor: accentColor }}
               className="rounded-lg px-5 py-2.5 text-[13px] font-bold text-white shadow-md transition hover:opacity-90"
@@ -708,6 +815,8 @@ export function CreateItem() {
           ? [user?.departmentShort, user?.departid].filter(Boolean).join(' · ')
           : ''),
       computer: user?.computerName ?? '',
+      // วันที่แจ้งเรื่อง — แสดงวันที่เปิดฟอร์ม (เวลาจริงที่บันทึกกำหนดตอนกดส่ง)
+      today: new Date().toLocaleDateString('en-GB'),
     }),
     [user]
   );

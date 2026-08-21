@@ -78,6 +78,35 @@ export interface RequestResolution {
   repairStatus: string | null;
   solution: string | null;
   resolutionDetail: string | null;
+  // ชุดปิดงานรับเรื่อง (closeReceive): solution(=solve) / hw / hwDetail / resolutionDetail(=repairDetail)
+  hw?: string | null;
+  hwDetail?: string | null;
+  // ชุด "ส่งบริษัท" ที่ saveService เขียนไว้ (ขอ backend คืนกลับมาเพื่อ prefill ฟอร์มดำเนินการ)
+  exVendor?: string | null;
+  exContact?: string | null;
+  exPlanDate?: string | null;
+  exPrNo?: string | null;
+  // ชุดสำรวจความพึงพอใจ (survey): ServiceScore / ServicePercentage / Survey_By / Survey_Date / Survey_Remark
+  serviceScore?: number | null;
+  servicePercentage?: number | null;
+  surveyBy?: string | null;
+  surveyDate?: string | null;
+  surveyRemark?: string | null;
+  // คะแนนรายหัวข้อ 1–5 (key เดียวกับที่ส่งขึ้นไปตอน action survey) — null = ยังไม่ประเมิน
+  surveyRatings?: Record<string, number> | null;
+  // ── ชุดปิดงาน (action `close`) — ขั้นสุดท้ายของ workflow ──────────
+  // ⚠️ อย่าสับกับ closedBy/closedDate ด้านบน ซึ่งเป็นของขั้น "ปิดงานรับเรื่อง"
+  //    (closeReceive) — คนละขั้น คนละคนกด จึงต้องใช้คีย์แยกกัน
+  // แผนกที่ไม่มีเกณฑ์ KPI ให้ส่ง caseNo/kpi เป็น null → หน้าเว็บซ่อนบล็อกนั้นไปเอง
+  caseNo?: string | null; // "1"–"4" กรณีตามเกณฑ์ KPI
+  caseName?: string | null; // ข้อความเกณฑ์ ณ ตอนที่ปิด (เกณฑ์เปลี่ยนภายหลัง ใบเก่าต้องยังถูก)
+  kpi?: string | null; // ตาม KPI / ตก KPI / ยกเลิก / ยังไม่ถึงกำหนด
+  jobClosedBy?: string | null;
+  jobClosedDate?: string | null;
+  // ตัวเลขประกอบผล KPI — backend คำนวณให้ (ต้องหักวันหยุด/นอกเวลาทำงาน หน้าเว็บทำเองไม่ได้)
+  kpiStartDate?: string | null; // นาฬิกา KPI เริ่มนับ = ตอน Mgr ต้นสังกัดอนุมัติ
+  kpiDueDate?: string | null; // ครบกำหนดตาม caseNo
+  kpiUsedHours?: number | null; // ชั่วโมงที่ใช้จริง
 }
 
 export interface RequestListItem {

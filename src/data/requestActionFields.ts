@@ -127,7 +127,9 @@ export const OPTIONAL_GROUPS: Record<string, OptionalGroup[]> = {
 export const optionalGroupsOf = (actionCode: string): OptionalGroup[] => OPTIONAL_GROUPS[actionCode] ?? [];
 
 // ── ค่าที่ส่งกลับไปให้ API ─────────────────────────────────────
-export type ActionFieldValues = Record<string, string | number>;
+// ค่าเป็น object ได้ด้วย — บาง action ส่งกลุ่มค่ารายข้อ (survey: surveyRatings)
+export type ActionFieldValue = string | number | Record<string, number>;
+export type ActionFieldValues = Record<string, ActionFieldValue>;
 
 // ตัดช่องว่าง ทิ้งค่าว่าง (API: "ฟิลด์ที่ไม่ส่งมา = คงค่าเดิมใน DB ไว้"
 // → ส่งสตริงว่างไปจะกลายเป็นการล้างค่าเดิมโดยไม่ตั้งใจ)
@@ -136,8 +138,11 @@ export function cleanFieldValues(values: ActionFieldValues): ActionFieldValues |
   for (const [k, v] of Object.entries(values)) {
     if (typeof v === 'number') {
       out[k] = v;
-    } else if (typeof v === 'string' && v.trim() !== '') {
-      out[k] = v.trim();
+    } else if (typeof v === 'string') {
+      if (v.trim() !== '') out[k] = v.trim();
+    } else if (v && typeof v === 'object') {
+      // กลุ่มค่ารายข้อ (เช่น surveyRatings) — ส่งไปเมื่อมีค่าอย่างน้อย 1 ข้อ
+      if (Object.keys(v).length > 0) out[k] = v;
     }
   }
   return Object.keys(out).length > 0 ? out : undefined;

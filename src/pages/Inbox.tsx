@@ -8,6 +8,7 @@ import { PHASE_META, phaseIndex } from '../data/requestPhase';
 import { RequestAction, RequestListItem, RequestPhase, StatusFilter } from '../types/requestList';
 import { useRequestList } from '../hooks/useRequestList';
 import { useRequestAction } from '../hooks/useRequestAction';
+import { ActionFieldValues } from '../data/requestActionFields';
 import { useAuth } from '../context/AuthContext';
 
 // ── เรื่องที่แจ้งเข้ามาที่แผนกตัวเอง — GET /Requests/incoming ────
@@ -42,12 +43,16 @@ export function Inbox() {
     item: RequestListItem,
     action: RequestAction,
     note: string,
-    fields?: Record<string, string | number>
+    fields?: ActionFieldValues
   ) => {
     const res = await run(item, action, note, fields);
     if (res) applyItem(res.item);
     reload();
   };
+
+  // แก้ไขข้อมูลใบสำเร็จ (ก่อนปลายทางรับงาน) → แทนแถวเดิมทันที
+  // ไม่ต้อง reload: การแก้ข้อมูลไม่เลื่อนขั้น ยอดใน phaseSummary จึงไม่เปลี่ยน
+  const handleEdited = (updated: RequestListItem) => applyItem(updated);
 
   // การ์ดสร้างจาก phaseSummary ที่ API ส่งมา — ยอดไม่ขยับตอนกรอง phase
   // จึงใช้เป็น badge ที่บอกความจริงได้แม้กำลังกรองอยู่
@@ -93,6 +98,7 @@ export function Inbox() {
         error={error}
         onReload={reload}
         onAction={handleAction}
+        onEdited={handleEdited}
         actionPending={pending}
         notice={notice}
         onDismissNotice={dismissNotice}
