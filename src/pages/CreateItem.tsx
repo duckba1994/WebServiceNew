@@ -23,6 +23,8 @@ import {
   createItRequest,
   uploadItAttachment,
 } from '../api/itRequest';
+import { checkPlAttachment, createPlRequest, uploadPlAttachment } from '../api/plRequest';
+import { toPlRequestPayload } from '../data/plRequestForm';
 import { useAuth } from '../context/AuthContext';
 import {
   FieldDef,
@@ -39,9 +41,18 @@ import {
   fieldOptions,
 } from '../data/requestForm';
 
-// จำนวนช่องรูปของใบ IT (ImgPath1/2/3) — ฟอร์มจำกัดที่ max: 3 อยู่แล้ว
-// แต่ต้องกันไว้อีกชั้นตอนอัป เผื่อ schema ฝั่งฟอร์มถูกแก้แล้วลืมช่องฝั่ง API
-const IT_IMAGE_SLOTS = IT_ATTACHMENT_SLOTS.length;
+// จำนวนช่องรูป (ImgPath1/2/3) — ฟอร์มจำกัดที่ max: 3 อยู่แล้ว แต่ต้องกันไว้
+// อีกชั้นตอนอัป เผื่อ schema ฝั่งฟอร์มถูกแก้แล้วลืมช่องฝั่ง API
+// IT กับ PL มีช่องเท่ากัน — ถ้าวันหนึ่งไม่เท่ากัน ต้องแยกค่านี้ตาม uploader
+const IMAGE_SLOTS = IT_ATTACHMENT_SLOTS.length;
+
+// ตัวแนบรูปของแต่ละแผนก — endpoint คนละเส้น แต่ขั้นตอนเหมือนกัน
+interface ImageUploader {
+  check: (file: File) => string | null;
+  upload: (docNo: string, slot: number, file: File, token?: string) => Promise<unknown>;
+}
+const IT_UPLOADER: ImageUploader = { check: checkItAttachment, upload: uploadItAttachment };
+const PL_UPLOADER: ImageUploader = { check: checkPlAttachment, upload: uploadPlAttachment };
 
 
 const INPUT_CLS =
@@ -292,6 +303,28 @@ function RequestForm({
 
   const errorCount = Object.keys(errors).length;
 
+  // ── ส่งใบแจ้งเรื่อง PL — POST /PLRequest ────────────────────
+  // หัวใบ + รายการย่อย (lines) ไปพร้อมกันใน request เดียว ส่วนรูปต้องรอ docNo ก่อน
+  // site/departid ไม่ส่ง — ปล่อยให้ backend ใช้ค่าจาก token (site แก้ทีหลังไม่ได้)
+  const submitPl = async () => {
+    setSending(true);
+    setUploadFailed([]);
+    try {
+      const res = await createPlRequest(
+        toPlRequestPayload(f, f.values.reporterName ?? user?.name ?? ''),
+        user?.token
+      );
+      setDocNo(res.docNo);
+      // ใบสร้างสำเร็จแล้ว — ตั้ง saved ก่อนอัปรูป ถึงรูปจะพลาดก็ไม่ทำให้ผลนี้หาย
+      setSaved(true);
+      await uploadImages(res.docNo, PL_UPLOADER);
+    } catch (err) {
+      setSendError(err instanceof Error ? err.message : 'บันทึกใบแจ้งเรื่องไม่สำเร็จ');
+    } finally {
+      setSending(false);
+    }
+  };
+
   const submit = async () => {
     const e = validateRequestForm(f);
     setErrors(e);
@@ -301,8 +334,8 @@ function RequestForm({
       return;
     }
 
-    // แผนกอื่นยังไม่มี API — คงพฤติกรรมเดิม (UI-first)
-    if (dep.departmentShort !== 'IT') {
+    // แผนกที่ยังไม่มี API — คงพฤติกรรมเดิม (UI-first)
+    if (dep.departmentShort !== 'IT' && dep.departmentShort !== 'PL') {
       setSaved(true);
       return;
     }
@@ -310,6 +343,11 @@ function RequestForm({
     // ฟอร์มยาว: เซสชันอาจหมดอายุระหว่างกรอก → เช็คก่อนยิง
     if (!isAuthenticated) {
       sessionExpired();
+      return;
+    }
+
+    if (dep.departmentShort === 'PL') {
+      await submitPl();
       return;
     }
 
@@ -331,7 +369,7 @@ function RequestForm({
       setDocNo(jobNo);
       // ใบสร้างสำเร็จแล้ว — ตั้ง saved ก่อนอัปรูป ถึงรูปจะพลาดก็ไม่ทำให้ผลนี้หาย
       setSaved(true);
-      await uploadImages(jobNo);
+      await uploadImages(jobNo, IT_UPLOADER);
     } catch (err) {
       setSendError(err instanceof Error ? err.message : 'บันทึกใบแจ้งเรื่องไม่สำเร็จ');
     } finally {
@@ -340,12 +378,13 @@ function RequestForm({
   };
 
   // ── แนบรูปหลังสร้างใบ ────────────────────────────────────────
-  // endpoint สร้างใบเป็น JSON ล้วน แนบรูปพร้อมกันไม่ได้ → ต้องได้ jobNo ก่อน
+  // endpoint สร้างใบเป็น JSON ล้วน แนบรูปพร้อมกันไม่ได้ → ต้องได้เลขที่ใบก่อน
   // แล้วยิงทีละช่อง (slot 1-3) เรียงตามลำดับรูปที่ผู้ใช้เลือกไว้
   // ยิงทีละใบเรียงกัน ไม่ยิงพร้อมกัน เพราะ backend เขียนคนละคอลัมน์ของแถวเดียวกัน
-  const uploadImages = async (jobNo: string | null) => {
+  // IT กับ PL ใช้กติกาเดียวกัน (3 ช่อง / 10 MB / เฉพาะไฟล์รูป) ต่างแค่ endpoint
+  const uploadImages = async (docNo: string | null, up: ImageUploader) => {
     if (f.images.length === 0) return;
-    if (!jobNo) {
+    if (!docNo) {
       // ใบถูกสร้างแล้วแต่ไม่รู้เลขที่ → แนบรูปต่อไม่ได้ ต้องบอก ไม่ใช่เงียบ
       setUploadFailed(
         f.images.map((img) => ({ name: img.name, reason: 'ไม่ทราบเลขที่ใบที่เพิ่งสร้าง' }))
@@ -353,16 +392,16 @@ function RequestForm({
       return;
     }
     const failed: { name: string; reason: string }[] = [];
-    for (let i = 0; i < f.images.length && i < IT_IMAGE_SLOTS; i++) {
+    for (let i = 0; i < f.images.length && i < IMAGE_SLOTS; i++) {
       const img = f.images[i];
-      setUploading({ done: i, total: Math.min(f.images.length, IT_IMAGE_SLOTS) });
-      const bad = checkItAttachment(img);
+      setUploading({ done: i, total: Math.min(f.images.length, IMAGE_SLOTS) });
+      const bad = up.check(img);
       if (bad) {
         failed.push({ name: img.name, reason: bad });
         continue;
       }
       try {
-        await uploadItAttachment(jobNo, i + 1, img, user?.token);
+        await up.upload(docNo, i + 1, img, user?.token);
       } catch (e) {
         failed.push({ name: img.name, reason: e instanceof Error ? e.message : 'อัปโหลดไม่สำเร็จ' });
       }
@@ -656,7 +695,7 @@ function RequestForm({
           {!uploading && f.images.length > 0 && uploadFailed.length === 0 && (
             <p className="mt-2 flex items-center gap-1.5 text-[12px] font-semibold text-emerald-700">
               <IconCheck size={14} className="shrink-0" />
-              แนบรูป {Math.min(f.images.length, IT_IMAGE_SLOTS)} รูปเรียบร้อย
+              แนบรูป {Math.min(f.images.length, IMAGE_SLOTS)} รูปเรียบร้อย
             </p>
           )}
           {!uploading && uploadFailed.length > 0 && (
@@ -674,7 +713,7 @@ function RequestForm({
               </ul>
               <p className="mt-1.5 text-[11.5px] text-amber-700">
                 แนบใหม่ได้ที่เมนู "เรื่องที่แจ้งออกไป" → เปิดใบ → ปุ่มแก้ไขข้อมูล
-                (ทำได้จนกว่าแผนก IT จะกดรับงาน)
+                (ทำได้จนกว่าแผนก {dep.departmentShort} จะกดเริ่มดำเนินการ)
               </p>
             </div>
           )}

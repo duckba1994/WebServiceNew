@@ -139,6 +139,12 @@ export interface RequestListItem {
   remark?: string | null; // หมายเหตุที่ผู้แจ้งเขียนเพิ่ม
   updatedDate?: string | null; // เวลาใบขยับล่าสุด — ทำป้าย "ค้าง N วัน" ได้
   attachmentCount?: number | null; // จำนวนไฟล์แนบ (0–3)
+  // ── ฟิลด์เฉพาะใบ PL ──
+  // optional เพราะ /Requests/{module}/{docNo} ของโมดูลอื่นไม่มีฟิลด์พวกนี้
+  // (และ backend อาจยังไม่ส่งมาแม้กับ PL) — ไม่มีค่า = หน้าเว็บแสดง "—"
+  type?: string | null; // ประเภทผู้แจ้ง (ชื่อจาก master types)
+  requestType?: string | null; // เรื่องที่แจ้ง (ชื่อจาก master requestTypes)
+  planDate?: string | null; // วันที่ต้องการใช้งาน
 }
 
 // ── ประวัติการดำเนินการรายเหตุการณ์ (timeline) ────────────────

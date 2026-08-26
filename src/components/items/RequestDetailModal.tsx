@@ -36,6 +36,8 @@ import {
   validateEditForm,
 } from '../../data/requestEdit';
 import { IT_ATTACHMENT_SLOTS, IT_ATTACH_EXTENSIONS, ItAttachment } from '../../api/itRequest';
+import { PlRequestLine } from '../../api/plRequest';
+import { usePlRequestLines } from '../../hooks/usePlRequestLines';
 import { useItAttachments } from '../../hooks/useItAttachments';
 import { useAuthedImage } from '../../hooks/useAuthedImage';
 import { useAuth } from '../../context/AuthContext';
@@ -1248,7 +1250,11 @@ function KpiPanel({
 }
 
 // ── Tab General — ข้อมูลเรื่องที่แจ้งเข้ามา ────────────────────
-// เลขใบ / ผู้แจ้ง / หน่วยงาน / เบอร์ / ชื่อคอม / รายละเอียด / รูป / ผู้อนุมัติ(MGR)+เวลา
+// ส่วนกลาง: เลขใบ / ผู้แจ้ง / หน่วยงาน / รายละเอียด / รูป / ผู้อนุมัติ(MGR)+เวลา
+// ช่องที่เหลือขึ้นกับโมดูล เพราะแต่ละแผนกกรอกคนละอย่างตอนสร้างใบ —
+//   IT = เบอร์ติดต่อ + ชื่อคอมพิวเตอร์
+//   PL = ประเภท + เรื่องที่แจ้ง + วันที่ต้องการใช้งาน + เหตุผลการขอ + รายการที่ขอ
+// (ห้ามโชว์ช่องของ IT กับใบแผนกอื่น — ผู้อนุมัติจะอ่านใบผิดเรื่อง)
 function GeneralPanel({
   item,
   full,
@@ -1274,6 +1280,10 @@ function GeneralPanel({
   onAttachmentsChanged?: () => void;
 }) {
   const imgs = attachments ?? [];
+  const { user } = useAuth();
+  const isPl = full.module === 'PL';
+  // รายการย่อยของ PL ไม่ได้มากับ /Requests/PL/{docNo} ต้องดึงแยก (ใบโมดูลอื่นไม่ยิง)
+  const plLines = usePlRequestLines(isPl ? full.docNo : null, user?.token);
 
   if (editing && onEditSubmit) {
     return (
@@ -1295,15 +1305,46 @@ function GeneralPanel({
       </DetailRow>
       <DetailRow label="ผู้แจ้งเรื่อง">{full.requestBy || '—'}</DetailRow>
       <DetailRow label="หน่วยงาน">{full.departmentName || '—'}</DetailRow>
-      <DetailRow label="เบอร์ติดต่อ">{full.phoneNumber || '—'}</DetailRow>
-      <DetailRow label="ชื่อคอมพิวเตอร์">{full.comName || '—'}</DetailRow>
+
+      {isPl ? (
+        <>
+          <DetailRow label="ประเภท">{full.type || '—'}</DetailRow>
+          <DetailRow label="เรื่องที่แจ้ง">{full.requestType || '—'}</DetailRow>
+          <DetailRow label="วันที่ต้องการใช้งาน">
+            {full.planDate ? <span className="mono">{fmtDate(full.planDate)}</span> : '—'}
+          </DetailRow>
+        </>
+      ) : (
+        <>
+          <DetailRow label="เบอร์ติดต่อ">{full.phoneNumber || '—'}</DetailRow>
+          <DetailRow label="ชื่อคอมพิวเตอร์">{full.comName || '—'}</DetailRow>
+        </>
+      )}
 
       <div className="col-span-2">
-        <span className="mb-1 block text-[11.5px] font-semibold text-gray-500">รายละเอียดเรื่องที่แจ้ง</span>
+        <span className="mb-1 block text-[11.5px] font-semibold text-gray-500">
+          {isPl ? 'ระบุเรื่องที่แจ้ง' : 'รายละเอียดเรื่องที่แจ้ง'}
+        </span>
         <div className="rounded-lg border border-gray-200 bg-slate-50 px-3.5 py-3 text-[13px] leading-relaxed text-gray-800">
           <span className="whitespace-pre-wrap">{full.detail || '— (ผู้แจ้งไม่ได้กรอกรายละเอียด)'}</span>
         </div>
       </div>
+
+      {isPl && (
+        <>
+          <div className="col-span-2">
+            <span className="mb-1 block text-[11.5px] font-semibold text-gray-500">เหตุผลการขอ</span>
+            <div className="rounded-lg border border-gray-200 bg-slate-50 px-3.5 py-3 text-[13px] leading-relaxed text-gray-800">
+              <span className="whitespace-pre-wrap">{full.remark || '— (ไม่ได้ระบุ)'}</span>
+            </div>
+          </div>
+
+          <div className="col-span-2">
+            <span className="mb-1.5 block text-[11.5px] font-semibold text-gray-500">รายการที่ขอ</span>
+            <PlLinesTable {...plLines} />
+          </div>
+        </>
+      )}
 
       {/* รูปภาพ — เสิร์ฟผ่าน API ที่ต้องใช้ token จึงโหลดเป็น blob เอง (ดู AttachmentThumb) */}
       <div className="col-span-2">
@@ -1346,6 +1387,71 @@ function GeneralPanel({
       {editHint && (
         <p className="col-span-2 text-[12px] text-slate-400">— {editHint}</p>
       )}
+    </div>
+  );
+}
+
+// ── ตารางรายการที่ขอของใบ PL (อ่านอย่างเดียว) ──────────────────
+// แถวที่ cancel = true คือแถวที่ถูกยกเลิกไปแล้วแต่ยังเก็บไว้เป็นประวัติ
+// → แสดงจาง + ขีดฆ่า ไม่ใช่ซ่อน (ผู้อนุมัติต้องเห็นว่าเคยขออะไรมาก่อน)
+function PlLinesTable({
+  lines,
+  loading,
+  error,
+}: {
+  lines: PlRequestLine[] | null;
+  loading: boolean;
+  error: string | null;
+}) {
+  if (loading)
+    return (
+      <span className="flex items-center gap-1.5 text-[13px] text-slate-400">
+        <IconLoader2 size={14} className="animate-spin" />
+        กำลังโหลดรายการ…
+      </span>
+    );
+
+  if (error)
+    return (
+      <span className="flex items-center gap-1.5 text-[12.5px] font-semibold text-amber-700">
+        <IconAlertTriangle size={14} className="shrink-0" />
+        {error}
+      </span>
+    );
+
+  if (!lines || lines.length === 0)
+    return <span className="text-[13px] text-slate-400">— ใบนี้ไม่มีรายการที่ขอ</span>;
+
+  return (
+    <div className="overflow-hidden rounded-xl border border-gray-200">
+      <table className="w-full border-collapse">
+        <thead>
+          <tr className="bg-[#0b1220] text-[11.5px] font-semibold text-slate-300">
+            <th className="w-10 px-2 py-2 text-center">#</th>
+            <th className="px-2 py-2 text-left">รายการ</th>
+            <th className="w-20 px-2 py-2 text-center">จำนวน</th>
+            <th className="w-24 px-2 py-2 text-center">หน่วย</th>
+            <th className="px-2 py-2 text-left">หมายเหตุ</th>
+          </tr>
+        </thead>
+        <tbody>
+          {lines.map((li, i) => (
+            <tr
+              key={li.recNo}
+              className={`border-b border-[#eef1f6] text-[12.5px] last:border-b-0 ${
+                li.cancel ? 'bg-slate-50 text-slate-400 line-through' : 'bg-white text-gray-800'
+              }`}
+              title={li.cancel ? `ยกเลิกโดย ${li.cancelBy || '—'}` : undefined}
+            >
+              <td className="mono px-2 py-2 text-center text-slate-400">{i + 1}</td>
+              <td className="px-2 py-2">{li.item}</td>
+              <td className="mono px-2 py-2 text-center">{li.qty}</td>
+              <td className="px-2 py-2 text-center">{li.unit || '—'}</td>
+              <td className="px-2 py-2">{li.remark || '—'}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }

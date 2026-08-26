@@ -1,0 +1,42 @@
+import { PlRequestLineInput, PlRequestPayload } from '../api/plRequest';
+import { LineItem, PL_TOPICS, PL_TYPES, RequestFormState, optionLabel } from './requestForm';
+
+// ── PURE mapping: ฟอร์มใบแจ้งเรื่อง PL → payload ของ POST /PLRequest ──
+// ไม่มี JSX/hooks ในไฟล์นี้ (เทสได้) — ดู CLAUDE.md §"Separate data/logic from UI"
+
+// วันที่จาก <input type="date"> ('YYYY-MM-DD') → datetime ที่ API รับ
+// ส่งเป็นเวลาท้องถิ่นแบบไม่มี timezone ('2026-09-01T00:00:00') ตามตัวอย่างของ API
+// — ถ้าแปลงเป็น ISO UTC จะโดน timezone ไทย (+07) ดึงวันที่ถอยไป 1 วัน
+const toApiDate = (ymd: string): string | undefined => (ymd ? `${ymd}T00:00:00` : undefined);
+
+// แถวที่ผู้ใช้กรอกชื่อรายการไว้จริงเท่านั้นถึงจะส่งขึ้นไป
+// (ตารางมีแถวว่างค้างไว้เสมออย่างน้อย 1 แถว — ส่งไปจะโดน 400 "ห้ามว่าง")
+export const toPlRequestLines = (items: LineItem[]): PlRequestLineInput[] =>
+  items
+    .filter((li) => li.name.trim() !== '')
+    .map((li) => ({
+      item: li.name.trim(),
+      qty: Number(li.qty) || 0,
+      // ไม่ระบุหน่วย = ให้ backend ใส่ "หน่วย" ให้เอง
+      unit: li.unit.trim() || undefined,
+      remark: li.note.trim() || undefined,
+    }));
+
+export function toPlRequestPayload(f: RequestFormState, requestBy: string): PlRequestPayload {
+  const v = f.values;
+  const lines = toPlRequestLines(f.lineItems);
+
+  return {
+    requestDetail: v.topicDetail ?? '',
+    requestDetailRemark: v.reason ?? '',
+    requestBy,
+    // ไม่ส่ง departid / site / docDate — ให้ backend ใช้ค่าจาก token และเวลาปัจจุบัน
+    // (site แก้ทีหลังไม่ได้ และ departid ที่ส่งผิดจะทำให้ใบไปอยู่ผิดหน่วยงาน)
+    planDate: toApiDate(v.dueDate ?? ''),
+    // API รับเป็น "ชื่อ" จาก master ไม่ใช่ id — ตัวเลือกในฟอร์มเก็บเป็น id จึงต้องแปลงก่อนส่ง
+    type: optionLabel(PL_TYPES, v.requestType ?? ''),
+    requestType: optionLabel(PL_TOPICS, v.topic ?? ''),
+    // รายการที่ขอไม่บังคับ — ไม่มีแถวที่กรอกจริง = ใบไม่มีรายการย่อย
+    lines,
+  };
+}
