@@ -10,6 +10,7 @@ import {
   IconPencil,
   IconDeviceFloppy,
   IconTrash,
+  IconPlus,
   IconPhotoPlus,
 } from '@tabler/icons-react';
 import {
@@ -18,6 +19,7 @@ import {
   RequestDetailResponse,
   RequestListItem,
   RequestLog,
+  RequestResolution,
 } from '../../types/requestList';
 import { fmtDate, fmtDateTime, jobStatusMeta } from '../../data/requestListData';
 import { isRequesterSide } from '../../data/requestPhase';
@@ -26,19 +28,37 @@ import { ActionFieldValues, cleanFieldValues, fieldSpec } from '../../data/reque
 import { useRequestDetail } from '../../hooks/useRequestDetail';
 import { useRequestEdit } from '../../hooks/useRequestEdit';
 import {
-  EDIT_FIELDS,
+  EditFieldKey,
+  EditLine,
+  PL_ATTACH_CHECKS,
+  PlAttachDocKey,
+  PlAttachKey,
+  toPlChecklistPayload,
+  validatePlChecklist,
   RequestEditForm,
   canEditRequest,
   editBlockedReason,
+  editFieldsOf,
+  emptyEditLine,
   hasFormChanges,
   toEditForm,
+  toPlUpdatePayload,
   toUpdatePayload,
   validateEditForm,
 } from '../../data/requestEdit';
-import { IT_ATTACHMENT_SLOTS, IT_ATTACH_EXTENSIONS, ItAttachment } from '../../api/itRequest';
-import { PlRequestLine } from '../../api/plRequest';
-import { usePlRequestLines } from '../../hooks/usePlRequestLines';
-import { useItAttachments } from '../../hooks/useItAttachments';
+import {
+  PL_CHECKLIST_MAX,
+  PlRequestDetail,
+  PlRequestLine,
+  updatePlChecklist,
+} from '../../api/plRequest';
+import { usePlRequest } from '../../hooks/usePlRequest';
+import {
+  PendingAttachment,
+  PendingAttachments,
+  attachmentApiOf,
+  useRequestAttachments,
+} from '../../hooks/useRequestAttachments';
 import { useAuthedImage } from '../../hooks/useAuthedImage';
 import { useAuth } from '../../context/AuthContext';
 
@@ -81,7 +101,8 @@ interface StepTab {
   // ทำให้แท็บ "รับเรื่อง" เหลือปุ่มรับเรื่องปุ่มเดียว ไม่ปนปุ่มดำเนินการ
   actionCodes?: string[];
 }
-const STEP_TABS: StepTab[] = [
+// IT: 5 ขั้น — อนุมัติ → รับเรื่อง → ดำเนินการ/ปิดงานรับเรื่อง → สำรวจ → ปิดงาน
+const IT_STEP_TABS: StepTab[] = [
   { key: 'general', label: 'General', reachedStep: 0, logAction: 'create', actionCodes: [] },
   { key: 'receive', label: 'รับเรื่อง', reachedStep: 2, logAction: 'receive', actionCodes: ['receive'] },
   { key: 'service', label: 'ดำเนินการ', reachedStep: 3, logAction: 'service', actionCodes: [] },
@@ -89,6 +110,38 @@ const STEP_TABS: StepTab[] = [
   { key: 'survey', label: 'สำรวจความพึงพอใจ', reachedStep: 4, logAction: 'survey', actionCodes: [] },
   { key: 'close', label: 'ปิดงาน', reachedStep: 5, logAction: 'close', actionCodes: [] },
 ];
+
+// PL: 4 ขั้น — อนุมัติ → รับเรื่อง → Attachment/Service → ปิดงาน (ตามฟอร์ม WinForms)
+// "Attachment" กับ "Service" อยู่ใน step 3 เดียวกัน (รับเรื่องแล้วเข้ามาดูเอกสารแนบ
+// ก่อนลงมือ) — แบบเดียวกับที่ IT มี ดำเนินการ/ปิดงานรับเรื่อง ใช้ reachedStep เท่ากัน
+// เรียงก่อน-หลังในลิสต์นี้คือลำดับที่ stepper จะโฟกัสให้เมื่อถึง step 3
+const PL_STEP_TABS: StepTab[] = [
+  { key: 'general', label: 'General', reachedStep: 0, logAction: 'create', actionCodes: [] },
+  { key: 'receive', label: 'รับเรื่อง', reachedStep: 2, logAction: 'receive', actionCodes: ['receive'] },
+  { key: 'plAttachment', label: 'Attachment', reachedStep: 3, logAction: 'create', actionCodes: [] },
+  { key: 'plService', label: 'Service', reachedStep: 3, logAction: 'service', actionCodes: [] },
+  // step 4 (Request-Close-Job) — งานเสร็จแล้ว แต่คนที่กดปิดคือ "แผนกผู้แจ้ง"
+  // ไม่ใช่ PL (ownerType = requesterDepart) จึงเป็นขั้นที่ค้างเงียบได้ง่ายที่สุด
+  { key: 'plClose', label: 'ปิดงาน', reachedStep: 4, logAction: 'close' },
+];
+
+const STEP_TABS_BY_MODULE: Record<string, StepTab[]> = {
+  IT: IT_STEP_TABS,
+  PL: PL_STEP_TABS,
+};
+
+// แผนกที่ยังไม่ได้ทำหน้าจอเฉพาะ ใช้ชุดของ IT ไปก่อน (ของเดิมก่อนแยกรายโมดูล)
+// — เปิดแผนกใหม่เมื่อไรให้เพิ่มชุดของแผนกนั้นในตารางข้างบน อย่าปล่อยให้ตกมาที่นี่
+const stepTabsOf = (module: string): StepTab[] => STEP_TABS_BY_MODULE[module] ?? IT_STEP_TABS;
+
+// รหัส action ที่มี "ที่ทางของตัวเอง" อยู่แล้ว — แท็บใดแท็บหนึ่งเป็นคนแสดงปุ่มให้
+// (จาก actionCodes ของแท็บ + code ที่แผงในแท็บสร้างปุ่มเอง เช่น ปิดงานรับเรื่อง/
+//  ประเมิน/ปิดงาน) ที่เหลือทั้งหมดตกมาโผล่ในแท็บ General แทนที่จะหายไปเฉย ๆ
+const PANEL_ACTION_CODES = ['saveService', 'service', 'closeReceive', 'survey', 'close'];
+const CLAIMED_ACTION_CODES = new Set<string>([
+  ...Object.values(STEP_TABS_BY_MODULE).flatMap((tabs) => tabs.flatMap((t) => t.actionCodes ?? [])),
+  ...PANEL_ACTION_CODES,
+]);
 
 type StepState = 'done' | 'current' | 'upcoming';
 
@@ -138,12 +191,12 @@ export function RequestDetailModal({
   onDismissNotice?: () => void;
 }) {
   const { user } = useAuth();
+  // ชุดแท็บของโมดูลนี้ — จำนวน/ชื่อขั้นต่างกันต่อแผนก (IT 6 แท็บ, PL 4 แท็บ)
+  const tabs = stepTabsOf(item.module);
   // โหลด detail ใหม่เมื่อ: ใบขยับ (updatedDate/wfStep) หรือเพิ่งกดปุ่มในแท็บ (refreshTick)
   // ต้องมี refreshTick เพราะ saveService/service ไม่เลื่อน step และไม่แตะ updatedDate
   // (= MAX(ApproveDate)) → ถ้าไม่บังคับโหลด จะไม่เห็น servicedBy / ค่าที่เพิ่งบันทึก
   const [refreshTick, setRefreshTick] = useState(0);
-  // ต้อง stable — ส่งลงไปเป็น dep ของ useItAttachments (ไม่งั้น callback ใหม่ทุก render)
-  const bumpRefresh = React.useCallback(() => setRefreshTick((t) => t + 1), []);
   const { detail, loading: detailLoading } = useRequestDetail(
     item.module,
     item.docNo,
@@ -157,18 +210,36 @@ export function RequestDetailModal({
     setRefreshTick((t) => t + 1);
     // กด "ดำเนินการเสร็จ" (service ไม่เลื่อน step) → เด้งไปแท็บปิดงานรับเรื่องเลย
     if (action.code === 'service') {
-      const i = STEP_TABS.findIndex((t) => t.key === 'closeReceive');
+      const i = tabs.findIndex((t) => t.key === 'closeReceive');
       if (i !== -1) setSelected(i);
     }
   };
 
   // item เต็มจาก detail (คำนวณสำหรับคนที่เปิดดู) — ถ้ายังโหลดไม่เสร็จใช้ตัวจากลิสต์ไปก่อน
   const full = detail?.item ?? item;
-  const actions = onPickAction ? item.availableActions ?? [] : [];
+  // เช็คลิสต์เอกสารแนบ / รายการย่อย / canEdit ของ PL ไม่ได้มากับ /Requests/PL/{docNo}
+  // ต้องดึงจากเส้นของฟอร์ม PL (ใบโมดูลอื่นไม่ยิง)
+  // โหลดที่นี่ไม่ใช่ในแผง เพราะทั้งหน้าอ่านและฟอร์มแก้ไขต้องใช้ชุดเดียวกัน
+  // และต้องโหลดใหม่หลังบันทึก (refreshTick) ไม่งั้นข้อมูลยังเป็นของเก่า
+  const plDoc = usePlRequest(
+    item.module === 'PL' ? item.docNo : null,
+    user?.token,
+    `${item.updatedDate ?? ''}|${refreshTick}`
+  );
+  // รายการย่อยในรูปแบบที่ตารางใช้ (loading/error ใช้ก้อนเดียวกับใบ)
+  const plLines = {
+    lines: plDoc.doc?.lines ?? null,
+    loading: plDoc.loading,
+    error: plDoc.error,
+  };
+  // ⚠️ ต้องอ่านจาก full (= detail.item) ไม่ใช่ item ของลิสต์:
+  // /Requests/{module}/{docNo} คำนวณ availableActions ให้ "คนที่เปิดดูใบนี้"
+  // ส่วนลิสต์อาจไม่ส่งมา/ส่งไม่ครบ → ถ้าอ่านจาก item ปุ่มจะไม่ขึ้นทั้งที่มีสิทธิ์
+  const actions = onPickAction ? full.availableActions ?? [] : [];
   const status = jobStatusMeta(item);
   const r = full.resolution;
   const logs = detail?.logs ?? [];
-  const closed = item.phase === 'closed';
+  const closed = full.phase === 'closed';
 
   // log ล่าสุดของแต่ละ action — ใช้ดึงว่าใคร/แผนก/เมื่อไร ของแต่ละขั้น
   const lastLogOf = (action: string): RequestLog | null => {
@@ -180,36 +251,36 @@ export function RequestDetailModal({
   // "ดำเนินการเสร็จ" (service) ไม่เลื่อน step แต่ประทับ servicedBy → ถือว่าแท็บดำเนินการ "ทำแล้ว"
   const serviceDone = !!(full.resolution?.servicedBy || lastLogOf('service')?.actionByName);
   const tabState = (t: StepTab): StepState => {
-    const base = stepStateOf(t, item.wfStep, closed);
+    const base = stepStateOf(t, full.wfStep, closed);
     if (t.key === 'service' && serviceDone && base === 'current') return 'done';
     return base;
   };
 
   // tab เริ่มต้น = ขั้นปัจจุบัน (ตัวแรกที่ state = current) ไม่งั้นตัวสุดท้ายที่ทำแล้ว
   const defaultTab = useMemo(() => {
-    const cur = STEP_TABS.findIndex((t) => tabState(t) === 'current');
+    const cur = tabs.findIndex((t) => tabState(t) === 'current');
     if (cur !== -1) return cur;
     let lastDone = 0;
-    STEP_TABS.forEach((t, i) => {
+    tabs.forEach((t, i) => {
       if (tabState(t) === 'done') lastDone = i;
     });
     return lastDone;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [item.wfStep, closed, serviceDone]);
+  }, [full.wfStep, closed, serviceDone]);
 
   const [selected, setSelected] = useState(defaultTab);
 
   // เดิน stepper ไปขั้นปัจจุบันเมื่อ wfStep เปลี่ยน (เช่นหลังกดรับเรื่อง → ไปแท็บดำเนินการ)
   // ไม่ override ตอนผู้ใช้กดดูแท็บอื่นเอง เพราะ wfStep ไม่เปลี่ยน effect จึงไม่ยิง
   const currentIndex = useMemo(
-    () => STEP_TABS.findIndex((t) => tabState(t) === 'current'),
+    () => tabs.findIndex((t) => tabState(t) === 'current'),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [item.wfStep, closed, serviceDone]
+    [full.wfStep, closed, serviceDone]
   );
   useEffect(() => {
     if (currentIndex !== -1) setSelected(currentIndex);
   }, [currentIndex]);
-  const activeTab = STEP_TABS[selected] ?? STEP_TABS[0];
+  const activeTab = tabs[selected] ?? tabs[0];
   const activeState = tabState(activeTab);
   const activeLog = lastLogOf(activeTab.logAction);
   // ปุ่มที่โชว์ในแท็บนี้ = availableActions กรองด้วย actionCodes ของแท็บ
@@ -217,9 +288,11 @@ export function RequestDetailModal({
   const activeActions = activeTab.actionCodes
     ? actions.filter((a) => activeTab.actionCodes!.includes(a.code))
     : actions;
-  // ปุ่มอนุมัติ/ไม่อนุมัติ (ขั้น MGR ต้นสังกัด) — โชว์ในแท็บ General เพราะขั้นอนุมัติ
-  // เกิดก่อนสาย workflow ฝั่งปลายทาง กด MGR ต้องอ่านข้อมูลใบก่อนตัดสินใจ
-  const approveActions = actions.filter((a) => ['approve', 'not_approve', 'reject'].includes(a.code));
+  // ปุ่มในแท็บ General = ทุก action ที่ไม่มีแท็บอื่น "รับไป" แล้ว (อนุมัติ/ไม่อนุมัติ
+  // ของ MGR ต้นสังกัด + ยกเลิก + action ที่แผนกอื่นตั้งชื่อ code ไม่เหมือน IT)
+  // ห้าม hardcode รายชื่อ code ตรงนี้ — แผนกที่ตั้งชื่อไม่ตรงลิสต์จะไม่มีที่ให้ปุ่ม
+  // โผล่เลยทั้งใบ (กติกา "ปุ่มคือ data ไม่ใช่ code" ใน CLAUDE.md)
+  const generalActions = actions.filter((a) => !CLAIMED_ACTION_CODES.has(a.code));
 
   // ── แก้ไขข้อมูลใบ (ก่อนปลายทางกดรับงาน) ──────────────────────
   // สิทธิ์มาจาก item.canEdit ที่ API ส่งมา (ยังไม่ส่ง → fallback กติกาใน requestEdit.ts)
@@ -227,29 +300,155 @@ export function RequestDetailModal({
     save: saveEdit,
     pending: editPending,
     notice: editNotice,
+    showNotice: showEditNotice,
     dismissNotice: dismissEditNotice,
   } = useRequestEdit(user?.token);
   const [editing, setEditing] = useState(false);
-  const editable = !!onEdited && canEditRequest(full, user);
+  // สิทธิ์แก้ไข = กติกาหน้าเว็บ AND canEdit ที่ API ส่งมา (PL ส่งมาแล้ว, โมดูลอื่นยังไม่ส่ง
+  // → undefined ถือว่าไม่คัดค้าน) backend ตรวจซ้ำตอน PUT อยู่ดี ปุ่มเป็นแค่ UX
+  const apiCanEdit = plDoc.doc?.canEdit;
+  // สิทธิ์แก้ "ฟิลด์หัวใบ + รายการที่ขอ" (PUT /{module}/{docNo})
+  const canEditFields = !!onEdited && canEditRequest(full, user) && apiCanEdit !== false;
+  // สิทธิ์แนบ/ลบรูปเป็นคนละชุด — ห้ามผูกกับ canEdit เพราะปลายทางที่รับงานแล้ว
+  // ได้ canEdit: false แต่ canAttach: true (backend แยกให้ 27 ส.ค. 2026)
+  // โมดูลที่ยังไม่ส่ง canAttach มา (IT) = undefined → ใช้สิทธิ์เดียวกับฟิลด์เหมือนเดิม
+  const canAttachFiles = plDoc.doc?.canAttach ?? canEditFields;
+  const attachBlockedReason = plDoc.doc?.attachBlockedReason ?? null;
+  // เช็คลิสต์เอกสารแนบมีสิทธิ์เป็นตัวที่สาม (เงื่อนไขเดียวกับ canAttach แต่ส่งแยกมา)
+  const canEditChecklist = plDoc.doc?.canEditChecklist ?? false;
+  const checklistBlockedReason = plDoc.doc?.checklistBlockedReason ?? null;
+  // เปิดฟอร์มแก้ไขได้ถ้าแก้อะไรได้สักอย่าง — ปลายทางเปิดเข้ามาเพื่อจัดการรูปอย่างเดียวได้
+  // (ฟิลด์หัวใบจะถูกล็อกไว้ให้ ดู fieldsEditable ใน RequestEditPanel)
+  const editable = !!onEdited && (canEditFields || canAttachFiles);
+
+  // รูปที่ผู้ใช้เลือก/สั่งลบไว้แต่ยังไม่ได้ยิง — endpoint เป็นรายช่องและมีผลทันที
+  // จึงต้องพักไว้เองเพื่อให้ "มีผลตอนกดบันทึก" เหมือนฟิลด์อื่นในฟอร์ม
+  // เก็บที่นี่ไม่ใช่ในแผง เพราะหลังยิงเสร็จต้องเคลียร์เฉพาะช่องที่สำเร็จ
+  const attRef = useRef<PendingAttachments>({});
+  const [pendingAtt, setPendingAtt] = useState<PendingAttachments>({});
+  const [attachBusy, setAttachBusy] = useState(false);
+  const { applyPending } = useRequestAttachments(item.module, item.docNo, user?.token);
+
+  // object URL ของไฟล์ที่เลือกไว้ต้องคืนหน่วยความจำเมื่อถูกแทนที่หรือถูกยกเลิก
+  const setAtt = React.useCallback((next: PendingAttachments, revoke: PendingAttachments) => {
+    Object.values(revoke).forEach((c) => {
+      if (c.kind === 'upload') URL.revokeObjectURL(c.previewUrl);
+    });
+    attRef.current = next;
+    setPendingAtt(next);
+  }, []);
+
+  const stageAtt = React.useCallback(
+    (slot: number, change: PendingAttachment | null) => {
+      const prev = attRef.current[slot];
+      const next = { ...attRef.current };
+      if (change) next[slot] = change;
+      else delete next[slot];
+      setAtt(next, prev ? { [slot]: prev } : {});
+    },
+    [setAtt]
+  );
+
+  // ทิ้งของที่ค้างเมื่อออกจากฟอร์ม (กดยกเลิก / ปิดใบ / สิทธิ์หาย)
+  const clearAtt = React.useCallback(() => {
+    if (Object.keys(attRef.current).length === 0) return;
+    setAtt({}, attRef.current);
+  }, [setAtt]);
   // ใบขยับระหว่างที่ฟอร์มเปิดค้างอยู่ (ปลายทางเพิ่งกดรับเรื่อง) → ปิดฟอร์มทิ้งเอง
   useEffect(() => {
     if (!editable) setEditing(false);
   }, [editable]);
+  // ออกจากโหมดแก้ไข = ทิ้งรูปที่เลือกค้างไว้ ไม่ให้ค้างข้ามรอบ
+  useEffect(() => {
+    if (!editing) clearAtt();
+  }, [editing, clearAtt]);
 
-  // รูปแนบมีผลทันทีทีละช่อง (คนละ endpoint) — ปุ่มนี้บันทึกเฉพาะข้อความ
+  // ปุ่มบันทึกเดียวคุมทั้งฟิลด์และรูปแนบ แต่เป็นคนละ endpoint กัน จึงยิงเรียงกัน:
+  // ฟิลด์ก่อน (ถ้าฟิลด์ไม่ผ่านก็ไม่ต้องแตะรูป จอยังแก้ต่อได้) แล้วค่อยรูปทีละช่อง
   const submitEdit = async (form: RequestEditForm) => {
+    const attSlots = Object.keys(attRef.current).length;
+    const fieldsChanged =
+      canEditFields && hasFormChanges(toEditForm(full, plLines.lines), form);
     // ไม่ได้แก้อะไรเลย → ไม่ต้องยิง API ให้เปลืองรอบ
-    if (!hasFormChanges(toEditForm(full), form)) {
+    if (!fieldsChanged && attSlots === 0) {
       setEditing(false);
       return;
     }
-    const updated = await saveEdit(full, toUpdatePayload(full, form));
-    if (updated) {
-      onEdited?.(updated);
-      setEditing(false);
+
+    if (fieldsChanged) {
+      const payload =
+        full.module === 'PL' ? toPlUpdatePayload(full, form, plDoc.doc) : toUpdatePayload(full, form);
+      const res = await saveEdit(full, payload);
+      if (res.item) onEdited?.(res.item);
+      // ฟิลด์ไม่ผ่าน (403/409/400) → หยุดไว้ ไม่ยิงรูปตาม notice ตั้งไว้ให้แล้ว
+      if (!res.ok) {
+        setRefreshTick((t) => t + 1);
+        return;
+      }
     }
+
+    if (attSlots > 0) {
+      setAttachBusy(true);
+      const { done, errors } = await applyPending(attRef.current);
+      // ช่องที่ผ่านแล้วมีผลจริง เอาออกจากคิว เหลือไว้เฉพาะช่องที่ยังพัง
+      const left: PendingAttachments = {};
+      const applied: PendingAttachments = {};
+      Object.entries(attRef.current).forEach(([k, c]) => {
+        if (done.includes(Number(k))) applied[Number(k)] = c;
+        else left[Number(k)] = c;
+      });
+      setAtt(left, applied);
+      setAttachBusy(false);
+      if (errors.length > 0) {
+        // จอเก่าไปแล้ว (ช่องที่ผ่านมีผลจริง) — โหลดใหม่แล้วคาฟอร์มไว้ให้แก้ช่องที่พัง
+        setRefreshTick((t) => t + 1);
+        showEditNotice({
+          kind: 'error',
+          text:
+            done.length > 0
+              ? `บันทึกรูปแนบไม่ครบ — สำเร็จ ${done.length} ช่อง · ${errors.join(' · ')}`
+              : `บันทึกรูปแนบไม่สำเร็จ — ${errors.join(' · ')}`,
+        });
+        return;
+      }
+      showEditNotice({ kind: 'success', text: 'บันทึกการแก้ไขเรียบร้อย' });
+    }
+
+    setEditing(false);
     // สำเร็จก็โหลดใหม่ (ดึง logs/รูปล่าสุด), 403/409 ยิ่งต้องโหลด — จอเก่าไปแล้ว
     setRefreshTick((t) => t + 1);
+  };
+
+  // บันทึกเช็คลิสต์เอกสารแนบจากแท็บ Attachment — กดกี่ครั้งก็ได้ ไม่เลื่อน step
+  // เส้นของตัวเอง (PUT /PLRequest/{docNo}/attach-checklist) ไม่ใช่เส้นแก้หัวใบ
+  // จึงไม่โดน canEdit บล็อกตอนปลายทางรับงานแล้ว และไม่แตะหัวใบ/lines ของผู้แจ้ง
+  const [checklistPending, setChecklistPending] = useState(false);
+  const submitChecklist = async (
+    attach: Record<PlAttachKey, boolean>,
+    attachDocs: Record<PlAttachDocKey, string>
+  ) => {
+    setChecklistPending(true);
+    try {
+      await updatePlChecklist(item.docNo, toPlChecklistPayload(attach, attachDocs), user?.token);
+      showEditNotice({ kind: 'success', text: 'บันทึกเอกสารแนบเรียบร้อย' });
+    } catch (e: unknown) {
+      const status = (e as { status?: number })?.status;
+      const traceId = (e as { traceId?: string })?.traceId;
+      const msg = e instanceof Error ? e.message : 'บันทึกเอกสารแนบไม่สำเร็จ';
+      showEditNotice({
+        kind: 'error',
+        text: traceId && (status ?? 0) >= 500 ? `${msg} (อ้างอิง ${traceId})` : msg,
+        // 409/403 = ใบขยับไปแล้ว จอเก่า — โหลดใหม่ด้านล่างจัดการให้
+        stale: status === 409 || status === 403,
+        traceId,
+      });
+    } finally {
+      setChecklistPending(false);
+      // โหลดใบใหม่เสมอ: สำเร็จ = เอาค่าที่ trim แล้วกลับมา, ล้มเหลว = sync flag ใหม่
+      // (ต้องโหลด ไม่ใช่แค่ set state เพราะ toPlUpdatePayload หิ้วค่าเช็คลิสต์จาก doc
+      //  ไปกับ PUT หัวใบ — doc เก่าค้างไว้จะเขียนทับของที่เพิ่งบันทึก)
+      setRefreshTick((t) => t + 1);
+    }
   };
 
   // แถบข้อความรวม — action กับ edit ใช้แถบเดียวกัน (ที่ว่างในหัว modal มีแถบเดียว)
@@ -299,9 +498,9 @@ export function RequestDetailModal({
               </span>
             )}
           </div>
-          <div className="overflow-x-auto pb-1">
-            <ol className="flex min-w-max items-start">
-              {STEP_TABS.map((t, i) => {
+          <div className="no-scrollbar overflow-x-auto pb-1 pt-1.5">
+            <ol className="flex w-full items-start">
+              {tabs.map((t, i) => {
                 const state = tabState(t);
                 const done = state === 'done';
                 const current = state === 'current';
@@ -313,14 +512,14 @@ export function RequestDetailModal({
                   .filter(Boolean)
                   .join(' · ');
                 return (
-                  <li key={t.key} className="relative flex w-[120px] shrink-0 flex-col items-center px-1">
+                  <li key={t.key} className="relative flex min-w-[104px] flex-1 flex-col items-center px-1">
                     {i > 0 && (
                       <span
                         className="absolute right-1/2 top-[15px] h-[3px] w-full"
                         style={{ background: leftOn ? '#16a34a' : '#e2e8f0' }}
                       />
                     )}
-                    {i < STEP_TABS.length - 1 && (
+                    {i < tabs.length - 1 && (
                       <span
                         className="absolute left-1/2 top-[15px] h-[3px] w-full"
                         style={{ background: rightOn ? '#16a34a' : '#e2e8f0' }}
@@ -394,12 +593,12 @@ export function RequestDetailModal({
               {activeTab.key !== 'general' && (
                 <Pill meta={STATE_CHIP[activeState]} dot={activeState === 'current'} />
               )}
-              {/* แก้ไขข้อมูลใบได้จนกว่าปลายทางจะกดรับงาน — คนในแผนกผู้แจ้ง (รวม Mgr) เท่านั้น */}
+              {/* แก้ไขข้อมูลใบได้ก่อน Mgr อนุมัติเท่านั้น — คนในแผนกผู้แจ้ง (รวม Mgr) เอง */}
               {activeTab.key === 'general' && editable && !editing && (
                 <button
                   type="button"
                   onClick={() => setEditing(true)}
-                  title="แก้ไขข้อมูลใบ — ทำได้จนกว่าปลายทางจะกดรับงาน"
+                  title="แก้ไขข้อมูลใบ — ทำได้ก่อน Mgr อนุมัติเท่านั้น"
                   className="ml-auto inline-flex items-center gap-1.5 rounded-lg border border-accent/30 bg-accent/5 px-3 py-1.5 text-[12.5px] font-semibold text-accent transition hover:bg-accent/10"
                 >
                   <IconPencil size={14} />
@@ -412,14 +611,49 @@ export function RequestDetailModal({
               <GeneralPanel
                 item={item}
                 full={full}
+                plDoc={plDoc.doc}
+                plLines={plLines}
                 attachments={detail?.attachments ?? null}
                 approveLogs={logs.filter((l) => l.action === 'approve')}
                 editing={editing}
-                editPending={editPending}
-                editHint={onEdited && !editable ? editBlockedReason(full, user) : null}
+                editPending={editPending || attachBusy}
+                editHint={
+                  onEdited && !editable
+                    ? plDoc.doc?.editBlockedReason || editBlockedReason(full, user)
+                    : null
+                }
                 onEditCancel={() => setEditing(false)}
                 onEditSubmit={submitEdit}
-                onAttachmentsChanged={bumpRefresh}
+                canEditFields={canEditFields}
+                canAttachFiles={canAttachFiles}
+                attachBlockedReason={attachBlockedReason}
+                pendingAtt={pendingAtt}
+                attachBusy={attachBusy}
+                onStageAttachment={stageAtt}
+              />
+            ) : activeTab.key === 'plAttachment' ? (
+              <PlAttachmentPanel
+                doc={plDoc.doc}
+                loading={plDoc.loading}
+                plLines={plLines}
+                pending={checklistPending}
+                // ⚠️ ห้ามเอา canEdit มาปิดแท็บนี้ — canEdit เป็นสิทธิ์ "แก้หัวใบ" ของฝั่ง
+                // ผู้แจ้ง (ปิดทันทีที่ปลายทางรับงาน) ส่วนเช็คลิสต์เป็นงานของปลายทาง
+                // ที่เพิ่งเริ่มได้ตอนรับงานแล้ว — ใช้ canEditChecklist เท่านั้น
+                blockedReason={checklistBlockedReason}
+                onSave={onEdited && canEditChecklist ? submitChecklist : undefined}
+              />
+            ) : activeTab.key === 'plClose' ? (
+              <PlClosePanel state={activeState} resolution={r} closeLog={lastLogOf('close')} />
+            ) : activeTab.key === 'plService' ? (
+              <PlServicePanel
+                state={activeState}
+                actions={actions}
+                resolution={r}
+                serviceLog={lastLogOf('service')}
+                plLines={plLines}
+                pending={!!actionPending}
+                onSubmit={onStepSubmit ? submitStep : undefined}
               />
             ) : activeTab.key === 'service' ? (
               <ServicePanel
@@ -430,7 +664,7 @@ export function RequestDetailModal({
                 onSubmit={onStepSubmit ? submitStep : undefined}
                 serviceLog={lastLogOf('service')}
                 onNext={() => {
-                  const i = STEP_TABS.findIndex((t) => t.key === 'closeReceive');
+                  const i = tabs.findIndex((t) => t.key === 'closeReceive');
                   if (i !== -1) setSelected(i);
                 }}
               />
@@ -456,11 +690,11 @@ export function RequestDetailModal({
               <StepPanel tab={activeTab} state={activeState} log={activeLog} resolution={r} />
             )}
 
-            {/* ปุ่มอนุมัติ/ไม่อนุมัติ ในแท็บ General — ผ่านกล่องยืนยันเหมือน action อื่น
-                โผล่เมื่อ API ส่ง approve มาใน availableActions (เป็นคิวของ MGR ผู้อนุมัติ) */}
-            {activeTab.key === 'general' && !editing && onPickAction && approveActions.length > 0 && (
+            {/* ปุ่มในแท็บ General (อนุมัติ/ไม่อนุมัติ/ยกเลิก…) — ผ่านกล่องยืนยันเหมือน action อื่น
+                รับทุก action ที่ไม่มีแท็บอื่นแสดงให้ ไม่ว่าแผนกนั้นตั้งชื่อ code ว่าอะไร */}
+            {activeTab.key === 'general' && !editing && onPickAction && generalActions.length > 0 && (
               <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-gray-100 pt-4">
-                {approveActions.map((a) => (
+                {generalActions.map((a) => (
                   <button
                     key={a.code}
                     type="button"
@@ -1258,6 +1492,8 @@ function KpiPanel({
 function GeneralPanel({
   item,
   full,
+  plDoc,
+  plLines,
   attachments,
   approveLogs,
   editing,
@@ -1265,10 +1501,17 @@ function GeneralPanel({
   editHint,
   onEditCancel,
   onEditSubmit,
-  onAttachmentsChanged,
+  canEditFields,
+  canAttachFiles,
+  attachBlockedReason,
+  pendingAtt,
+  attachBusy,
+  onStageAttachment,
 }: {
   item: RequestListItem;
   full: RequestListItem;
+  plDoc: PlRequestDetail | null;
+  plLines: { lines: PlRequestLine[] | null; loading: boolean; error: string | null };
   attachments: RequestAttachment[] | null;
   approveLogs: RequestLog[];
   editing?: boolean;
@@ -1277,23 +1520,34 @@ function GeneralPanel({
   editHint?: string | null;
   onEditCancel?: () => void;
   onEditSubmit?: (form: RequestEditForm) => void | Promise<void>;
-  onAttachmentsChanged?: () => void;
+  // สองสิทธิ์นี้แยกกัน: ฟิลด์หัวใบ (canEdit) กับรูปแนบ (canAttach)
+  // ปลายทางที่รับงานแล้วเข้าฟอร์มมาได้โดยแก้ได้แค่รูป
+  canEditFields?: boolean;
+  canAttachFiles?: boolean;
+  attachBlockedReason?: string | null;
+  pendingAtt?: PendingAttachments;
+  attachBusy?: boolean;
+  onStageAttachment?: (slot: number, change: PendingAttachment | null) => void;
 }) {
   const imgs = attachments ?? [];
-  const { user } = useAuth();
   const isPl = full.module === 'PL';
-  // รายการย่อยของ PL ไม่ได้มากับ /Requests/PL/{docNo} ต้องดึงแยก (ใบโมดูลอื่นไม่ยิง)
-  const plLines = usePlRequestLines(isPl ? full.docNo : null, user?.token);
 
   if (editing && onEditSubmit) {
     return (
       <RequestEditPanel
         item={full}
+        lines={plLines.lines}
+        doc={plDoc}
         attachments={imgs}
         pending={!!editPending}
+        fieldsEditable={canEditFields !== false}
+        canAttachFiles={canAttachFiles !== false}
+        attachBlockedReason={attachBlockedReason}
+        pendingAtt={pendingAtt ?? {}}
+        attachBusy={!!attachBusy}
+        onStageAttachment={onStageAttachment}
         onCancel={() => onEditCancel?.()}
         onSubmit={onEditSubmit}
-        onAttachmentsChanged={onAttachmentsChanged}
       />
     );
   }
@@ -1346,7 +1600,8 @@ function GeneralPanel({
         </>
       )}
 
-      {/* รูปภาพ — เสิร์ฟผ่าน API ที่ต้องใช้ token จึงโหลดเป็น blob เอง (ดู AttachmentThumb) */}
+      {/* รูปภาพ — เสิร์ฟผ่าน API ที่ต้องใช้ token จึงโหลดเป็น blob เอง (ดู AttachmentThumb)
+          หน้าอ่านโชว์อย่างเดียว การเพิ่ม/ลบอยู่ในฟอร์มแก้ไขและมีผลตอนกดบันทึกเท่านั้น */}
       <div className="col-span-2">
         <span className="mb-1.5 block text-[11.5px] font-semibold text-gray-500">รูปภาพ</span>
         {imgs.length === 0 ? (
@@ -1357,6 +1612,9 @@ function GeneralPanel({
               <AttachmentThumb key={f.fileId} url={f.url} fileName={f.fileName} />
             ))}
           </div>
+        )}
+        {canAttachFiles === false && attachBlockedReason && (
+          <p className="mt-1.5 text-[11.5px] text-slate-400">{attachBlockedReason}</p>
         )}
       </div>
 
@@ -1398,10 +1656,14 @@ function PlLinesTable({
   lines,
   loading,
   error,
+  showReceived,
 }: {
   lines: PlRequestLine[] | null;
   loading: boolean;
   error: string | null;
+  // "รับจำนวน" มีความหมายหลังปลายทางเริ่มจ่ายของแล้ว — ตอนขอยังเป็น 0 ทุกแถว
+  // จึงโชว์เฉพาะแท็บ Attachment / Service ไม่ใช่หน้า General
+  showReceived?: boolean;
 }) {
   if (loading)
     return (
@@ -1430,6 +1692,7 @@ function PlLinesTable({
             <th className="w-10 px-2 py-2 text-center">#</th>
             <th className="px-2 py-2 text-left">รายการ</th>
             <th className="w-20 px-2 py-2 text-center">จำนวน</th>
+            {showReceived && <th className="w-20 px-2 py-2 text-center">รับจำนวน</th>}
             <th className="w-24 px-2 py-2 text-center">หน่วย</th>
             <th className="px-2 py-2 text-left">หมายเหตุ</th>
           </tr>
@@ -1446,12 +1709,377 @@ function PlLinesTable({
               <td className="mono px-2 py-2 text-center text-slate-400">{i + 1}</td>
               <td className="px-2 py-2">{li.item}</td>
               <td className="mono px-2 py-2 text-center">{li.qty}</td>
+              {showReceived && (
+                <td className="mono px-2 py-2 text-center">
+                  {/* รับครบแล้วเน้นเขียว ยังไม่ครบเป็นสีส้ม — เห็นได้ทันทีว่าค้างแถวไหน */}
+                  <span className={li.received >= li.qty ? 'font-semibold text-emerald-700' : 'text-amber-700'}>
+                    {li.received}
+                  </span>
+                </td>
+              )}
               <td className="px-2 py-2 text-center">{li.unit || '—'}</td>
               <td className="px-2 py-2">{li.remark || '—'}</td>
             </tr>
           ))}
         </tbody>
       </table>
+    </div>
+  );
+}
+
+type PlLinesState = { lines: PlRequestLine[] | null; loading: boolean; error: string | null };
+
+// ── แท็บ Attachment ของใบ PL (อ่านอย่างเดียว) ───────────────────
+// เช็คลิสต์ "ส่งแนบมาด้วย" + เลขที่เอกสารแนบ + รายการที่ขอ ตามฟอร์ม WinForms
+// ⚠️ คนละเรื่องกับรูปแนบ (ImgPath1-3) ที่อยู่ในแท็บ General
+function PlAttachmentPanel({
+  doc,
+  loading,
+  plLines,
+  pending,
+  blockedReason,
+  onSave,
+}: {
+  doc: PlRequestDetail | null;
+  loading: boolean;
+  plLines: PlLinesState;
+  pending: boolean;
+  blockedReason?: string | null; // เหตุผลไทยจาก API เมื่อบันทึกไม่ได้
+  // ไม่ส่งมา = เปิดดูอย่างเดียว (ไม่มีสิทธิ์บันทึก)
+  onSave?: (
+    attach: Record<PlAttachKey, boolean>,
+    attachDocs: Record<PlAttachDocKey, string>
+  ) => void | Promise<void>;
+}) {
+  const [attach, setAttach] = useState<Record<PlAttachKey, boolean>>(emptyAttach);
+  const [attachDocs, setAttachDocs] = useState<Record<PlAttachDocKey, string>>(emptyAttachDocs);
+  const [docErrors, setDocErrors] = useState<Partial<Record<PlAttachDocKey, string>>>({});
+
+  // เติมค่าจากใบเมื่อโหลดเสร็จ / โหลดใหม่หลังบันทึก — doc เปลี่ยน reference เฉพาะตอน
+  // fetch ใหม่ ระหว่างที่ผู้ใช้ติ๊กค้างไว้จึงไม่โดนล้าง
+  useEffect(() => {
+    if (!doc) return;
+    setAttach(
+      PL_ATTACH_CHECKS.reduce(
+        (acc, c) => ({ ...acc, [c.key]: !!doc[c.key] }),
+        {} as Record<PlAttachKey, boolean>
+      )
+    );
+    setAttachDocs({
+      budgetDocNo: doc.budgetDocNo ?? '',
+      exBudgetDocNo: doc.exBudgetDocNo ?? '',
+      attachOtherDetail: doc.attachOtherDetail ?? '',
+    });
+    setDocErrors({});
+  }, [doc]);
+
+  if (loading)
+    return (
+      <span className="flex items-center gap-1.5 text-[13px] text-slate-400">
+        <IconLoader2 size={14} className="animate-spin" />
+        กำลังโหลด…
+      </span>
+    );
+
+  if (!doc)
+    return (
+      <p className="flex items-center gap-1.5 text-[12.5px] font-semibold text-amber-700">
+        <IconAlertTriangle size={14} className="shrink-0" />
+        โหลดข้อมูลเอกสารแนบของใบนี้ไม่สำเร็จ
+      </p>
+    );
+
+  const editable = !!onSave;
+
+  return (
+    <div className="flex flex-col gap-4">
+      <div>
+        <span className="mb-1.5 block text-[11.5px] font-semibold text-gray-500">ส่งแนบมาด้วย</span>
+        <div className="flex flex-col gap-1.5 rounded-xl border border-gray-200 bg-white p-3">
+          {PL_ATTACH_CHECKS.map((c) => {
+            const docKey = c.docKey;
+            // ช่องข้อความโผล่เฉพาะหัวข้อที่ติ๊ก และเมื่อโผล่แล้วต้องกรอก
+            const showDoc = !!docKey && attach[c.key];
+            const err = docKey ? docErrors[docKey] : undefined;
+            return (
+              <div key={c.key} className="flex flex-col gap-1">
+                <div className="flex flex-wrap items-center gap-2">
+                  <label
+                    className={`flex min-w-[230px] items-center gap-2 text-[12.5px] text-gray-800 ${
+                      editable ? 'cursor-pointer' : ''
+                    }`}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={attach[c.key]}
+                      disabled={!editable || pending}
+                      onChange={(e) => {
+                        setAttach((a) => ({ ...a, [c.key]: e.target.checked }));
+                        // ปลดติ๊ก = ช่องหาย error ของช่องนั้นต้องหายตาม
+                        if (docKey) setDocErrors((x) => ({ ...x, [docKey]: undefined }));
+                      }}
+                      className="h-4 w-4 accent-accent disabled:cursor-not-allowed"
+                    />
+                    {c.label}
+                  </label>
+                  {showDoc && docKey && (
+                    <>
+                      <input
+                        type="text"
+                        value={attachDocs[docKey]}
+                        maxLength={c.docMax ?? PL_CHECKLIST_MAX[docKey]}
+                        disabled={!editable || pending}
+                        placeholder={c.docLabel}
+                        onChange={(e) => {
+                          const v = e.target.value;
+                          setAttachDocs((d) => ({ ...d, [docKey]: v }));
+                          setDocErrors((x) => ({ ...x, [docKey]: undefined }));
+                        }}
+                        className={`${LINE_INPUT_CLS} max-w-[260px] flex-1 ${
+                          err ? 'border-red-300' : ''
+                        }`}
+                      />
+                      <span className="text-[11.5px] font-bold text-red-500">*</span>
+                    </>
+                  )}
+                </div>
+                {showDoc && err && (
+                  <p className="pl-6 text-[11.5px] font-semibold text-red-600">{err}</p>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {!editable && (
+        <p className="flex items-center gap-1.5 text-[12px] text-slate-500">
+          <IconAlertTriangle size={13} className="shrink-0 text-slate-400" />
+          {blockedReason || 'ตอนนี้บันทึกเอกสารแนบไม่ได้'}
+        </p>
+      )}
+
+      {editable && (
+        <div className="flex flex-wrap items-center gap-2 border-t border-gray-100 pt-4">
+          <button
+            type="button"
+            disabled={pending}
+            onClick={() => {
+              const errs = validatePlChecklist(attach, attachDocs);
+              setDocErrors(errs);
+              if (Object.keys(errs).length > 0) return;
+              onSave?.(attach, attachDocs);
+            }}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-accent bg-accent px-4 py-2 text-[13px] font-semibold text-white transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {pending ? <IconLoader2 size={15} className="animate-spin" /> : <IconDeviceFloppy size={15} />}
+            บันทึกข้อมูล
+          </button>
+          <span className="text-[11.5px] text-slate-400">บันทึกได้เรื่อย ๆ ไม่เลื่อนขั้นงาน</span>
+        </div>
+      )}
+
+      <div>
+        <span className="mb-1.5 block text-[11.5px] font-semibold text-gray-500">รายการที่ขอ</span>
+        <PlLinesTable {...plLines} showReceived />
+      </div>
+    </div>
+  );
+}
+
+const emptyAttach = (): Record<PlAttachKey, boolean> =>
+  PL_ATTACH_CHECKS.reduce((acc, c) => ({ ...acc, [c.key]: false }), {} as Record<PlAttachKey, boolean>);
+
+const emptyAttachDocs = (): Record<PlAttachDocKey, string> => ({
+  budgetDocNo: '',
+  exBudgetDocNo: '',
+  attachOtherDetail: '',
+});
+
+// ── แท็บ Service ของใบ PL (อ่านอย่างเดียว) ──────────────────────
+// ปุ่มของขั้นนี้ไม่ได้อยู่ในแผง — มาจาก availableActions ที่ API ส่งมา
+// แล้วบล็อกปุ่มมาตรฐานด้านล่างเป็นคนแสดงให้ (ดูกติกา "ปุ่มคือ data ไม่ใช่ code")
+function PlServicePanel({
+  state,
+  actions,
+  resolution,
+  serviceLog,
+  plLines,
+  pending,
+  onSubmit,
+}: {
+  state: StepState;
+  actions: RequestAction[];
+  resolution: RequestResolution | null | undefined;
+  serviceLog: RequestLog | null;
+  plLines: PlLinesState;
+  pending: boolean;
+  onSubmit?: (action: RequestAction, fields: ActionFieldValues) => void | Promise<void>;
+}) {
+  const by = resolution?.servicedBy || serviceLog?.actionByName;
+  const when = resolution?.servicedDate || serviceLog?.actionDate;
+
+  // ปุ่ม 2 ปุ่มมาจาก availableActions ที่ API ส่งมาในขั้นนี้:
+  //   saveService (บันทึกอย่างเดียว กดกี่ครั้งก็ได้) / service (บันทึก + เลื่อน step)
+  // ไม่มีปุ่ม = ไม่ใช่คิวเรา/ไม่มีสิทธิ์ → แผงกลายเป็นอ่านอย่างเดียวเอง
+  const svc = actions.filter((a) => a.code === 'saveService' || a.code === 'service');
+  const editable = svc.length > 0 && !!onSubmit;
+
+  const [solve, setSolve] = useState('');
+  const [repairDetail, setRepairDetail] = useState('');
+  const [touched, setTouched] = useState(false);
+
+  // เติมฟอร์มจากค่าที่บันทึกไว้ — resolution เปลี่ยน reference เฉพาะตอนโหลดใบใหม่
+  // (เปิดใบ / หลังเซฟ) ระหว่างพิมพ์จึงไม่โดนล้าง · ตั้งเฉพาะช่องที่ API คืนค่ามา
+  useEffect(() => {
+    if (!resolution) return;
+    if (resolution.solution) setSolve(resolution.solution);
+    if (resolution.resolutionDetail) setRepairDetail(resolution.resolutionDetail);
+  }, [resolution]);
+
+  // solve บังคับทั้งตอน saveService และ service (API ระบุว่าเป็นฟิลด์บังคับของ service)
+  const solveMissing = solve.trim() === '';
+  const submit = (a: RequestAction) => {
+    setTouched(true);
+    if (a.code === 'service' && solveMissing) return;
+    // ไม่ส่ง repairStatus / exPrNo แล้ว (เอาช่องออกจากจอ) — ฟิลด์ที่ไม่ส่ง
+    // backend ถือว่า "ไม่เปลี่ยน" ค่าเดิมในใบเก่าจึงไม่ถูกล้างทิ้ง
+    onSubmit?.(a, cleanFieldValues({ solve, repairDetail }) ?? {});
+  };
+
+  return (
+    <div className="flex flex-col gap-4">
+      {state === 'upcoming' ? (
+        <p className="text-[12.5px] text-slate-400">— ยังไม่ถึงขั้นดำเนินการ</p>
+      ) : editable ? (
+        <>
+          {/* ชื่อฟิลด์ตามสเปก PL: solve = ผลการดำเนินงาน
+              · repairDetail = รายละเอียดการดำเนินงาน (ชื่อกลางร่วมกับโมดูลอื่น)
+              ช่อง "การดำเนินการ" (repairStatus) กับ "เลขที่ใบ PR อ้างอิง" (exPrNo)
+              ถูกเอาออกจากจอตามที่ผู้ใช้สั่ง 27 ส.ค. 2026 — ฟิลด์ยังมีใน API อยู่ */}
+          <div className="grid grid-cols-2 gap-x-5 gap-y-4">
+            <div>
+              <label className={SVC_LABEL}>รายละเอียดการดำเนินงาน</label>
+              <textarea
+                rows={4}
+                value={repairDetail}
+                disabled={pending}
+                onChange={(e) => setRepairDetail(e.target.value)}
+                className={`${SVC_INPUT} resize-y leading-relaxed`}
+              />
+            </div>
+            <div>
+              <label className={SVC_LABEL}>
+                ผลการดำเนินงาน<span className="text-rose-600"> *</span>
+              </label>
+              <textarea
+                rows={4}
+                value={solve}
+                disabled={pending}
+                onChange={(e) => setSolve(e.target.value)}
+                className={`${SVC_INPUT} resize-y leading-relaxed ${
+                  touched && solveMissing ? 'border-rose-300 bg-rose-50/40' : ''
+                }`}
+              />
+            </div>
+          </div>
+
+          {touched && solveMissing && (
+            <p className="text-[11.5px] font-semibold text-rose-600">
+              ต้องกรอก “ผลการดำเนินงาน” ก่อนกดดำเนินการ
+            </p>
+          )}
+
+          <div className="flex flex-wrap items-center gap-2 border-t border-gray-100 pt-4">
+            {svc.map((a) => (
+              <button
+                key={a.code}
+                type="button"
+                disabled={pending}
+                onClick={() => submit(a)}
+                className={`rounded-lg border px-4 py-2 text-[13px] font-semibold transition disabled:cursor-not-allowed disabled:opacity-50 ${actionBtnClass(
+                  a.style
+                )}`}
+              >
+                {a.label}
+              </button>
+            ))}
+            <span className="text-[11.5px] text-slate-400">
+              “บันทึกข้อมูล” เก็บค่าไว้เฉย ๆ · “ดำเนินการ” บันทึกแล้วเลื่อนขั้นงาน
+            </span>
+          </div>
+        </>
+      ) : (
+        <div className="grid grid-cols-2 gap-x-5 gap-y-3">
+          <div>
+            <span className="mb-1 block text-[11.5px] font-semibold text-gray-500">รายละเอียดการดำเนินงาน</span>
+            <div className="min-h-[76px] rounded-lg border border-gray-200 bg-slate-50 px-3.5 py-3 text-[13px] leading-relaxed text-gray-800">
+              <span className="whitespace-pre-wrap">{resolution?.resolutionDetail || '— (ยังไม่ได้บันทึก)'}</span>
+            </div>
+          </div>
+          <div>
+            <span className="mb-1 block text-[11.5px] font-semibold text-gray-500">ผลการดำเนินงาน</span>
+            <div className="min-h-[76px] rounded-lg border border-gray-200 bg-slate-50 px-3.5 py-3 text-[13px] leading-relaxed text-gray-800">
+              <span className="whitespace-pre-wrap">{resolution?.solution || '— (ยังไม่ได้บันทึก)'}</span>
+            </div>
+          </div>
+          <DetailRow label="ผู้ดำเนินการ">{by || '—'}</DetailRow>
+          <DetailRow label="วันที่ดำเนินการ">{when ? fmtDateTime(when) : '—'}</DetailRow>
+        </div>
+      )}
+
+      <div>
+        <span className="mb-1.5 block text-[11.5px] font-semibold text-gray-500">รายการที่ขอ</span>
+        <PlLinesTable {...plLines} showReceived />
+      </div>
+    </div>
+  );
+}
+
+// ── แท็บปิดงานของใบ PL (ขั้นสุดท้าย — แผนกผู้แจ้งเป็นคนกด) ────────
+// ⚠️ ใช้ jobClosedBy/jobClosedDate (action `close`) ไม่ใช่ closedBy/closedDate
+//    ซึ่งเป็นของขั้น "ปิดงานรับเรื่อง" ของ IT — คนละขั้น คนละคนกด
+function PlClosePanel({
+  state,
+  resolution,
+  closeLog,
+}: {
+  state: StepState;
+  resolution: RequestResolution | null | undefined;
+  closeLog: RequestLog | null;
+}) {
+  const by = resolution?.jobClosedBy || closeLog?.actionByName;
+  const when = resolution?.jobClosedDate || closeLog?.actionDate;
+
+  if (state === 'upcoming')
+    return (
+      <p className="text-[12.5px] text-slate-400">
+        — ยังไม่ถึงขั้นปิดงาน (รอแผนก PL ดำเนินการให้เสร็จก่อน)
+      </p>
+    );
+
+  return (
+    <div className="flex flex-col gap-4">
+      {state === 'current' && (
+        <p className="flex items-center gap-1.5 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-[12.5px] font-semibold text-amber-800">
+          <IconBell size={14} className="shrink-0" />
+          งานเสร็จแล้ว รอ "แผนกผู้แจ้ง" เป็นคนกดปิดใบนี้
+        </p>
+      )}
+
+      <div className="grid grid-cols-2 gap-x-5 gap-y-3">
+        <DetailRow label="ผู้ปิดงาน">{by || '—'}</DetailRow>
+        <DetailRow label="วันที่ปิดงาน">{when ? fmtDateTime(when) : '—'}</DetailRow>
+      </div>
+
+      {closeLog?.note && (
+        <div>
+          <span className="mb-1 block text-[11.5px] font-semibold text-gray-500">หมายเหตุปิดงาน</span>
+          <div className="rounded-lg border border-gray-200 bg-slate-50 px-3.5 py-3 text-[13px] leading-relaxed text-gray-800">
+            <span className="whitespace-pre-wrap">{closeLog.note}</span>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -1491,31 +2119,60 @@ function AttachmentThumb({ url, fileName }: { url: string | null; fileName: stri
 // แก้ไม่ได้โดยตั้งใจ (เป็นตัวตนของใบ) จึงโชว์เป็นข้อความอ่านอย่างเดียวไว้ด้านบน
 function RequestEditPanel({
   item,
+  lines,
+  doc,
   attachments,
   pending,
+  fieldsEditable,
+  canAttachFiles,
+  attachBlockedReason,
+  pendingAtt,
+  attachBusy,
+  onStageAttachment,
   onCancel,
   onSubmit,
-  onAttachmentsChanged,
 }: {
   item: RequestListItem;
+  lines: PlRequestLine[] | null;
+  doc: PlRequestDetail | null;
   attachments: RequestAttachment[];
   pending: boolean;
+  // แก้ฟิลด์หัวใบ/รายการที่ขอได้ไหม — ปลายทางที่รับงานแล้วเข้ามาได้แต่แก้ได้แค่รูป
+  fieldsEditable: boolean;
+  canAttachFiles: boolean;
+  attachBlockedReason?: string | null;
+  pendingAtt: PendingAttachments;
+  attachBusy: boolean;
+  onStageAttachment?: (slot: number, change: PendingAttachment | null) => void;
   onCancel: () => void;
   onSubmit: (form: RequestEditForm) => void | Promise<void>;
-  onAttachmentsChanged?: () => void;
 }) {
-  const [form, setForm] = useState<RequestEditForm>(() => toEditForm(item));
+  const isPl = item.module === 'PL';
+  const fields = editFieldsOf(item.module);
+  const [form, setForm] = useState<RequestEditForm>(() => toEditForm(item, lines));
   const [errors, setErrors] = useState<ReturnType<typeof validateEditForm>>({});
+  // ล็อกช่องกรอกทั้งหมดเมื่อเข้ามาเพื่อจัดการรูปอย่างเดียว (canEdit ปิดไปแล้ว)
+  const lock = pending || !fieldsEditable;
 
-  const set = (k: keyof RequestEditForm, v: string) => {
+  const set = (k: EditFieldKey, v: string) => {
     setForm((f) => ({ ...f, [k]: v }));
     setErrors((e) => ({ ...e, [k]: undefined }));
   };
 
+  const setLines = (next: EditLine[]) => {
+    setForm((f) => ({ ...f, lines: next }));
+    setErrors((e) => ({ ...e, lines: undefined }));
+  };
+  const setLine = (i: number, patch: Partial<EditLine>) =>
+    setLines(form.lines.map((l, n) => (n === i ? { ...l, ...patch } : l)));
+
   const submit = () => {
-    const errs = validateEditForm(form);
-    setErrors(errs);
-    if (Object.keys(errs).length > 0) return;
+    // ฟิลด์ถูกล็อกอยู่ = ไม่มีอะไรให้ตรวจ (บันทึกรอบนี้เป็นเรื่องรูปแนบล้วน)
+    if (fieldsEditable) {
+      const errs = validateEditForm(item.module, form);
+      setErrors(errs);
+      if (Object.keys(errs).length > 0) return;
+    }
     onSubmit(form);
   };
 
@@ -1529,7 +2186,7 @@ function RequestEditPanel({
       </div>
 
       <div className="grid grid-cols-2 gap-x-5 gap-y-4">
-        {EDIT_FIELDS.map((f) => {
+        {fields.map((f) => {
           const value = form[f.key] ?? '';
           const err = errors[f.key];
           const cls = `w-full rounded-lg border bg-white px-3 py-2 text-[13px] text-gray-800 outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/20 disabled:bg-slate-50 ${
@@ -1550,18 +2207,46 @@ function RequestEditPanel({
                 <textarea
                   value={value}
                   maxLength={f.maxLen}
-                  disabled={pending}
+                  disabled={lock}
                   rows={5}
                   placeholder={f.placeholder}
                   onChange={(e) => set(f.key, e.target.value)}
                   className={`${cls} resize-y leading-relaxed`}
+                />
+              ) : f.kind === 'select' ? (
+                <select
+                  value={value}
+                  disabled={lock}
+                  onChange={(e) => set(f.key, e.target.value)}
+                  className={cls}
+                >
+                  {/* ค่าเดิมในใบอาจเป็นชื่อที่ถูกถอดออกจาก master ไปแล้ว —
+                      ใส่เป็นตัวเลือกไว้ด้วย ไม่งั้น select เด้งว่างแล้วผู้ใช้
+                      เผลอบันทึกทับของเดิมโดยไม่ตั้งใจ */}
+                  <option value="">— เลือก —</option>
+                  {value && !(f.options ?? []).some((o) => o.value === value) && (
+                    <option value={value}>{value}</option>
+                  )}
+                  {(f.options ?? []).map((o) => (
+                    <option key={o.value} value={o.value}>
+                      {o.label}
+                    </option>
+                  ))}
+                </select>
+              ) : f.kind === 'date' ? (
+                <input
+                  type="date"
+                  value={value}
+                  disabled={lock}
+                  onChange={(e) => set(f.key, e.target.value)}
+                  className={cls}
                 />
               ) : (
                 <input
                   type="text"
                   value={value}
                   maxLength={f.maxLen}
-                  disabled={pending}
+                  disabled={lock}
                   placeholder={f.placeholder}
                   onChange={(e) => set(f.key, e.target.value)}
                   className={cls}
@@ -1573,14 +2258,122 @@ function RequestEditPanel({
         })}
       </div>
 
+      {/* รายการที่ขอ (เฉพาะ PL) — ส่งขึ้น API พร้อมกับปุ่มบันทึก ไม่ใช่ทีละแถว
+          แถวเดิมหิ้ว recNo ไว้ใน state ไม่ได้โชว์ให้ผู้ใช้เห็น */}
+      {isPl && (
+        <div>
+          <div className="mb-1.5 flex items-baseline gap-1.5">
+            <span className="text-[11.5px] font-semibold text-gray-500">รายการที่ขอ</span>
+            <span className="text-[10.5px] text-slate-400">(ไม่บังคับ — ลบแถวออก = ลบรายการนั้นทิ้ง)</span>
+          </div>
+          <div className="overflow-hidden rounded-xl border border-gray-200">
+            <table className="w-full border-collapse">
+              <thead>
+                <tr className="bg-[#0b1220] text-[11.5px] font-semibold text-slate-300">
+                  <th className="w-9 px-2 py-2 text-center">#</th>
+                  <th className="px-2 py-2 text-left">รายการ</th>
+                  <th className="w-20 px-2 py-2 text-center">จำนวน</th>
+                  <th className="w-24 px-2 py-2 text-center">หน่วย</th>
+                  <th className="px-2 py-2 text-left">หมายเหตุ</th>
+                  <th className="w-10 px-2 py-2" />
+                </tr>
+              </thead>
+              <tbody>
+                {form.lines.length === 0 && (
+                  <tr>
+                    <td colSpan={6} className="px-3 py-3 text-center text-[12.5px] text-slate-400">
+                      ยังไม่มีรายการ — กด "เพิ่มรายการ" ด้านล่าง
+                    </td>
+                  </tr>
+                )}
+                {form.lines.map((l, i) => (
+                  <tr key={l.recNo ?? `new-${i}`} className="border-t border-gray-100">
+                    <td className="mono px-2 py-1.5 text-center text-[12px] text-slate-400">{i + 1}</td>
+                    <td className="px-1.5 py-1.5">
+                      <input
+                        type="text"
+                        value={l.item}
+                        maxLength={2000}
+                        disabled={lock}
+                        placeholder="ชื่อรายการที่ต้องการ"
+                        onChange={(e) => setLine(i, { item: e.target.value })}
+                        className={LINE_INPUT_CLS}
+                      />
+                    </td>
+                    <td className="px-1.5 py-1.5">
+                      <input
+                        type="number"
+                        min={1}
+                        value={l.qty}
+                        disabled={lock}
+                        onChange={(e) => setLine(i, { qty: e.target.value })}
+                        className={`${LINE_INPUT_CLS} mono text-center`}
+                      />
+                    </td>
+                    <td className="px-1.5 py-1.5">
+                      <input
+                        type="text"
+                        value={l.unit}
+                        maxLength={50}
+                        disabled={lock}
+                        placeholder="หน่วย"
+                        onChange={(e) => setLine(i, { unit: e.target.value })}
+                        className={`${LINE_INPUT_CLS} text-center`}
+                      />
+                    </td>
+                    <td className="px-1.5 py-1.5">
+                      <input
+                        type="text"
+                        value={l.remark}
+                        maxLength={1000}
+                        disabled={lock}
+                        onChange={(e) => setLine(i, { remark: e.target.value })}
+                        className={LINE_INPUT_CLS}
+                      />
+                    </td>
+                    <td className="px-1.5 py-1.5 text-center">
+                      <button
+                        type="button"
+                        disabled={lock}
+                        title="ลบรายการนี้"
+                        onClick={() => setLines(form.lines.filter((_, n) => n !== i))}
+                        className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-gray-200 bg-white text-slate-500 transition hover:border-red-200 hover:bg-red-50 hover:text-red-600 disabled:opacity-40"
+                      >
+                        <IconTrash size={14} />
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          {errors.lines && <p className="mt-1 text-[11.5px] font-semibold text-red-600">{errors.lines}</p>}
+          <button
+            type="button"
+            disabled={lock}
+            onClick={() => setLines([...form.lines, emptyEditLine()])}
+            className="mt-2 inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-[12.5px] font-semibold text-slate-600 transition hover:bg-slate-50 disabled:opacity-40"
+          >
+            <IconPlus size={14} />
+            เพิ่มรายการ
+          </button>
+        </div>
+      )}
+
       <AttachmentSlots
-        jobNo={item.docNo}
+        module={item.module}
         attachments={attachments}
-        onChanged={onAttachmentsChanged}
+        pending={pendingAtt}
+        onStage={(slot, change) => onStageAttachment?.(slot, change)}
+        readOnly={!canAttachFiles}
+        blockedReason={attachBlockedReason}
+        busy={attachBusy}
       />
 
       <p className="text-[11.5px] text-slate-400">
-        แก้ไขได้จนกว่าแผนก IT จะกดรับงาน — หลังจากนั้นต้องแจ้งกับผู้รับเรื่องโดยตรง
+        {fieldsEditable
+          ? 'แก้ไขได้ก่อน Mgr อนุมัติเท่านั้น — อนุมัติแล้วต้องแจ้งกับผู้รับเรื่องโดยตรง'
+          : 'ตอนนี้แก้ได้เฉพาะรูปแนบ — ข้อมูลใบถูกล็อกแล้ว ต้องแจ้งกับผู้รับเรื่องโดยตรง'}
       </p>
 
       <div className="flex items-center gap-2 border-t border-gray-100 pt-4">
@@ -1606,59 +2399,86 @@ function RequestEditPanel({
   );
 }
 
+// input ในตารางรายการที่ขอ — เตี้ยกว่าฟิลด์ปกติเพื่อให้แถวไม่สูงเกินไป
+const LINE_INPUT_CLS =
+  'w-full rounded-md border border-gray-200 bg-white px-2 py-1 text-[12.5px] text-gray-800 outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/20 disabled:bg-slate-50';
+
 // ── รูปแนบ 3 ช่อง (ImgPath1/2/3) ────────────────────────────────
 // เป็น "ช่อง" ไม่ใช่ลิสต์ — เลือกไฟล์ทับช่องเดิม = เขียนทับ ไม่ใช่เพิ่มรูปที่ 4
-// อัปโหลด/ลบมีผลทันที (คนละ endpoint กับการแก้ข้อความ) จึงไม่รอปุ่มบันทึก
-// → ปุ่มลบต้องถามยืนยันก่อน เพราะกดแล้วไฟล์หายจริงทันที
+//
+// ⚠️ แผงนี้ไม่ยิง API เอง: การเลือกไฟล์/สั่งลบเป็นแค่การ "พักไว้" (PendingAttachments)
+// แล้วรอปุ่มบันทึกของฟอร์มยิงทีเดียวพร้อมฟิลด์อื่น (ผู้ใช้สั่งไว้ 27 ส.ค. 2026 —
+// เพิ่ม/ลบรูปต้องมีผลตอนกดบันทึกเท่านั้น) ก่อนกดบันทึกจึงย้อนคืนได้ทุกช่อง
+// และไม่ต้องมีกล่องยืนยันตอนลบเหมือนเดิมที่ยิงจริงทันที
 function AttachmentSlots({
-  jobNo,
+  module,
   attachments,
-  onChanged,
+  pending,
+  onStage,
+  readOnly,
+  blockedReason,
+  busy,
 }: {
-  jobNo: string;
+  module: string;
   attachments: RequestAttachment[];
-  onChanged?: () => void;
+  // ช่องที่ยังไม่ได้ยิง — ช่องที่ไม่มีคีย์ = ไม่ถูกแตะ
+  pending: PendingAttachments;
+  onStage: (slot: number, change: PendingAttachment | null) => void;
+  // สิทธิ์แนบ/ลบมาจาก canAttach ของใบ (คนละตัวกับ canEdit) — true = ดูอย่างเดียว
+  readOnly?: boolean;
+  blockedReason?: string | null; // เหตุผลไทยจาก API พร้อมโชว์ใต้ช่อง
+  busy?: boolean; // กำลังยิงชุดที่ค้างอยู่ (กดบันทึกไปแล้ว)
 }) {
-  const { user } = useAuth();
-  const { slotOf, upload, remove, busySlot, error, clearError } = useItAttachments(
-    jobNo,
-    attachments,
-    user?.token,
-    onChanged
-  );
-  const [confirmSlot, setConfirmSlot] = useState<number | null>(null);
+  const api = attachmentApiOf(module);
+  const [error, setError] = useState<string | null>(null);
+
+  const fileOf = (slot: number) => attachments.find((f) => Number(f.fileId) === slot && f.url);
+
+  const pick = (slot: number, file: File) => {
+    // กรองที่หน้าเว็บก่อน ไม่ให้ผู้ใช้กดบันทึกแล้วค่อยรู้ว่าไฟล์ใช้ไม่ได้
+    // (backend ตรวจ magic bytes ซ้ำอยู่ดี — เปลี่ยนนามสกุลมาหลอกไม่ผ่าน)
+    const bad = api.check(file);
+    if (bad) {
+      setError(bad);
+      return;
+    }
+    setError(null);
+    onStage(slot, { kind: 'upload', file, previewUrl: URL.createObjectURL(file) });
+  };
+
+  const staged = Object.keys(pending).length;
 
   return (
     <div>
       <div className="mb-1.5 flex items-baseline gap-1.5">
         <span className="text-[11.5px] font-semibold text-gray-500">รูปภาพประกอบ</span>
         <span className="text-[10.5px] text-slate-400">
-          (3 ช่อง — เลือกไฟล์ทับช่องเดิมได้ มีผลทันที ไม่ต้องกดบันทึก)
+          {readOnly ? '(3 ช่อง — ดูได้อย่างเดียว)' : '(3 ช่อง — เลือกไฟล์ทับช่องเดิมได้)'}
         </span>
+        {staged > 0 && (
+          <span className="ml-auto rounded-md bg-amber-50 px-1.5 py-0.5 text-[10.5px] font-semibold text-amber-700">
+            รอบันทึก {staged} ช่อง
+          </span>
+        )}
       </div>
 
       <div className="grid grid-cols-3 gap-2.5">
-        {IT_ATTACHMENT_SLOTS.map((slot) => (
+        {api.slots.map((slot) => (
           <AttachmentSlot
             key={slot}
             slot={slot}
-            file={slotOf(slot)}
-            busy={busySlot === slot}
-            disabled={busySlot !== null}
-            confirming={confirmSlot === slot}
-            onPick={(f) => {
-              clearError();
-              setConfirmSlot(null);
-              upload(slot, f);
+            file={fileOf(slot)}
+            change={pending[slot]}
+            readOnly={!!readOnly}
+            busy={!!busy}
+            onPick={(f) => pick(slot, f)}
+            onStageDelete={() => {
+              setError(null);
+              onStage(slot, { kind: 'delete' });
             }}
-            onAskRemove={() => {
-              clearError();
-              setConfirmSlot(slot);
-            }}
-            onCancelRemove={() => setConfirmSlot(null)}
-            onRemove={async () => {
-              setConfirmSlot(null);
-              await remove(slot);
+            onUndo={() => {
+              setError(null);
+              onStage(slot, null);
             }}
           />
         ))}
@@ -1671,7 +2491,9 @@ function AttachmentSlots({
         </p>
       )}
       <p className="mt-1.5 text-[11px] text-slate-400">
-        รองรับ {IT_ATTACH_EXTENSIONS.join(' ')} · ไม่เกิน 10 MB ต่อรูป
+        {readOnly
+          ? blockedReason || 'ตอนนี้แนบหรือลบรูปไม่ได้'
+          : `รองรับ ${api.extensions.join(' ')} · ไม่เกิน 10 MB ต่อรูป · มีผลเมื่อกดบันทึก`}
       </p>
     </div>
   );
@@ -1680,99 +2502,103 @@ function AttachmentSlots({
 function AttachmentSlot({
   slot,
   file,
+  change,
+  readOnly,
   busy,
-  disabled,
-  confirming,
   onPick,
-  onAskRemove,
-  onCancelRemove,
-  onRemove,
+  onStageDelete,
+  onUndo,
 }: {
   slot: number;
-  file?: ItAttachment;
+  file?: RequestAttachment;
+  change?: PendingAttachment;
+  readOnly: boolean;
   busy: boolean;
-  disabled: boolean;
-  confirming: boolean;
   onPick: (file: File) => void;
-  onAskRemove: () => void;
-  onCancelRemove: () => void;
-  onRemove: () => void;
+  onStageDelete: () => void;
+  onUndo: () => void;
 }) {
   const { user } = useAuth();
   const src = useAuthedImage(file?.url ?? null, user?.token);
   const inputRef = useRef<HTMLInputElement>(null);
 
+  const willDelete = change?.kind === 'delete';
+  const preview = change?.kind === 'upload' ? change.previewUrl : null;
+  // ช่องที่สั่งลบไว้ยังโชว์รูปเดิม (หรี่ลง) ให้เห็นว่ากำลังจะลบอะไร
+  const shown = preview ?? (file ? src : null);
+  const hasSomething = !!preview || !!file;
+
   return (
     <div className="relative aspect-square overflow-hidden rounded-xl border border-gray-200 bg-slate-50">
-      {file ? (
-        src ? (
-          <img src={src} alt={file.fileName} className="h-full w-full object-cover" />
+      {hasSomething ? (
+        shown ? (
+          <img
+            src={shown}
+            alt={file?.fileName ?? `ช่องที่ ${slot}`}
+            className={`h-full w-full object-cover ${willDelete ? 'opacity-30 grayscale' : ''}`}
+          />
         ) : (
           <div className="flex h-full w-full flex-col items-center justify-center gap-1 px-1.5 text-center">
             <IconLoader2 size={16} className="animate-spin text-slate-400" />
-            <span className="line-clamp-2 break-all text-[10px] text-slate-500">{file.fileName}</span>
+            <span className="line-clamp-2 break-all text-[10px] text-slate-500">{file?.fileName}</span>
           </div>
         )
       ) : (
         <button
           type="button"
-          disabled={disabled}
+          disabled={readOnly || busy}
           onClick={() => inputRef.current?.click()}
-          className="flex h-full w-full flex-col items-center justify-center gap-1.5 text-slate-400 transition hover:bg-white hover:text-accent disabled:cursor-not-allowed disabled:opacity-50"
+          className="flex h-full w-full flex-col items-center justify-center gap-1.5 text-slate-400 transition enabled:hover:bg-white enabled:hover:text-accent disabled:cursor-not-allowed disabled:opacity-50"
         >
           <IconPhotoPlus size={20} />
           <span className="text-[11px] font-semibold">ช่องที่ {slot}</span>
         </button>
       )}
 
-      {/* มีรูปแล้ว: เปลี่ยนรูป (เขียนทับ) / ลบ */}
-      {file && !confirming && (
-        <div className="absolute right-1 top-1 flex gap-1">
-          <button
-            type="button"
-            disabled={disabled}
-            onClick={() => inputRef.current?.click()}
-            title={`เปลี่ยนรูปช่องที่ ${slot} (เขียนทับรูปเดิม)`}
-            className="flex h-6 w-6 items-center justify-center rounded-lg bg-slate-900/60 text-white transition hover:bg-slate-900 disabled:opacity-40"
-          >
-            <IconPhotoPlus size={13} />
-          </button>
-          <button
-            type="button"
-            disabled={disabled}
-            onClick={onAskRemove}
-            title={`ลบรูปช่องที่ ${slot}`}
-            className="flex h-6 w-6 items-center justify-center rounded-lg bg-slate-900/60 text-white transition hover:bg-red-600 disabled:opacity-40"
-          >
-            <IconTrash size={13} />
-          </button>
+      {/* ป้ายบอกว่าช่องนี้ยังไม่มีผลจนกว่าจะกดบันทึก */}
+      {change && (
+        <span className="absolute inset-x-1 top-1 rounded-md bg-amber-500/90 px-1.5 py-0.5 text-center text-[10px] font-semibold text-white">
+          {willDelete ? 'จะลบเมื่อบันทึก' : 'รูปใหม่ · รอบันทึก'}
+        </span>
+      )}
+
+      {!readOnly && !busy && (
+        <div className="absolute bottom-1 right-1 flex gap-1">
+          {change ? (
+            <button
+              type="button"
+              onClick={onUndo}
+              title={`ยกเลิกการเปลี่ยนแปลงช่องที่ ${slot}`}
+              className="flex h-6 w-6 items-center justify-center rounded-lg bg-slate-900/60 text-white transition hover:bg-slate-900"
+            >
+              <IconX size={13} />
+            </button>
+          ) : (
+            <>
+              <button
+                type="button"
+                onClick={() => inputRef.current?.click()}
+                title={file ? `เปลี่ยนรูปช่องที่ ${slot} (เขียนทับรูปเดิม)` : `เลือกรูปช่องที่ ${slot}`}
+                className="flex h-6 w-6 items-center justify-center rounded-lg bg-slate-900/60 text-white transition hover:bg-slate-900"
+              >
+                <IconPhotoPlus size={13} />
+              </button>
+              {file && (
+                <button
+                  type="button"
+                  onClick={onStageDelete}
+                  title={`ลบรูปช่องที่ ${slot}`}
+                  className="flex h-6 w-6 items-center justify-center rounded-lg bg-slate-900/60 text-white transition hover:bg-red-600"
+                >
+                  <IconTrash size={13} />
+                </button>
+              )}
+            </>
+          )}
         </div>
       )}
 
-      {/* ลบแล้วเอาคืนไม่ได้ (ยิงจริงทันที) จึงถามยืนยันทับหน้ารูปก่อน */}
-      {confirming && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-slate-900/75 px-2 text-center">
-          <span className="text-[11.5px] font-semibold text-white">ลบรูปนี้?</span>
-          <div className="flex gap-1.5">
-            <button
-              type="button"
-              onClick={onRemove}
-              className="rounded-md bg-red-600 px-2.5 py-1 text-[11.5px] font-semibold text-white transition hover:bg-red-700"
-            >
-              ลบ
-            </button>
-            <button
-              type="button"
-              onClick={onCancelRemove}
-              className="rounded-md bg-white/90 px-2.5 py-1 text-[11.5px] font-semibold text-slate-700 transition hover:bg-white"
-            >
-              ยกเลิก
-            </button>
-          </div>
-        </div>
-      )}
-
-      {busy && (
+      {busy && change && (
         <div className="absolute inset-0 flex items-center justify-center bg-white/70">
           <IconLoader2 size={20} className="animate-spin text-accent" />
         </div>

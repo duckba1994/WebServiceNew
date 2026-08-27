@@ -145,6 +145,8 @@ export interface RequestListItem {
   type?: string | null; // ประเภทผู้แจ้ง (ชื่อจาก master types)
   requestType?: string | null; // เรื่องที่แจ้ง (ชื่อจาก master requestTypes)
   planDate?: string | null; // วันที่ต้องการใช้งาน
+  // หมายเหตุ: เช็คลิสต์เอกสารแนบ (attachBudget/attachSpec/…) ไม่ได้อยู่ในชุดนี้ —
+  // มากับ GET /PLRequest/{docNo} เท่านั้น (ดู PlRequestDetail ใน api/plRequest.ts)
 }
 
 // ── ประวัติการดำเนินการรายเหตุการณ์ (timeline) ────────────────

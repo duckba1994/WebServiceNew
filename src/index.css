@@ -136,3 +136,8 @@ html, body {
 .bkp .bkp-sign { border: 0.6px solid #555; padding: 2px 4px; font-size: 7.6px; flex: 1; }
 .bkp .bkp-sign .bkp-nm { font-weight: 700; font-size: 9px; margin-top: 1px; }
 .bkp .bkp-foot { font-size: 6.8px; color: #333; margin-top: 2px; }
+
+/* ซ่อนแถบเลื่อนแต่ยังเลื่อนได้ — ใช้กับ stepper ในหน้ารายละเอียดใบแจ้งเรื่อง
+   (จอแคบยังต้องปัดดูขั้นที่เกินขอบได้ แค่ไม่ต้องเห็นแถบ) */
+.no-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }
+.no-scrollbar::-webkit-scrollbar { display: none; }

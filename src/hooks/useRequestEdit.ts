@@ -1,7 +1,14 @@
 import { useCallback, useState } from 'react';
 import { ItRequestUpdatePayload, updateItRequest } from '../api/itRequest';
+import { PlRequestUpdatePayload, updatePlRequest } from '../api/plRequest';
 import { fetchRequestDetail } from '../api/requests';
 import { RequestListItem } from '../types/requestList';
+
+// ok = บันทึกขึ้น DB แล้วจริง · item = แถวล่าสุด (null ได้ทั้งตอนพังและตอนโหลดใหม่ไม่ติด)
+export interface EditResult {
+  ok: boolean;
+  item: RequestListItem | null;
+}
 
 export interface EditNotice {
   kind: 'success' | 'error';
@@ -12,8 +19,9 @@ export interface EditNotice {
   traceId?: string; // ให้ผู้ใช้อ้างอิงตอนแจ้งทีม backend
 }
 
-// ── แก้ไขใบแจ้งเรื่อง IT ───────────────────────────────────────
-// PUT /ITRequest/{jobNo} แล้ว "โหลดใบใหม่" เพื่อเอาแถวที่อัปเดตแล้วกลับมา
+// ── แก้ไขใบแจ้งเรื่อง (IT / PL) ────────────────────────────────
+// PUT /ITRequest/{jobNo} หรือ PUT /PLRequest/{docNo} ตามโมดูลของใบ
+// แล้ว "โหลดใบใหม่" เพื่อเอาแถวที่อัปเดตแล้วกลับมา
 // (endpoint แก้ไขไม่ได้คืน item มาให้ และ 200 อาจเป็น body เปล่า)
 // message ที่ backend ส่งมาเป็นภาษาไทยพร้อมแสดงอยู่แล้ว — ไม่ต้องแต่งเอง
 export function useRequestEdit(token?: string) {
@@ -25,19 +33,25 @@ export function useRequestEdit(token?: string) {
   const save = useCallback(
     async (
       item: RequestListItem,
-      payload: ItRequestUpdatePayload
-    ): Promise<RequestListItem | null> => {
+      payload: ItRequestUpdatePayload | PlRequestUpdatePayload
+    ): Promise<EditResult> => {
       setPending(true);
       setNotice(null);
       try {
-        await updateItRequest(item.docNo, payload, token);
+        // เลือกเส้นตามโมดูลของใบ — payload คนละ shape (ตัวเรียกเป็นคนสร้างให้ตรง
+        // ด้วย toUpdatePayload / toPlUpdatePayload ใน data/requestEdit.ts)
+        if (item.module === 'PL') {
+          await updatePlRequest(item.docNo, payload as PlRequestUpdatePayload, token);
+        } else {
+          await updateItRequest(item.docNo, payload as ItRequestUpdatePayload, token);
+        }
         setNotice({ kind: 'success', text: 'บันทึกการแก้ไขเรียบร้อย' });
         // บันทึกสำเร็จแล้ว — โหลดใบใหม่ล้มเหลวไม่ถือว่าการแก้ไขล้มเหลว
         try {
           const detail = await fetchRequestDetail(item.module, item.docNo, token);
-          return detail.item;
+          return { ok: true, item: detail.item };
         } catch {
-          return null;
+          return { ok: true, item: null };
         }
       } catch (e: unknown) {
         const status = (e as { status?: number })?.status;
@@ -50,7 +64,7 @@ export function useRequestEdit(token?: string) {
           stale: status === 409 || status === 403,
           traceId,
         });
-        return null;
+        return { ok: false, item: null };
       } finally {
         setPending(false);
       }
@@ -58,5 +72,5 @@ export function useRequestEdit(token?: string) {
     [token]
   );
 
-  return { save, pending, notice, dismissNotice };
+  return { save, pending, notice, showNotice: setNotice, dismissNotice };
 }
