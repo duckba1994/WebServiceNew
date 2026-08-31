@@ -22,11 +22,16 @@ export function Inbox() {
   const [onlyMyTurn, setOnlyMyTurn] = useState(false);
   const [phase, setPhase] = useState<RequestPhase | null>(null);
 
+  // โมดูลของคิวนี้ = แผนกของคนที่ล็อกอิน ไม่ใช่ค่าคงที่ — ห้ามฮาร์ดโค้ด 'IT'
+  // ไม่งั้นผู้ใช้แผนกอื่น (PL/HR/SV) จะเห็นคิวของ IT แล้วนึกว่าไม่มีงานเข้า
+  // departmentShort ใช้ vocabulary เดียวกับ module ('IT'/'PL'/'HR'/'SV')
+  const myModule = user?.departmentShort?.trim() ?? '';
+
   const { items, phaseSummary, totalCount, departId, loading, error, reload, applyItem } =
     useRequestList(
       'incoming',
       {
-        module: 'IT',
+        module: myModule,
         status,
         onlyMyTurn,
         phase: phase ? [phase] : undefined,
@@ -87,7 +92,9 @@ export function Inbox() {
   return (
     <Layout
       title="เรื่องแจ้งเข้ามา"
-      subtitle={`Incoming Requests${departId ? ` — แผนก ${departId}` : ''}`}
+      subtitle={`Incoming Requests${myModule ? ` — แผนก ${myModule}` : ''}${
+        departId && departId !== myModule ? ` (${departId})` : ''
+      }`}
     >
       <RequestGrid
         columns={INCOMING_COLUMNS}
@@ -95,7 +102,11 @@ export function Inbox() {
         totalCount={totalCount}
         summaryCards={summaryCards}
         loading={loading}
-        error={error}
+        error={
+          myModule
+            ? error
+            : 'ไม่พบรหัสแผนกของผู้ใช้ — ระบบไม่รู้ว่าจะดึงคิวงานของแผนกไหน กรุณาเข้าสู่ระบบใหม่'
+        }
         onReload={reload}
         onAction={handleAction}
         onEdited={handleEdited}

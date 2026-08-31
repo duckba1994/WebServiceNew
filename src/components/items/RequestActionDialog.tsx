@@ -176,10 +176,10 @@ export function RequestActionDialog({
   // ฟิลด์ที่บังคับอยู่แล้ว ไม่ต้องโผล่ซ้ำในกลุ่มไม่บังคับ
   const optionalGroups = useMemo(
     () =>
-      optionalGroupsOf(action.code)
+      optionalGroupsOf(action.code, item.module)
         .map((g) => ({ ...g, fields: g.fields.filter((f) => !required.includes(f)) }))
         .filter((g) => g.fields.length > 0),
-    [action.code, required]
+    [action.code, item.module, required]
   );
 
   const missing = missingRequired(required, values);

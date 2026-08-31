@@ -197,7 +197,7 @@ export function RequestDetailModal({
   // ต้องมี refreshTick เพราะ saveService/service ไม่เลื่อน step และไม่แตะ updatedDate
   // (= MAX(ApproveDate)) → ถ้าไม่บังคับโหลด จะไม่เห็น servicedBy / ค่าที่เพิ่งบันทึก
   const [refreshTick, setRefreshTick] = useState(0);
-  const { detail, loading: detailLoading } = useRequestDetail(
+  const { detail, loading: detailLoading, error: detailError } = useRequestDetail(
     item.module,
     item.docNo,
     user?.token,
@@ -245,6 +245,22 @@ export function RequestDetailModal({
   const lastLogOf = (action: string): RequestLog | null => {
     let found: RequestLog | null = null;
     for (const l of logs) if (l.action === action) found = l;
+    return found;
+  };
+
+  // log ของขั้นปิดงาน — backend ไม่ได้ตั้งชื่อ action ว่า 'close' เสมอไป:
+  // ใบ PL จริงบันทึกเป็นโค้ดของขั้นสุดท้ายใน workflow (เช่น 'Request-Close-Job')
+  // จึงเทียบกับ code ของ step สุดท้ายที่ workflow ส่งมาด้วย — ไม่ hardcode ชื่อไว้
+  const finalStepCode = (() => {
+    const steps = detail?.workflow?.steps ?? [];
+    return steps.length > 0 ? steps[steps.length - 1].code ?? null : null;
+  })();
+  const lastCloseLog = (): RequestLog | null => {
+    let found: RequestLog | null = null;
+    for (const l of logs) {
+      const a = (l.action ?? '').toLowerCase();
+      if (a.startsWith('close') || (finalStepCode && l.action === finalStepCode)) found = l;
+    }
     return found;
   };
 
@@ -497,6 +513,21 @@ export function RequestDetailModal({
                 กำลังโหลด...
               </span>
             )}
+            {/* โหลดใบเต็มไม่สำเร็จ = availableActions ที่คำนวณให้ "คนที่เปิดดู" ไม่มา
+                → ปุ่มจะหายไปเงียบ ๆ ทั้งที่ผู้ใช้มีสิทธิ์ ต้องบอกให้เห็น ไม่ใช่กลืน error */}
+            {!detailLoading && detailError && (
+              <span className="inline-flex items-center gap-1 rounded-md border border-amber-200 bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-800">
+                <IconAlertTriangle size={12} className="shrink-0" />
+                โหลดรายละเอียดใบไม่สำเร็จ ({detailError}) — ปุ่มดำเนินการอาจไม่ขึ้น
+                <button
+                  type="button"
+                  onClick={() => setRefreshTick((t) => t + 1)}
+                  className="ml-1 underline underline-offset-2"
+                >
+                  ลองใหม่
+                </button>
+              </span>
+            )}
           </div>
           <div className="no-scrollbar overflow-x-auto pb-1 pt-1.5">
             <ol className="flex w-full items-start">
@@ -644,7 +675,7 @@ export function RequestDetailModal({
                 onSave={onEdited && canEditChecklist ? submitChecklist : undefined}
               />
             ) : activeTab.key === 'plClose' ? (
-              <PlClosePanel state={activeState} resolution={r} closeLog={lastLogOf('close')} />
+              <PlClosePanel state={activeState} resolution={r} closeLog={lastCloseLog()} />
             ) : activeTab.key === 'plService' ? (
               <PlServicePanel
                 state={activeState}
@@ -1925,7 +1956,7 @@ function PlServicePanel({
   const svc = actions.filter((a) => a.code === 'saveService' || a.code === 'service');
   const editable = svc.length > 0 && !!onSubmit;
 
-  const [solve, setSolve] = useState('');
+  const [actionDetail, setActionDetail] = useState('');
   const [repairDetail, setRepairDetail] = useState('');
   const [touched, setTouched] = useState(false);
 
@@ -1933,18 +1964,22 @@ function PlServicePanel({
   // (เปิดใบ / หลังเซฟ) ระหว่างพิมพ์จึงไม่โดนล้าง · ตั้งเฉพาะช่องที่ API คืนค่ามา
   useEffect(() => {
     if (!resolution) return;
-    if (resolution.solution) setSolve(resolution.solution);
+    // actionDetail = ช่องจริงของ PL · solution เป็นค่าเก่าของใบที่บันทึกก่อนเปลี่ยนชื่อฟิลด์
+    if (resolution.actionDetail || resolution.solution)
+      setActionDetail(resolution.actionDetail || resolution.solution || '');
     if (resolution.resolutionDetail) setRepairDetail(resolution.resolutionDetail);
   }, [resolution]);
 
-  // solve บังคับทั้งตอน saveService และ service (API ระบุว่าเป็นฟิลด์บังคับของ service)
-  const solveMissing = solve.trim() === '';
+  // actionDetail บังคับตอนกด service (API ระบุว่าเป็นฟิลด์บังคับของขั้นนี้)
+  const actionDetailMissing = actionDetail.trim() === '';
   const submit = (a: RequestAction) => {
     setTouched(true);
-    if (a.code === 'service' && solveMissing) return;
+    if (a.code === 'service' && actionDetailMissing) return;
     // ไม่ส่ง repairStatus / exPrNo แล้ว (เอาช่องออกจากจอ) — ฟิลด์ที่ไม่ส่ง
     // backend ถือว่า "ไม่เปลี่ยน" ค่าเดิมในใบเก่าจึงไม่ถูกล้างทิ้ง
-    onSubmit?.(a, cleanFieldValues({ solve, repairDetail }) ?? {});
+    // ⚠️ ชิม: API ยังบังคับ solve อยู่ (400 "ที่ขาด: solve") จึงส่งค่าเดียวกันไปด้วย
+    //    ลบ solve ออกได้เมื่อ backend รับ actionDetail เป็นฟิลด์บังคับแทน
+    onSubmit?.(a, cleanFieldValues({ actionDetail, solve: actionDetail, repairDetail }) ?? {});
   };
 
   return (
@@ -1953,8 +1988,8 @@ function PlServicePanel({
         <p className="text-[12.5px] text-slate-400">— ยังไม่ถึงขั้นดำเนินการ</p>
       ) : editable ? (
         <>
-          {/* ชื่อฟิลด์ตามสเปก PL: solve = ผลการดำเนินงาน
-              · repairDetail = รายละเอียดการดำเนินงาน (ชื่อกลางร่วมกับโมดูลอื่น)
+          {/* ชื่อฟิลด์ตามสเปก PL: actionDetail = ผลการดำเนินงาน
+              · repairDetail = รายละเอียดการดำเนินงาน
               ช่อง "การดำเนินการ" (repairStatus) กับ "เลขที่ใบ PR อ้างอิง" (exPrNo)
               ถูกเอาออกจากจอตามที่ผู้ใช้สั่ง 27 ส.ค. 2026 — ฟิลด์ยังมีใน API อยู่ */}
           <div className="grid grid-cols-2 gap-x-5 gap-y-4">
@@ -1974,17 +2009,17 @@ function PlServicePanel({
               </label>
               <textarea
                 rows={4}
-                value={solve}
+                value={actionDetail}
                 disabled={pending}
-                onChange={(e) => setSolve(e.target.value)}
+                onChange={(e) => setActionDetail(e.target.value)}
                 className={`${SVC_INPUT} resize-y leading-relaxed ${
-                  touched && solveMissing ? 'border-rose-300 bg-rose-50/40' : ''
+                  touched && actionDetailMissing ? 'border-rose-300 bg-rose-50/40' : ''
                 }`}
               />
             </div>
           </div>
 
-          {touched && solveMissing && (
+          {touched && actionDetailMissing && (
             <p className="text-[11.5px] font-semibold text-rose-600">
               ต้องกรอก “ผลการดำเนินงาน” ก่อนกดดำเนินการ
             </p>
@@ -2020,7 +2055,9 @@ function PlServicePanel({
           <div>
             <span className="mb-1 block text-[11.5px] font-semibold text-gray-500">ผลการดำเนินงาน</span>
             <div className="min-h-[76px] rounded-lg border border-gray-200 bg-slate-50 px-3.5 py-3 text-[13px] leading-relaxed text-gray-800">
-              <span className="whitespace-pre-wrap">{resolution?.solution || '— (ยังไม่ได้บันทึก)'}</span>
+              <span className="whitespace-pre-wrap">
+                {resolution?.actionDetail || resolution?.solution || '— (ยังไม่ได้บันทึก)'}
+              </span>
             </div>
           </div>
           <DetailRow label="ผู้ดำเนินการ">{by || '—'}</DetailRow>
@@ -2048,8 +2085,13 @@ function PlClosePanel({
   resolution: RequestResolution | null | undefined;
   closeLog: RequestLog | null;
 }) {
-  const by = resolution?.jobClosedBy || closeLog?.actionByName;
-  const when = resolution?.jobClosedDate || closeLog?.actionDate;
+  // ลำดับที่มาของ "ใครปิด/ปิดเมื่อไร" — เอาตัวแรกที่ API ส่งมาจริง:
+  //   1) jobClosedBy/jobClosedDate — ชุดของขั้นปิดงานโดยตรง (ที่ขอ backend ไว้)
+  //   2) log ของ action close
+  //   3) closedBy/closedDate — ปลอดภัยเฉพาะ PL เพราะ PL ไม่มีขั้น "ปิดงานรับเรื่อง"
+  //      มาแย่งใช้คอลัมน์นี้ (ห้ามทำแบบนี้กับ IT — คนละขั้น คนละคนกด)
+  const by = resolution?.jobClosedBy || closeLog?.actionByName || resolution?.closedBy;
+  const when = resolution?.jobClosedDate || closeLog?.actionDate || resolution?.closedDate;
 
   if (state === 'upcoming')
     return (
@@ -2071,6 +2113,14 @@ function PlClosePanel({
         <DetailRow label="ผู้ปิดงาน">{by || '—'}</DetailRow>
         <DetailRow label="วันที่ปิดงาน">{when ? fmtDateTime(when) : '—'}</DetailRow>
       </div>
+
+      {/* ปิดไปแล้วแต่ไม่มีทั้ง 3 แหล่ง = API ยังไม่ส่งข้อมูลขั้นปิดงานกลับมา
+          บอกไปตรง ๆ ดีกว่าปล่อยขีดกลางเปล่า ๆ ให้ผู้ใช้เดาว่าจอพัง */}
+      {state === 'done' && !by && !when && (
+        <p className="text-[11.5px] text-slate-400">
+          — ระบบยังไม่ส่งข้อมูลผู้ปิดงาน/วันที่ปิดงานกลับมา (รอ API)
+        </p>
+      )}
 
       {closeLog?.note && (
         <div>

@@ -41,6 +41,14 @@ export const ACTION_FIELDS: Record<string, ActionField> = {
     placeholder: 'อธิบายสิ่งที่ทำไป ผลการทดสอบ ฯลฯ',
   },
   repairStatus: { name: 'repairStatus', label: 'สถานะการซ่อม', type: 'text' },
+  // PL: ผลการดำเนินงาน (คนละช่องกับ solve ของฝั่ง IT)
+  actionDetail: {
+    name: 'actionDetail',
+    label: 'ผลการดำเนินงาน',
+    type: 'textarea',
+    wide: true,
+    placeholder: 'สรุปผลที่ได้จากการดำเนินงาน',
+  },
 
   // ── ส่งซ่อมภายนอก / รออะไหล่ (ไม่บังคับทั้งชุด) ──
   exVendor: { name: 'exVendor', label: 'ผู้รับซ่อมภายนอก', type: 'text', placeholder: 'ชื่อร้าน / บริษัท' },
@@ -124,7 +132,15 @@ export const OPTIONAL_GROUPS: Record<string, OptionalGroup[]> = {
   close: [{ title: 'ข้อมูลปิดงาน', hint: 'ใช้ทำรายงาน KPI', fields: ['caseNo', 'kpi'] }],
 };
 
-export const optionalGroupsOf = (actionCode: string): OptionalGroup[] => OPTIONAL_GROUPS[actionCode] ?? [];
+// แผนกที่ขั้นปิดงานไม่เก็บอะไรเลย — ปุ่มปิดงานต้องเป็นกล่องยืนยันเปล่า ๆ
+// PL: ผู้ใช้ยืนยัน 31 ส.ค. 2026 ว่าปิดงานคือ "รับทราบว่าเสร็จ" ไม่มีฟิลด์ ไม่มี KPI
+//     (ผลงานถูกเก็บไปแล้วที่ขั้น Service ผ่าน repairDetail + actionDetail)
+const NO_CLOSE_FIELDS = new Set(['PL']);
+
+export const optionalGroupsOf = (actionCode: string, module?: string): OptionalGroup[] => {
+  if (actionCode === 'close' && module && NO_CLOSE_FIELDS.has(module)) return [];
+  return OPTIONAL_GROUPS[actionCode] ?? [];
+};
 
 // ── ค่าที่ส่งกลับไปให้ API ─────────────────────────────────────
 // ค่าเป็น object ได้ด้วย — บาง action ส่งกลุ่มค่ารายข้อ (survey: surveyRatings)

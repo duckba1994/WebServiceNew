@@ -78,6 +78,9 @@ export interface RequestResolution {
   repairStatus: string | null;
   solution: string | null;
   resolutionDetail: string | null;
+  // PL ขั้นดำเนินการ (saveService/service): actionDetail = ผลการดำเนินงาน
+  // (คนละช่องกับ solution ซึ่งเป็น "แนวทางแก้ไข" ของขั้นปิดงานรับเรื่องฝั่ง IT)
+  actionDetail?: string | null;
   // ชุดปิดงานรับเรื่อง (closeReceive): solution(=solve) / hw / hwDetail / resolutionDetail(=repairDetail)
   hw?: string | null;
   hwDetail?: string | null;
