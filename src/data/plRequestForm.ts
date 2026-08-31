@@ -1,5 +1,5 @@
 import { PlRequestLineInput, PlRequestPayload } from '../api/plRequest';
-import { LineItem, PL_TOPICS, PL_TYPES, RequestFormState, optionLabel } from './requestForm';
+import { LineItem, RequestFormState } from './requestForm';
 
 // ── PURE mapping: ฟอร์มใบแจ้งเรื่อง PL → payload ของ POST /PLRequest ──
 // ไม่มี JSX/hooks ในไฟล์นี้ (เทสได้) — ดู CLAUDE.md §"Separate data/logic from UI"
@@ -33,9 +33,10 @@ export function toPlRequestPayload(f: RequestFormState, requestBy: string): PlRe
     // ไม่ส่ง departid / site / docDate — ให้ backend ใช้ค่าจาก token และเวลาปัจจุบัน
     // (site แก้ทีหลังไม่ได้ และ departid ที่ส่งผิดจะทำให้ใบไปอยู่ผิดหน่วยงาน)
     planDate: toApiDate(v.dueDate ?? ''),
-    // API รับเป็น "ชื่อ" จาก master ไม่ใช่ id — ตัวเลือกในฟอร์มเก็บเป็น id จึงต้องแปลงก่อนส่ง
-    type: optionLabel(PL_TYPES, v.requestType ?? ''),
-    requestType: optionLabel(PL_TOPICS, v.topic ?? ''),
+    // API รับเป็น "ชื่อ" จาก master (ไม่ใช่ id) — ช่องเลือกในฟอร์มเก็บชื่อไว้ตรง ๆ
+    // (ตัวเลือกมาจาก GET /MasterData/pl) จึงส่งต่อได้เลย
+    type: v.requestType ?? '',
+    requestType: v.topic ?? '',
     // รายการที่ขอไม่บังคับ — ไม่มีแถวที่กรอกจริง = ใบไม่มีรายการย่อย
     lines,
   };

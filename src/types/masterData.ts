@@ -241,3 +241,68 @@ export interface CarVerificationsSVApi extends MasterAuditFields {
   carVerifications_SVNameEN: string;
   inputTypeID: number;
 }
+
+// ── /MasterData/it — ตัวเลือกของใบแจ้งเรื่อง IT (ก้อนเดียว 4 ชุด) ──
+// ⚠️ ค่าที่ส่งกลับไปกับ action คือ "ชื่อ" (name) ไม่ใช่ id — resolution ที่ API
+// คืนมา (repairStatus / solution / hw / hwDetail) เป็นข้อความล้วน จึงต้องส่งข้อความ
+// ให้ตรงกัน ไม่งั้นหน้ารายละเอียดจะโชว์เลข id แทนชื่อ
+export interface MasterOptionApi {
+  id: number;
+  name: string;
+}
+
+export type ItOptionApi = MasterOptionApi;
+
+// สาเหตุรอง — ผูกกับสาเหตุหลักผ่าน mainCauseId (ใช้กรองตอนเลือกสาเหตุหลัก)
+export interface ItSubCauseApi extends ItOptionApi {
+  mainCauseId: number;
+  mainCause: string;
+}
+
+export interface ItMasterDataApi {
+  solutions: ItOptionApi[];
+  repairStatuses: ItOptionApi[];
+  mainCauses: ItOptionApi[];
+  subCauses: ItSubCauseApi[];
+}
+
+// ── /MasterData/pl — ตัวเลือกของใบแจ้งเรื่อง PL ────────────────
+// types (ประเภทผู้แจ้ง) · requestTypes (เรื่องที่แจ้ง) · units (หน่วยของรายการที่ขอ)
+// ⚠️ เหมือน IT: ค่าที่ส่งขึ้น API เป็น "ชื่อ" ไม่ใช่ id (ดู PlRequestPayload.type/requestType)
+// sites = รหัสไซต์ที่เปิดใช้ (ตอนนี้มีตัวเดียว "BC" และหน้าเว็บไม่ได้ส่ง site ขึ้นไป
+// — ปล่อยให้ backend ใช้ค่า default จาก token)
+export interface PlMasterDataApi {
+  sites: string[];
+  types: MasterOptionApi[];
+  requestTypes: MasterOptionApi[];
+  units: MasterOptionApi[];
+}
+
+// ── /MasterData/cr — ตัวเลือกของใบแจ้งเรื่อง CR (ประสานงานฝ่ายขาย) ──
+// ⚠️ id ของ requestTypes / requestSubTypes "ซ้ำข้ามส่วนงาน" (HV id 1 กับ FL id 1
+//    คนละรายการ) → ตัวระบุตัวตนคือ section + id เสมอ ห้ามใช้ id ตัวเดียวหาแถว
+export interface CrSectionApi {
+  code: string; // 'HV' (รถใหญ่) / 'FL' (รถยก) — คีย์ที่ requestTypes.section อ้างถึง
+  name: string;
+}
+
+export interface CrRequestTypeApi {
+  id: number;
+  name: string;
+  section: string;
+  tableId: string; // ตารางปลายทางฝั่ง backend (หน้าเว็บไม่ได้ใช้)
+}
+
+export interface CrRequestSubTypeApi {
+  id: number;
+  name: string;
+  section: string;
+  requestTypeId: number; // อ้างถึง requestTypes.id "ภายในส่วนงานเดียวกัน"
+  requestType: string;
+}
+
+export interface CrMasterDataApi {
+  sections: CrSectionApi[];
+  requestTypes: CrRequestTypeApi[];
+  requestSubTypes: CrRequestSubTypeApi[];
+}

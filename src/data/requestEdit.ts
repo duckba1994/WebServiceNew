@@ -7,7 +7,7 @@ import {
   PlRequestLine,
   PlRequestUpdatePayload,
 } from '../api/plRequest';
-import { DETAIL_MAX_LEN, FieldOption, PL_TOPICS, PL_TYPES } from './requestForm';
+import { DETAIL_MAX_LEN, FieldOption, MasterListKey } from './requestForm';
 
 // ── แก้ไขใบแจ้งเรื่อง "ก่อน Mgr อนุมัติ" เท่านั้น ─────────────────
 // PURE logic (ไม่มี JSX/hooks) — สิทธิ์แก้ไข + ฟิลด์ที่แก้ได้ + validate
@@ -72,12 +72,11 @@ export interface EditFieldDef {
   placeholder?: string;
   // ใช้กับ kind = 'select' — value ต้องเป็น "ชื่อ" ไม่ใช่ id เพราะ API เก็บชื่อลง DB
   options?: FieldOption[];
+  // ตัวเลือกมาจาก master data ตอน runtime (หน้ารายละเอียดเป็นคนโหลดแล้วเติมให้)
+  // — ใบเก็บ "ชื่อ" จึงต้องให้ value เป็นชื่อ ไม่ใช่ id ไม่งั้นค่าที่โหลดมาจะไม่ตรงกับ
+  // ตัวเลือกไหนเลยแล้ว select เด้งว่าง
+  master?: MasterListKey;
 }
-
-// master ของ PL เก็บเป็น id+label แต่ใบเก็บ "ชื่อ" → ตัวเลือกในฟอร์มแก้ไขจึงใช้ label
-// เป็น value ตรง ๆ ไม่งั้นค่าที่โหลดมาจะไม่ตรงกับตัวเลือกไหนเลยแล้ว select เด้งว่าง
-const asNameOptions = (opts: FieldOption[]): FieldOption[] =>
-  opts.map((o) => ({ value: o.label, label: o.label }));
 
 const IT_EDIT_FIELDS: EditFieldDef[] = [
   { key: 'phoneNumber', label: 'เบอร์ติดต่อ', kind: 'text', maxLen: 30, placeholder: 'เบอร์ที่ติดต่อกลับได้' },
@@ -96,8 +95,8 @@ const IT_EDIT_FIELDS: EditFieldDef[] = [
 // เรียงตามแบบฟอร์มตอนสร้างใบ PL (ดู REQUEST_FORMS.PL ใน requestForm.ts)
 const PL_EDIT_FIELDS: EditFieldDef[] = [
   { key: 'planDate', label: 'วันที่ต้องการใช้งาน', kind: 'date', required: true },
-  { key: 'type', label: 'ประเภท', kind: 'select', required: true, options: asNameOptions(PL_TYPES) },
-  { key: 'requestType', label: 'เรื่องที่แจ้ง', kind: 'select', required: true, options: asNameOptions(PL_TOPICS) },
+  { key: 'type', label: 'ประเภท', kind: 'select', required: true, master: 'plTypes' },
+  { key: 'requestType', label: 'เรื่องที่แจ้ง', kind: 'select', required: true, master: 'plRequestTypes' },
   {
     key: 'requestDetail',
     label: 'ระบุเรื่องที่แจ้ง',

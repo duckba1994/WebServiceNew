@@ -12,11 +12,14 @@ import {
 import { Layout } from '../components/layout/Layout';
 import { ImageUpload } from '../components/ui/ImageUpload';
 import { LineItemsTable } from '../components/ui/LineItemsTable';
+import { DateQuickPick, thaiDateLabel } from '../components/ui/DateQuickPick';
 import { SearchSelect, SearchOption } from '../components/ui/SearchSelect';
 import { RequestPriority } from '../types/request';
 import { DepartmentApi } from '../types/masterData';
 import { deptMeta, REQUEST_PRIORITY_META } from '../data/requestData';
 import { useDepartments } from '../hooks/useDepartments';
+import { usePlMasterData } from '../hooks/usePlMasterData';
+import { useCrMasterData } from '../hooks/useCrMasterData';
 import {
   IT_ATTACHMENT_SLOTS,
   checkItAttachment,
@@ -25,6 +28,8 @@ import {
 } from '../api/itRequest';
 import { checkPlAttachment, createPlRequest, uploadPlAttachment } from '../api/plRequest';
 import { toPlRequestPayload } from '../data/plRequestForm';
+import { createCrRequest } from '../api/crRequest';
+import { toCrRequestPayload } from '../data/crRequestForm';
 import { useAuth } from '../context/AuthContext';
 import {
   FieldDef,
@@ -39,6 +44,8 @@ import {
   DEPT_FORMS,
   summaryTitle,
   fieldOptions,
+  FieldOption,
+  fieldVisible,
 } from '../data/requestForm';
 
 // จำนวนช่องรูป (ImgPath1/2/3) — ฟอร์มจำกัดที่ max: 3 อยู่แล้ว แต่ต้องกันไว้
@@ -273,6 +280,12 @@ function RequestForm({
   const commonFields = commonFieldsOf(cfg);
 
   const { user, isAuthenticated, sessionExpired } = useAuth();
+  // ตัวเลือกของแผนก PL (ประเภท / เรื่องที่แจ้ง / หน่วย) — มาจาก GET /MasterData/pl
+  const isPl = dep.departmentShort === 'PL';
+  const plMaster = usePlMasterData(user?.token, isPl);
+  // ตัวเลือกของแผนก CR (ส่วนงาน → ประเภทที่แจ้ง → รายละเอียดที่แจ้ง) — GET /MasterData/cr
+  const isCr = dep.departmentShort === 'CR';
+  const crMaster = useCrMasterData(user?.token, isCr);
   const [f, setF] = useState<RequestFormState>(() => createEmptyForm(dep, auto));
   const [errors, setErrors] = useState<FormErrors>({});
   const [saved, setSaved] = useState(false);
@@ -283,6 +296,8 @@ function RequestForm({
   const [docNo, setDocNo] = useState<string | null>(null);
   const [uploading, setUploading] = useState<{ done: number; total: number } | null>(null);
   const [uploadFailed, setUploadFailed] = useState<{ name: string; reason: string }[]>([]);
+  // CR: ยืนยันก่อนบันทึก — เลขที่ใบผูกกับ (ส่วนงาน + ประเภทที่แจ้ง) และแก้ทีหลังไม่ได้
+  const [confirmCr, setConfirmCr] = useState(false);
 
   const clearError = (key: string) =>
     setErrors((prev) => {
@@ -296,9 +311,15 @@ function RequestForm({
     setF((prev) => ({ ...prev, [k]: v }));
     clearError(k as string);
   };
-  const setValue = (key: string, v: string) => {
-    setF((prev) => ({ ...prev, values: { ...prev.values, [key]: v } }));
+  // resets = ฟิลด์ลูกที่ต้องล้างเมื่อค่าฟิลด์นี้เปลี่ยน (ตัวเลือกเดิมใช้กับค่าใหม่ไม่ได้แล้ว)
+  const setValue = (key: string, v: string, resets?: string[]) => {
+    setF((prev) => {
+      const values = { ...prev.values, [key]: v };
+      for (const r of resets ?? []) values[r] = '';
+      return { ...prev, values };
+    });
     clearError(key);
+    for (const r of resets ?? []) clearError(r);
   };
 
   const errorCount = Object.keys(errors).length;
@@ -325,6 +346,23 @@ function RequestForm({
     }
   };
 
+  // ── ส่งใบแจ้งเรื่อง CR — POST /CRRequest ────────────────────
+  // เลขที่ใบออกตอนบันทึกเท่านั้น (ไม่มีการจองเลขล่วงหน้า) → โชว์เลขจาก response
+  // บันทึกล้มเหลว = rollback ทั้งก้อน กดซ้ำได้ปลอดภัย
+  const submitCr = async () => {
+    setSending(true);
+    try {
+      const res = await createCrRequest(toCrRequestPayload(f), user?.token);
+      setDocNo(res.jobNo);
+      setSaved(true);
+    } catch (err) {
+      // ApiError หิ้ว message ภาษาไทยของ API มาให้แล้ว (เช่น ประเภทเรื่องไม่มีในส่วนงานนั้น)
+      setSendError(err instanceof Error ? err.message : 'บันทึกใบแจ้งเรื่องไม่สำเร็จ');
+    } finally {
+      setSending(false);
+    }
+  };
+
   const submit = async () => {
     const e = validateRequestForm(f);
     setErrors(e);
@@ -335,7 +373,7 @@ function RequestForm({
     }
 
     // แผนกที่ยังไม่มี API — คงพฤติกรรมเดิม (UI-first)
-    if (dep.departmentShort !== 'IT' && dep.departmentShort !== 'PL') {
+    if (!['IT', 'PL', 'CR'].includes(dep.departmentShort)) {
       setSaved(true);
       return;
     }
@@ -348,6 +386,12 @@ function RequestForm({
 
     if (dep.departmentShort === 'PL') {
       await submitPl();
+      return;
+    }
+
+    // เลือกส่วนงาน/ประเภทผิด = ใบไปกินเลขของอีกชุด แก้ทีหลังไม่ได้ → ให้ทวนก่อน
+    if (dep.departmentShort === 'CR') {
+      setConfirmCr(true);
       return;
     }
 
@@ -410,6 +454,45 @@ function RequestForm({
     setUploadFailed(failed);
   };
 
+  // ── ตัวเลือกของฟิลด์ที่ดึงจาก master data ──────────────────
+  // คืน null ถ้าฟิลด์นี้ไม่ได้ใช้ master (ตัวเลือกอยู่ใน schema เอง)
+  // ของ CR เป็นลูกโซ่ จึงต้องส่งค่าที่เลือกไว้ชั้นบนเข้าไปกรองด้วย
+  // (คีย์ 'section' / 'requestType' คือคีย์ในฟอร์มของ CR — ดู DEPT_FORMS.CR)
+  const masterFor = (
+    fd: FieldDef
+  ): { options: FieldOption[]; loading: boolean; error: string | null; reload: () => void } | null => {
+    const pl = { loading: plMaster.loading, error: plMaster.error, reload: plMaster.reload };
+    const cr = { loading: crMaster.loading, error: crMaster.error, reload: crMaster.reload };
+    switch (fd.master) {
+      case 'plTypes':
+        return { options: plMaster.typeOptions, ...pl };
+      case 'plRequestTypes':
+        return { options: plMaster.requestTypeOptions, ...pl };
+      case 'crSections':
+        return { options: crMaster.sectionOptions, ...cr };
+      case 'crRequestTypes':
+        return { options: crMaster.requestTypeOptions(f.values.section ?? ''), ...cr };
+      case 'crRequestSubTypes':
+        return {
+          options: crMaster.requestSubTypeOptions(f.values.section ?? '', f.values.requestType ?? ''),
+          ...cr,
+        };
+      default:
+        return null;
+    }
+  };
+
+  // ข้อความบอกเมื่อโหลดตัวเลือกไม่สำเร็จ (ไม่มีรายการสำรองในโค้ด — ดู CLAUDE.md)
+  const masterError = (m: { error: string | null; reload: () => void }) =>
+    m.error ? (
+      <span className="text-[11.5px] font-semibold text-red-600">
+        {m.error}
+        <button type="button" onClick={m.reload} className="ml-1.5 underline hover:no-underline">
+          ลองใหม่
+        </button>
+      </span>
+    ) : null;
+
   // เรนเดอร์ช่องกรอกตามชนิดฟิลด์ที่ประกาศไว้ใน schema ของแผนก
   const renderField = (fd: FieldDef) => {
     const err = errors[fd.key];
@@ -463,6 +546,7 @@ function RequestForm({
         return (
           <LineItemsTable
             variant={fd.variant}
+            units={isPl ? plMaster.unitNames : undefined}
             value={f.lineItems}
             onChange={(items) => {
               setF((prev) => ({ ...prev, lineItems: items }));
@@ -497,24 +581,86 @@ function RequestForm({
           </>
         );
       }
-      case 'select':
+      // เลือกได้ตัวเดียว โชว์ทุกตัวเลือกพร้อมกัน (ส่วนงานของ CR — มีแค่ 2 ตัว)
+      case 'radio': {
+        const m = masterFor(fd);
+        const opts = m?.options ?? fieldOptions(fd.options);
+        const value = f.values[fd.key] ?? '';
         return (
-          <select
-            value={f.values[fd.key] ?? ''}
-            onChange={(e) => setValue(fd.key, e.target.value)}
-            className={`${common} cursor-pointer`}
-          >
-            <option value="">-- เลือก --</option>
-            {/* ตัวเลือกอาจเก็บเป็นรหัส (id) — value = รหัสที่ส่งให้ API, label = ข้อความที่ผู้ใช้เห็น */}
-            {fieldOptions(fd.options).map((o) => (
-              <option key={o.value} value={o.value}>
-                {o.label}
-              </option>
-            ))}
-          </select>
+          <>
+            {m?.loading ? (
+              <span className="text-[12.5px] text-gray-400">กำลังโหลดตัวเลือก…</span>
+            ) : (
+              <div className={`flex flex-wrap gap-2 ${bad ? 'rounded-lg p-0.5 ring-1 ring-red-300' : ''}`}>
+                {opts.map((o) => {
+                  const on = value === o.value;
+                  return (
+                    <button
+                      key={o.value}
+                      type="button"
+                      onClick={() => setValue(fd.key, o.value, fd.resets)}
+                      style={on ? { borderColor: accentColor, backgroundColor: accentColor } : undefined}
+                      className={`flex items-baseline gap-1.5 rounded-lg border px-3.5 py-2 transition ${
+                        on ? 'text-white' : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50'
+                      }`}
+                    >
+                      <span className="mono text-[13.5px] font-bold">{o.label}</span>
+                      {o.sub && (
+                        <span className={`text-[12px] ${on ? 'text-white/80' : 'text-slate-400'}`}>{o.sub}</span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+            {m && masterError(m)}
+          </>
         );
-      case 'date':
+      }
+      case 'select': {
+        // ฟิลด์ที่ประกาศ master ไว้ ตัวเลือกมาจาก API — โหลดพลาดต้องบอกผู้ใช้ + ให้กดลองใหม่
+        // (ไม่มีรายการสำรองในโค้ด เพราะชื่อที่ตั้งเองอาจไม่ตรงกับที่ระบบเก็บจริง)
+        const m = masterFor(fd);
+        const opts = m?.options ?? fieldOptions(fd.options);
+        // ฟิลด์ลูก: ยังไม่เลือกฟิลด์แม่ = ยังไม่มีตัวเลือกให้เลือก
+        const waiting = !!fd.dependsOn && !(f.values[fd.dependsOn] ?? '');
+        const waitLabel = fd.dependsOn
+          ? cfg.sections.flatMap((s) => s.fields).find((x) => x.key === fd.dependsOn)?.label ?? ''
+          : '';
         return (
+          <>
+            <select
+              value={f.values[fd.key] ?? ''}
+              disabled={!!m?.loading || waiting}
+              onChange={(e) => setValue(fd.key, e.target.value, fd.resets)}
+              className={`${common} cursor-pointer disabled:cursor-not-allowed disabled:bg-gray-100`}
+            >
+              <option value="">
+                {m?.loading ? '-- กำลังโหลด… --' : waiting ? `-- เลือก${waitLabel}ก่อน --` : '-- เลือก --'}
+              </option>
+              {/* ตัวเลือกอาจเก็บเป็นรหัส (id) — value = รหัสที่ส่งให้ API, label = ข้อความที่ผู้ใช้เห็น */}
+              {opts.map((o) => (
+                <option key={o.value} value={o.value}>
+                  {o.label}
+                </option>
+              ))}
+            </select>
+            {m && masterError(m)}
+          </>
+        );
+      }
+
+      case 'date':
+        // quickPick = ช่องวันที่แบบอ่านง่าย (ปุ่มลัด + ข้อความไทยกำกับ)
+        return fd.quickPick ? (
+          <DateQuickPick
+            value={f.values[fd.key] ?? ''}
+            onChange={(v) => setValue(fd.key, v)}
+            accentColor={accentColor}
+            invalid={bad}
+            inputClass={common}
+          />
+        ) : (
           <input
             type="date"
             value={f.values[fd.key] ?? ''}
@@ -642,7 +788,7 @@ function RequestForm({
   // ส่วนเฉพาะแผนก — มาจาก schema ใน requestForm.ts
   const deptSections = cfg.sections.map((sec) => (no: number) => (
     <SectionCard key={sec.title} no={no} title={sec.title} accentColor={accentColor}>
-      {sec.fields.map((fd) => (
+      {sec.fields.filter((fd) => fieldVisible(fd, f.values)).map((fd) => (
         <FormRow
           key={fd.key}
           label={fd.label}
@@ -807,6 +953,72 @@ function RequestForm({
         {/* ส่วนกลาง + ส่วนเฉพาะแผนก — ลำดับ/หมายเลขตาม schema (commonPosition) */}
         {orderedSections.map((render, i) => render(i + 1))}
       </div>
+
+      {/* ── ยืนยันก่อนบันทึกใบ CR ────────────────────────────
+          เลขที่ใบแยกชุดตาม (ส่วนงาน + ประเภทที่แจ้ง) รวม 32 ชุด และออกตอนกดบันทึก
+          เลือกผิด = ใบไปกินเลขของอีกชุด แก้ประเภททีหลังก็ไม่ทำให้เลขเปลี่ยน */}
+      {confirmCr && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div
+            className="backdrop-fade-in absolute inset-0 bg-slate-900/50"
+            onClick={sending ? undefined : () => setConfirmCr(false)}
+          />
+          <div className="modal-pop relative w-[min(460px,96vw)] overflow-hidden rounded-2xl bg-white shadow-2xl">
+            <div className="flex items-start gap-3 px-5 pb-3 pt-5">
+              <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-amber-50 text-amber-600">
+                <IconAlertTriangle size={19} />
+              </span>
+              <div className="min-w-0">
+                <h3 className="text-[15px] font-bold text-gray-900">ยืนยันการบันทึก</h3>
+                <p className="mt-0.5 text-[12.5px] text-slate-500">
+                  เลขที่ใบออกตามส่วนงานและประเภทที่แจ้ง — บันทึกแล้วแก้ไม่ได้
+                </p>
+              </div>
+            </div>
+            <div className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 px-5 pb-4 text-[13px]">
+              <span className="text-slate-500">ส่วนงาน</span>
+              <span className="mono font-bold text-gray-900">{f.values.section || '—'}</span>
+              <span className="text-slate-500">ประเภทที่แจ้ง</span>
+              <span className="font-semibold text-gray-900">{f.values.requestType || '—'}</span>
+              <span className="text-slate-500">รายละเอียดที่แจ้ง</span>
+              <span className="font-semibold text-gray-900">{f.values.requestSubType || '—'}</span>
+              {f.values.requestSubOther && (
+                <>
+                  <span className="text-slate-500">ระบุเพิ่มเติม</span>
+                  <span className="text-gray-800">{f.values.requestSubOther}</span>
+                </>
+              )}
+              <span className="text-slate-500">วันที่ต้องการ</span>
+              <span className="font-semibold text-gray-900">
+                {thaiDateLabel(f.values.requireDate ?? '') || '—'}
+              </span>
+            </div>
+            <div className="flex items-center justify-end gap-2 border-t border-gray-100 bg-slate-50 px-5 py-3">
+              <button
+                type="button"
+                disabled={sending}
+                onClick={() => setConfirmCr(false)}
+                className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-[13px] font-semibold text-slate-700 transition hover:bg-slate-100 disabled:opacity-50"
+              >
+                กลับไปแก้
+              </button>
+              <button
+                type="button"
+                disabled={sending}
+                onClick={async () => {
+                  setConfirmCr(false);
+                  await submitCr();
+                }}
+                style={{ backgroundColor: accentColor }}
+                className="flex items-center gap-1.5 rounded-lg px-4 py-2 text-[13px] font-bold text-white transition hover:opacity-90 disabled:opacity-50"
+              >
+                {sending && <IconLoader2 size={15} className="animate-spin" />}
+                บันทึกใบแจ้งเรื่อง
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ปุ่มท้ายฟอร์ม */}
       <div className="flex shrink-0 items-center gap-2.5 border-t border-gray-200 bg-white px-5 py-3.5">

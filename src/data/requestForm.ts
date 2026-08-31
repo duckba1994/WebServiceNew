@@ -9,6 +9,7 @@ export type FieldKind =
   | 'text'
   | 'textarea'
   | 'select'
+  | 'radio' // เหมือน select แต่โชว์ทุกตัวเลือกพร้อมกัน (ใช้กับรายการสั้น ๆ)
   | 'date'
   | 'number'
   | 'auto' // ดึงมาให้อัตโนมัติ (จาก login / AD) — ผู้ใช้ไม่ต้องกรอก
@@ -32,12 +33,30 @@ export interface AutoFillValues {
 export interface FieldOption {
   value: string;
   label: string;
+  // ข้อความรองใต้ป้าย (ไม่ระบุ = ไม่แสดง) — เช่นส่วนงานของ CR ที่ป้ายเป็นโค้ด HV/FL
+  // ส่วนชื่อไทย "รถใหญ่/รถยก" เป็นตัวช่วยอ่าน
+  sub?: string;
 }
 export type FieldOptionDef = string | FieldOption;
+
+// ชุดตัวเลือกที่ต้องดึงจาก API — ห้าม hardcode รายการไว้ในโค้ด เพราะ master
+// ฝั่ง backend แก้ได้ตลอด (เพิ่ม/ปิดตัวเลือก) แล้วของที่พิมพ์ไว้จะไม่ตรงกัน
+export type MasterListKey =
+  | 'plTypes'
+  | 'plRequestTypes'
+  // CR: ตัวเลือกขึ้นกับค่าที่เลือกไว้ก่อนหน้า (ดู dependsOn/resets ด้านล่าง)
+  | 'crSections'
+  | 'crRequestTypes'
+  | 'crRequestSubTypes';
 
 // แปลงตัวเลือกให้อยู่ในรูป { value, label } เสมอ
 export const fieldOptions = (options?: FieldOptionDef[]): FieldOption[] =>
   (options ?? []).map((o) => (typeof o === 'string' ? { value: o, label: o } : o));
+
+// ฟิลด์ที่มีเงื่อนไข showWhen จะถูกซ่อนจนกว่าฟิลด์แม่จะมีค่าตามที่ระบุ
+// ต้องใช้ทั้งตอนเรนเดอร์และตอน validate ไม่งั้นจะติด "กรุณากรอก…" ของช่องที่มองไม่เห็น
+export const fieldVisible = (fd: FieldDef, values: Record<string, string>): boolean =>
+  !fd.showWhen || (values[fd.showWhen.key] ?? '') === fd.showWhen.equals;
 
 // ข้อความที่ผู้ใช้เห็นของค่าที่เลือกไว้ (ค่าที่เก็บอาจเป็น id)
 export const optionLabel = (options: FieldOptionDef[] | undefined, value: string): string =>
@@ -52,6 +71,17 @@ export interface FieldDef {
   placeholder?: string;
   hint?: string;
   options?: FieldOptionDef[];
+  // kind='select'|'radio' เท่านั้น — ตัวเลือกมาจาก master data ตอน runtime ไม่ใช่จากโค้ด
+  // (หน้าฟอร์มเป็นคนโหลดแล้วเติมให้ ดู usePlMasterData / useCrMasterData)
+  master?: MasterListKey;
+  // ตัวเลือกของฟิลด์นี้ขึ้นกับค่าของฟิลด์ที่ระบุ — ยังไม่เลือกตัวนั้น = ยังเลือกตัวนี้ไม่ได้
+  dependsOn?: string;
+  // เปลี่ยนค่าฟิลด์นี้แล้วต้องล้างฟิลด์เหล่านี้ทิ้ง (ตัวเลือกเดิมใช้กับค่าใหม่ไม่ได้แล้ว)
+  resets?: string[];
+  // kind='date' เท่านั้น — เพิ่มปุ่มลัด (วันนี้/พรุ่งนี้/…) + ข้อความไทยกำกับวันที่
+  quickPick?: boolean;
+  // ฟิลด์ที่โผล่เฉพาะเมื่อฟิลด์อื่นมีค่าตามที่ระบุ (ไม่ระบุ = แสดงเสมอ)
+  showWhen?: { key: string; equals: string };
   // kind='auto' เท่านั้น
   auto?: AutoSource;
   // ดึงค่าอัตโนมัติไม่ได้ (เช่น AD ไม่ส่งชื่อเครื่องมา) → ให้ผู้ใช้พิมพ์เองแทนที่จะตัน
@@ -123,31 +153,11 @@ export const lineTotal = (li: LineItem): number => (Number(li.qty) || 0) * (Numb
 export const lineItemsTotal = (items: LineItem[]): number =>
   items.reduce((s, li) => s + lineTotal(li), 0);
 
-// ── ตัวเลือกของใบแจ้งเรื่อง PL ────────────────────────────
-// mockup ตามรายการที่ฝ่าย PL ให้มา (21 ส.ค. 2026) — value = id ของ master
-// ย้ายไปดึงจาก API เมื่อ backend เปิด endpoint master data ของ PL แล้ว
-export const PL_TYPES: FieldOption[] = [
-  { value: '1', label: 'ลูกค้าภายนอก' },
-  { value: '2', label: 'ลูกค้าภายใน' },
-  { value: '3', label: 'ภายในแผนก' },
-];
+// ประเภทที่แจ้งของ CR ที่เปิดช่อง "ระบุเพิ่มเติม" (ชื่อตรงตาม master ของ API)
+export const CR_OTHER_TYPE = 'อื่นๆ';
 
-// หมายเหตุ: ไม่มี id 8 — ตามรายการต้นทางที่ได้รับมา (ห้ามเลื่อน id ให้ต่อเนื่องเอง)
-export const PL_TOPICS: FieldOption[] = [
-  { value: '1', label: 'พนักงานขับรถ (พฤติกรรม)' },
-  { value: '2', label: 'อุบัติเหตุ' },
-  { value: '3', label: 'อุปกรณ์เสริม' },
-  { value: '4', label: 'การขนส่ง / ขนย้าย' },
-  { value: '5', label: 'พนักงานขับรถติดตามงานซ่อม' },
-  { value: '6', label: 'ข้อร้องเรียนลูกค้าภายนอก' },
-  { value: '7', label: 'ขอใช้พนักงานขับรถ / ขอใช้เครื่องจักร' },
-  { value: '9', label: 'สำรวจหน้างาน' },
-  { value: '10', label: 'ขอเอกสารพนักงาน / เอกสารเครื่องจักร' },
-  { value: '11', label: 'ขอลางาน' },
-  { value: '12', label: 'แจ้งเรื่องสภาพหน้างาน' },
-  { value: '13', label: 'อื่นๆ' },
-];
-
+// ── หน่วยของรายการย่อย (แผนกที่ยังไม่มี master data ของตัวเอง เช่น จัดซื้อ) ──
+// PL ไม่ใช้ชุดนี้แล้ว — ดึงจาก GET /MasterData/pl (units) ผ่าน usePlMasterData
 export const UNIT_OPTIONS = ['ชิ้น', 'อัน', 'ชุด', 'กล่อง', 'เส้น', 'ลิตร', 'งาน'];
 
 // ── สถานะฟอร์ม ───────────────────────────────────────────────
@@ -220,7 +230,7 @@ export const DEPT_FORMS: Record<string, DeptFormConfig> = {
   PL: {
     tagline: 'พนักงานขับรถ / ขนส่ง-ขนย้าย / สำรวจหน้างาน',
     examples: 'แจ้งพฤติกรรมพนักงานขับรถ, แจ้งอุบัติเหตุ, ขอใช้เครื่องจักร, ขอสำรวจหน้างาน',
-    categories: PL_TYPES.map((o) => o.label),
+    categories: [], // ไม่ได้ใช้ — PL ไม่มีช่อง "ประเภทเรื่อง" (common: [] ด้านล่าง)
     common: [], // ทุกฟิลด์ประกาศเองในส่วนของแผนก เพื่อคุมลำดับตามแบบฟอร์มจริง
     summaryKey: 'topic', // ใช้ "เรื่องที่แจ้ง" เป็นชื่อเรื่องในหน้าสรุป
     sections: [
@@ -236,8 +246,8 @@ export const DEPT_FORMS: Record<string, DeptFormConfig> = {
       {
         title: 'ข้อมูลเรื่องที่แจ้ง',
         fields: [
-          { key: 'requestType', label: 'ประเภท', kind: 'select', required: true, options: PL_TYPES },
-          { key: 'topic', label: 'เรื่องที่แจ้ง', kind: 'select', required: true, options: PL_TOPICS },
+          { key: 'requestType', label: 'ประเภท', kind: 'select', required: true, master: 'plTypes' },
+          { key: 'topic', label: 'เรื่องที่แจ้ง', kind: 'select', required: true, master: 'plRequestTypes' },
           {
             key: 'topicDetail',
             label: 'ระบุเรื่องที่แจ้ง',
@@ -300,6 +310,66 @@ export const DEPT_FORMS: Record<string, DeptFormConfig> = {
         title: 'หลักฐานประกอบ',
         fields: [
           { key: 'photos', label: 'รูปความเสียหาย', kind: 'images', hint: '(แนบได้หลายรูป)', span2: true },
+        ],
+      },
+    ],
+  },
+
+  // ── ใบแจ้งเรื่อง CR (ประสานงานเอกสารฝ่ายขาย) ────────────────
+  // ตัวเลือกทั้ง 3 ชั้นมาจาก GET /MasterData/cr และผูกกันเป็นลูกโซ่:
+  // ส่วนงาน (HV/FL) → ประเภทที่แจ้ง → รายละเอียดที่แจ้ง
+  // เปลี่ยนชั้นบน ชั้นล่างต้องถูกล้าง (resets) ไม่งั้นจะเหลือค่าที่ไม่มีในรายการใหม่
+  CR: {
+    tagline: 'ประสานงานเอกสารฝ่ายขาย (รถใหญ่ / รถยก)',
+    examples: 'ขอจัดทำใบเสนอราคา, ติดตามใบสั่งขาย, ขอสำเนาสัญญาเช่า',
+    categories: [], // ไม่ได้ใช้ — CR ไม่มีช่อง "ประเภทเรื่อง" (common ด้านล่างไม่มี category)
+    common: ['detail'],
+    commonTitle: 'รายละเอียด',
+    commonPosition: 1, // ข้อมูลเรื่องที่แจ้ง → รายละเอียด
+    summaryKey: 'requestType', // ใช้ "ประเภทที่แจ้ง" เป็นชื่อเรื่องในหน้าสรุป
+    sections: [
+      {
+        title: 'ข้อมูลเรื่องที่แจ้ง',
+        fields: [
+          {
+            key: 'section',
+            label: 'ส่วนงาน',
+            kind: 'radio',
+            required: true,
+            span2: true,
+            master: 'crSections',
+            resets: ['requestType', 'requestSubType', 'requestSubOther'],
+          },
+          {
+            key: 'requestType',
+            label: 'ประเภทที่แจ้ง',
+            kind: 'select',
+            required: true,
+            master: 'crRequestTypes',
+            dependsOn: 'section',
+            resets: ['requestSubType', 'requestSubOther'],
+          },
+          {
+            key: 'requestSubType',
+            label: 'รายละเอียดที่แจ้ง',
+            kind: 'select',
+            required: true,
+            master: 'crRequestSubTypes',
+            dependsOn: 'requestType',
+          },
+          // โผล่เฉพาะตอนประเภทที่แจ้ง = "อื่นๆ" (ตามฟอร์มเว็บเก่า) — ไม่บังคับ
+          {
+            key: 'requestSubOther',
+            label: 'ระบุเพิ่มเติม',
+            kind: 'text',
+            maxLen: 100,
+            span2: true,
+            placeholder: 'ระบุเรื่องที่ต้องการให้ชัดเจน',
+            showWhen: { key: 'requestType', equals: CR_OTHER_TYPE },
+          },
+          { key: 'reporterDept', label: 'หน่วยงาน', kind: 'auto', auto: 'department', required: true },
+          { key: 'reporterName', label: 'ชื่อผู้แจ้ง', kind: 'auto', auto: 'reporter', required: true },
+          { key: 'requireDate', label: 'วันที่ต้องการ', kind: 'date', required: true, quickPick: true, span2: true },
         ],
       },
     ],
@@ -416,6 +486,8 @@ export function validateRequestForm(f: RequestFormState): FormErrors {
   // ฟิลด์เฉพาะแผนก
   for (const sec of cfg.sections) {
     for (const fd of sec.fields) {
+      // ฟิลด์ที่ถูกซ่อนอยู่ = ยังไม่ใช่เรื่องของผู้ใช้ตอนนี้ (ค่าก็ถูกล้างไปแล้ว)
+      if (!fieldVisible(fd, f.values)) continue;
       // ฟิลด์ไม่บังคับ แต่ถ้ามี maxLen ก็ยังต้องตรวจความยาว
       if (!fd.required) {
         const val = f.values[fd.key] || '';

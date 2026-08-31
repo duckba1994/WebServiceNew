@@ -22,6 +22,7 @@ export const DEPT_META: Record<Dept, { label: string; color: string; bg: string;
   SV: { label: 'SV', color: '#b45309', bg: '#fffbeb', border: '#fde68a' },
   IT: { label: 'IT', color: '#1a5fb4', bg: '#eff6ff', border: '#bfdbfe' },
   PU: { label: 'จัดซื้อ', color: '#0f766e', bg: '#f0fdfa', border: '#99f6e4' },
+  CR: { label: 'CR', color: '#1a5fb4', bg: '#eff6ff', border: '#bfdbfe' },
 };
 
 // สีกลางสำหรับแผนกที่ยังไม่ได้กำหนดสีไว้ (master มีแผนกได้มากกว่าที่ประกาศ)

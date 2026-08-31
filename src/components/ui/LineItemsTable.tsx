@@ -23,12 +23,16 @@ export function LineItemsTable({
   accentColor = '#1a5fb4',
   variant = 'purchase',
   invalid,
+  units = UNIT_OPTIONS,
 }: {
   value: LineItem[];
   onChange: (items: LineItem[]) => void;
   accentColor?: string;
   variant?: LineItemsVariant;
   invalid?: boolean;
+  // หน่วยที่ให้เลือก — แผนกที่มี master data ของตัวเองส่งรายการจาก API เข้ามา
+  // (PL: GET /MasterData/pl → units) ไม่ส่ง = ใช้ชุดกลางของแผนกที่ยังไม่มี master
+  units?: string[];
 }) {
   const withPrice = variant === 'purchase';
   const update = (id: string, patch: Partial<LineItem>) =>
@@ -91,7 +95,8 @@ export function LineItemsTable({
                     className={`${CELL_CLS} cursor-pointer`}
                   >
                     <option value="">—</option>
-                    {UNIT_OPTIONS.map((u) => (
+                    {/* หน่วยที่บันทึกไว้แล้วแต่ไม่มีในรายการ (master ถูกแก้ทีหลัง) ต้องยังโชว์ได้ */}
+                    {(li.unit && !units.includes(li.unit) ? [li.unit, ...units] : units).map((u) => (
                       <option key={u} value={u}>
                         {u}
                       </option>

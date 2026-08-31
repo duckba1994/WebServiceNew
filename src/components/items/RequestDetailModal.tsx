@@ -27,6 +27,9 @@ import { actionBtnClass } from './RequestActionDialog';
 import { ActionFieldValues, cleanFieldValues, fieldSpec } from '../../data/requestActionFields';
 import { useRequestDetail } from '../../hooks/useRequestDetail';
 import { useRequestEdit } from '../../hooks/useRequestEdit';
+import { ItMasterData, useItMasterData } from '../../hooks/useItMasterData';
+import { usePlMasterData } from '../../hooks/usePlMasterData';
+import { FieldOption } from '../../data/requestForm';
 import {
   EditFieldKey,
   EditLine,
@@ -225,6 +228,13 @@ export function RequestDetailModal({
     item.module === 'PL' ? item.docNo : null,
     user?.token,
     `${item.updatedDate ?? ''}|${refreshTick}`
+  );
+  // ตัวเลือกของแท็บ "ดำเนินการ" / "ปิดงานรับเรื่อง" — มาจาก GET /MasterData/it
+  // ยิงตามชุดแท็บ ไม่ใช่ตามชื่อโมดูล เพราะแผนกที่ยังไม่มีหน้าจอของตัวเองใช้ชุดของ IT อยู่
+  // (ใบ PL ใช้แท็บของตัวเอง จึงไม่ยิง)
+  const itMaster = useItMasterData(
+    user?.token,
+    tabs.some((t) => t.key === 'service' || t.key === 'closeReceive')
   );
   // รายการย่อยในรูปแบบที่ตารางใช้ (loading/error ใช้ก้อนเดียวกับใบ)
   const plLines = {
@@ -691,6 +701,7 @@ export function RequestDetailModal({
                 state={activeState}
                 actions={actions}
                 resolution={r}
+                master={itMaster}
                 pending={!!actionPending}
                 onSubmit={onStepSubmit ? submitStep : undefined}
                 serviceLog={lastLogOf('service')}
@@ -700,7 +711,13 @@ export function RequestDetailModal({
                 }}
               />
             ) : activeTab.key === 'closeReceive' ? (
-              <ClosePanel state={activeState} resolution={r} pending={!!actionPending} onSubmit={onStepSubmit ? submitStep : undefined} />
+              <ClosePanel
+                state={activeState}
+                resolution={r}
+                master={itMaster}
+                pending={!!actionPending}
+                onSubmit={onStepSubmit ? submitStep : undefined}
+              />
             ) : activeTab.key === 'survey' ? (
               <SurveyPanel
                 state={activeState}
@@ -845,7 +862,6 @@ function StepPanel({
 // ปุ่ม 2 ปุ่มมาจาก availableActions ที่ API ส่งมาที่ step 3:
 //   saveService (บันทึกรายละเอียด, ไม่เลื่อน step กดกี่ครั้งก็ได้) / service (ดำเนินการเสร็จ → Survey)
 // ฟิลด์: repairStatus(ดำเนินการ) · exVendor(ส่งบริษัท, บังคับ) · exContact(เบอร์) · exPrNo · exPlanDate
-const SERVICE_MODES = ['ซ่อมเอง', 'ส่งซ่อมภายนอก', 'รออะไหล่'];
 const SVC_INPUT =
   'w-full rounded-lg border border-gray-200 px-3 py-2 text-[13px] outline-none transition focus:border-accent disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-500';
 const SVC_LABEL = 'mb-1 block text-[11.5px] font-semibold text-gray-500';
@@ -854,6 +870,7 @@ function ServicePanel({
   state,
   actions,
   resolution,
+  master,
   pending,
   onSubmit,
   onNext,
@@ -862,6 +879,7 @@ function ServicePanel({
   state: StepState;
   actions: RequestAction[];
   resolution: RequestListItem['resolution'];
+  master: ItMasterData;
   pending: boolean;
   onSubmit?: (action: RequestAction, fields: ActionFieldValues) => void | Promise<void>;
   onNext?: () => void; // ไปแท็บปิดงานรับเรื่อง (การส่งต่อทำที่นั่นด้วย closeReceive)
@@ -937,7 +955,16 @@ function ServicePanel({
 
   return (
     <div className="grid grid-cols-2 gap-x-5 gap-y-4">
-      <SelectField label="ดำเนินการ" value={mode} options={SERVICE_MODES} disabled={pending} onChange={setMode} />
+      <SelectField
+        label="ดำเนินการ"
+        value={mode}
+        options={master.repairStatusNames}
+        loading={master.loading}
+        error={master.error}
+        onRetry={master.reload}
+        disabled={pending}
+        onChange={setMode}
+      />
       <div />
       <div className="col-span-2">
         <label className={SVC_LABEL}>
@@ -998,16 +1025,19 @@ function ServicePanel({
 // ช่อง: แนวทางการแก้ไข · สาเหตุหลัก · สาเหตุรอง · รายละเอียดการดำเนินการ · หมายเหตุ
 // ยิง action 'closeReceive' → เขียน Solve/HW/HWDetail/RepairDetail/Remark + CloseBy/Date
 // แล้วเลื่อน step 3→4 (Survey) ส่งต่อให้ผู้แจ้งประเมิน
-const CLOSE_SOLVE = ['บริการซ่อม/แก้ไข', 'ให้คำปรึกษา/แนะนำ', 'ติดตั้ง/ตั้งค่า', 'เปลี่ยน/เพิ่มอุปกรณ์', 'ส่งซ่อมภายนอก', 'อื่น ๆ'];
-const CLOSE_CAUSE_MAIN = ['Hardware', 'Software'];
-const CLOSE_CAUSE_SUB = ['Computer', 'Notebook', 'Printer', 'Network', 'Software', 'อื่น ๆ'];
 
+// ตัวเลือกมาจาก master data (GET /MasterData/it) — โหลดพลาดต้องบอกผู้ใช้ + ให้กดลองใหม่
+// ไม่ใส่รายการสำรองไว้ในโค้ด เพราะชื่อที่ตั้งเองอาจไม่ตรงกับที่ระบบเก็บจริง
 function SelectField({
   label,
   value,
   options,
   disabled,
   invalid,
+  loading,
+  error,
+  hint,
+  onRetry,
   onChange,
 }: {
   label: string;
@@ -1015,24 +1045,42 @@ function SelectField({
   options: string[];
   disabled: boolean;
   invalid?: boolean;
+  loading?: boolean;
+  error?: string | null;
+  hint?: string;
+  onRetry?: () => void;
   onChange: (v: string) => void;
 }) {
+  // ค่าที่บันทึกไว้แล้วแต่ไม่มีในรายการ (master ถูกแก้ทีหลัง) — ต้องยังโชว์ได้ ไม่งั้นช่องจะว่าง
+  const opts = value && !options.includes(value) ? [value, ...options] : options;
   return (
     <div>
       <label className={SVC_LABEL}>{label}</label>
       <select
         value={value}
-        disabled={disabled}
+        disabled={disabled || loading}
         onChange={(e) => onChange(e.target.value)}
         className={`${SVC_INPUT} cursor-pointer ${invalid ? 'border-rose-300 bg-rose-50/40' : ''}`}
       >
-        <option value="">— เลือก —</option>
-        {options.map((o) => (
+        <option value="">{loading ? '— กำลังโหลด… —' : '— เลือก —'}</option>
+        {opts.map((o) => (
           <option key={o} value={o}>
             {o}
           </option>
         ))}
       </select>
+      {error ? (
+        <p className="mt-1 text-[11px] font-semibold text-rose-600">
+          {error}
+          {onRetry && (
+            <button type="button" onClick={onRetry} className="ml-1.5 underline hover:no-underline">
+              ลองใหม่
+            </button>
+          )}
+        </p>
+      ) : (
+        hint && !loading && <p className="mt-1 text-[11px] text-slate-400">{hint}</p>
+      )}
     </div>
   );
 }
@@ -1040,11 +1088,13 @@ function SelectField({
 function ClosePanel({
   state,
   resolution,
+  master,
   pending,
   onSubmit,
 }: {
   state: StepState;
   resolution: RequestListItem['resolution'];
+  master: ItMasterData;
   pending: boolean;
   onSubmit?: (action: RequestAction, fields: ActionFieldValues) => void | Promise<void>;
 }) {
@@ -1079,6 +1129,14 @@ function ClosePanel({
     );
   }
 
+  // สาเหตุรองกรองตาม mainCauseId ของสาเหตุหลักที่เลือก
+  const subOptions = master.subCausesOf(causeMain);
+  // เปลี่ยนสาเหตุหลัก → ล้างสาเหตุรองเดิม (คู่เก่าจะไม่อยู่ในรายการใหม่แล้ว)
+  const pickMain = (v: string) => {
+    setCauseMain(v);
+    setCauseSub('');
+  };
+
   const missing = { solve: !solve, causeMain: !causeMain, causeSub: !causeSub, detail: !detail.trim() };
   const blocked = missing.solve || missing.causeMain || missing.causeSub || missing.detail;
 
@@ -1094,10 +1152,40 @@ function ClosePanel({
 
   return (
     <div className="grid grid-cols-2 gap-x-5 gap-y-4">
-      <SelectField label="แนวทางการแก้ไข" value={solve} options={CLOSE_SOLVE} disabled={pending} invalid={touched && missing.solve} onChange={setSolve} />
+      <SelectField
+        label="แนวทางการแก้ไข"
+        value={solve}
+        options={master.solutionNames}
+        loading={master.loading}
+        error={master.error}
+        onRetry={master.reload}
+        disabled={pending}
+        invalid={touched && missing.solve}
+        onChange={setSolve}
+      />
       <div className="hidden md:block" />
-      <SelectField label="สาเหตุหลัก" value={causeMain} options={CLOSE_CAUSE_MAIN} disabled={pending} invalid={touched && missing.causeMain} onChange={setCauseMain} />
-      <SelectField label="สาเหตุรอง" value={causeSub} options={CLOSE_CAUSE_SUB} disabled={pending} invalid={touched && missing.causeSub} onChange={setCauseSub} />
+      <SelectField
+        label="สาเหตุหลัก"
+        value={causeMain}
+        options={master.mainCauseNames}
+        loading={master.loading}
+        error={master.error}
+        onRetry={master.reload}
+        disabled={pending}
+        invalid={touched && missing.causeMain}
+        onChange={pickMain}
+      />
+      <SelectField
+        label="สาเหตุรอง"
+        value={causeSub}
+        options={subOptions}
+        loading={master.loading}
+        error={master.error}
+        hint={causeMain ? undefined : 'เลือกสาเหตุหลักก่อน'}
+        disabled={pending || !causeMain}
+        invalid={touched && missing.causeSub}
+        onChange={setCauseSub}
+      />
       <div className="col-span-2">
         <label className={SVC_LABEL}>รายละเอียดการดำเนินการ</label>
         <textarea
@@ -2166,6 +2254,58 @@ function AttachmentThumb({ url, fileName }: { url: string | null; fileName: stri
 
 // ── ฟอร์มแก้ไขข้อมูลใบ (แทนที่แผง General ชั่วคราว) ──────────────
 // ฟิลด์มาจาก EDIT_FIELDS ใน data/requestEdit.ts — ผู้แจ้ง/หน่วยงาน/วันที่แจ้ง
+// ช่องเลือกของฟอร์มแก้ไข — ตัวเลือกอาจมาจาก master data ที่โหลดตอน runtime
+// จึงต้องรับมือทั้งตอนกำลังโหลดและตอนโหลดไม่สำเร็จ
+function SelectWithMaster({
+  value,
+  options,
+  disabled,
+  loading,
+  error,
+  cls,
+  onRetry,
+  onChange,
+}: {
+  value: string;
+  options: FieldOption[];
+  disabled: boolean;
+  loading: boolean;
+  error: string | null;
+  cls: string;
+  onRetry: () => void;
+  onChange: (v: string) => void;
+}) {
+  return (
+    <>
+      <select
+        value={value}
+        disabled={disabled || loading}
+        onChange={(e) => onChange(e.target.value)}
+        className={cls}
+      >
+        {/* ค่าเดิมในใบอาจเป็นชื่อที่ถูกถอดออกจาก master ไปแล้ว —
+            ใส่เป็นตัวเลือกไว้ด้วย ไม่งั้น select เด้งว่างแล้วผู้ใช้
+            เผลอบันทึกทับของเดิมโดยไม่ตั้งใจ */}
+        <option value="">{loading ? '— กำลังโหลด… —' : '— เลือก —'}</option>
+        {value && !options.some((o) => o.value === value) && <option value={value}>{value}</option>}
+        {options.map((o) => (
+          <option key={o.value} value={o.value}>
+            {o.label}
+          </option>
+        ))}
+      </select>
+      {error && (
+        <p className="mt-1 text-[11.5px] font-semibold text-red-600">
+          {error}
+          <button type="button" onClick={onRetry} className="ml-1.5 underline hover:no-underline">
+            ลองใหม่
+          </button>
+        </p>
+      )}
+    </>
+  );
+}
+
 // แก้ไม่ได้โดยตั้งใจ (เป็นตัวตนของใบ) จึงโชว์เป็นข้อความอ่านอย่างเดียวไว้ด้านบน
 function RequestEditPanel({
   item,
@@ -2199,6 +2339,13 @@ function RequestEditPanel({
 }) {
   const isPl = item.module === 'PL';
   const fields = editFieldsOf(item.module);
+  // ตัวเลือกของใบ PL (ประเภท / เรื่องที่แจ้ง / หน่วย) — GET /MasterData/pl
+  const { user } = useAuth();
+  const plMaster = usePlMasterData(user?.token, isPl);
+  const masterOptions: Record<string, FieldOption[]> = {
+    plTypes: plMaster.typeOptions,
+    plRequestTypes: plMaster.requestTypeOptions,
+  };
   const [form, setForm] = useState<RequestEditForm>(() => toEditForm(item, lines));
   const [errors, setErrors] = useState<ReturnType<typeof validateEditForm>>({});
   // ล็อกช่องกรอกทั้งหมดเมื่อเข้ามาเพื่อจัดการรูปอย่างเดียว (canEdit ปิดไปแล้ว)
@@ -2264,25 +2411,16 @@ function RequestEditPanel({
                   className={`${cls} resize-y leading-relaxed`}
                 />
               ) : f.kind === 'select' ? (
-                <select
+                <SelectWithMaster
                   value={value}
+                  options={f.master ? masterOptions[f.master] ?? [] : f.options ?? []}
                   disabled={lock}
-                  onChange={(e) => set(f.key, e.target.value)}
-                  className={cls}
-                >
-                  {/* ค่าเดิมในใบอาจเป็นชื่อที่ถูกถอดออกจาก master ไปแล้ว —
-                      ใส่เป็นตัวเลือกไว้ด้วย ไม่งั้น select เด้งว่างแล้วผู้ใช้
-                      เผลอบันทึกทับของเดิมโดยไม่ตั้งใจ */}
-                  <option value="">— เลือก —</option>
-                  {value && !(f.options ?? []).some((o) => o.value === value) && (
-                    <option value={value}>{value}</option>
-                  )}
-                  {(f.options ?? []).map((o) => (
-                    <option key={o.value} value={o.value}>
-                      {o.label}
-                    </option>
-                  ))}
-                </select>
+                  loading={!!f.master && plMaster.loading}
+                  error={f.master ? plMaster.error : null}
+                  onRetry={plMaster.reload}
+                  cls={cls}
+                  onChange={(v) => set(f.key, v)}
+                />
               ) : f.kind === 'date' ? (
                 <input
                   type="date"
@@ -2361,15 +2499,24 @@ function RequestEditPanel({
                       />
                     </td>
                     <td className="px-1.5 py-1.5">
-                      <input
-                        type="text"
+                      {/* หน่วยมาจาก master (GET /MasterData/pl) — หน่วยเดิมที่ไม่มีใน
+                          รายการแล้วยังต้องโชว์ได้ ไม่งั้นบันทึกทับของเดิมโดยไม่ตั้งใจ */}
+                      <select
                         value={l.unit}
-                        maxLength={50}
-                        disabled={lock}
-                        placeholder="หน่วย"
+                        disabled={lock || plMaster.loading}
                         onChange={(e) => setLine(i, { unit: e.target.value })}
-                        className={`${LINE_INPUT_CLS} text-center`}
-                      />
+                        className={`${LINE_INPUT_CLS} cursor-pointer text-center`}
+                      >
+                        <option value="">{plMaster.loading ? '…' : 'หน่วย'}</option>
+                        {(l.unit && !plMaster.unitNames.includes(l.unit)
+                          ? [l.unit, ...plMaster.unitNames]
+                          : plMaster.unitNames
+                        ).map((u) => (
+                          <option key={u} value={u}>
+                            {u}
+                          </option>
+                        ))}
+                      </select>
                     </td>
                     <td className="px-1.5 py-1.5">
                       <input

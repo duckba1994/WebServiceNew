@@ -26,6 +26,9 @@ import {
   CreditTypeApi,
   CarAssignmentsPLApi,
   CarVerificationsSVApi,
+  ItMasterDataApi,
+  PlMasterDataApi,
+  CrMasterDataApi,
 } from '../types/masterData';
 
 // ── แผนก — ใช้เป็นแผนกปลายทางของใบแจ้งเรื่อง ──
@@ -112,3 +115,17 @@ export const fetchCarAssignmentsPL = (token?: string) =>
 
 export const fetchCarVerificationsSV = (token?: string) =>
   apiGet<CarVerificationsSVApi[]>('/MasterData/car-verifications-sv', token);
+
+// ── Master Data ของใบแจ้งเรื่อง IT — มาเป็นก้อนเดียว 4 ชุด ────
+// solutions (แนวทางการแก้ไข) · repairStatuses (การดำเนินการ) ·
+// mainCauses (สาเหตุหลัก) · subCauses (สาเหตุรอง — กรองด้วย mainCauseId)
+export const fetchItMasterData = (token?: string) =>
+  apiGet<ItMasterDataApi>('/MasterData/it', token);
+
+// ── Master Data ของใบแจ้งเรื่อง PL — ก้อนเดียวเหมือนของ IT ────
+export const fetchPlMasterData = (token?: string) =>
+  apiGet<PlMasterDataApi>('/MasterData/pl', token);
+
+// ── Master Data ของใบแจ้งเรื่อง CR — ส่วนงาน → ประเภท → รายละเอียด ──
+export const fetchCrMasterData = (token?: string) =>
+  apiGet<CrMasterDataApi>('/MasterData/cr', token);
