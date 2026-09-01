@@ -20,6 +20,7 @@ import {
   RequestListItem,
   RequestLog,
   RequestResolution,
+  RequestWorkflow,
 } from '../../types/requestList';
 import { fmtDate, fmtDateTime, jobStatusMeta } from '../../data/requestListData';
 import { isRequesterSide } from '../../data/requestPhase';
@@ -29,8 +30,10 @@ import { useRequestDetail } from '../../hooks/useRequestDetail';
 import { useRequestEdit } from '../../hooks/useRequestEdit';
 import { ItMasterData, useItMasterData } from '../../hooks/useItMasterData';
 import { usePlMasterData } from '../../hooks/usePlMasterData';
-import { FieldOption } from '../../data/requestForm';
+import { CrMasterData, useCrMasterData } from '../../hooks/useCrMasterData';
+import { FieldOption, MasterListKey } from '../../data/requestForm';
 import {
+  EditFieldDef,
   EditFieldKey,
   EditLine,
   PL_ATTACH_CHECKS,
@@ -44,6 +47,8 @@ import {
   editFieldsOf,
   emptyEditLine,
   hasFormChanges,
+  splitCrRequestType,
+  toCrUpdatePayload,
   toEditForm,
   toPlUpdatePayload,
   toUpdatePayload,
@@ -99,10 +104,20 @@ interface StepTab {
   label: string;
   reachedStep: number;
   logAction: string;
+  // ชื่อ action อื่นที่ backend อาจใช้บันทึก log ของขั้นเดียวกัน (ชื่อไม่ตรงกันทุกแผนก)
+  // — ใช้หาว่า "ใครทำ/เมื่อไร" ของขั้นนี้ ไม่เกี่ยวกับปุ่ม
+  logAliases?: string[];
   // ปุ่มที่ยอมให้ขึ้นในแท็บนี้ — กรอง item.availableActions ด้วย code ชุดนี้
   // ([] = ไม่มีปุ่ม workflow ในแท็บนี้, undefined = โชว์ทุกปุ่มที่ API ส่งมา)
   // ทำให้แท็บ "รับเรื่อง" เหลือปุ่มรับเรื่องปุ่มเดียว ไม่ปนปุ่มดำเนินการ
   actionCodes?: string[];
+  // code ที่ "แผงในแท็บวาดปุ่มเอง" (เพราะต้องส่งค่าจากฟอร์มไปด้วย) — นับเป็นของแท็บนี้
+  // เหมือนกัน จะได้ไม่ตกไปโผล่ซ้ำที่แท็บ General แต่บล็อกปุ่มมาตรฐานจะไม่วาดให้
+  panelCodes?: string[];
+  // WFStatus ของขั้นนี้ — ระบุไว้แล้ว reachedStep จะถูกคำนวณใหม่จาก workflow ที่ API
+  // ส่งมา (ดู resolveReachedStep) แทนเลขที่ฝังไว้ในโค้ด
+  // → backend สลับ/แทรกขั้น หน้าเว็บก็ยังชี้ขั้นถูกโดยไม่ต้อง deploy ใหม่
+  wfCodes?: string[];
 }
 // IT: 5 ขั้น — อนุมัติ → รับเรื่อง → ดำเนินการ/ปิดงานรับเรื่อง → สำรวจ → ปิดงาน
 const IT_STEP_TABS: StepTab[] = [
@@ -128,23 +143,87 @@ const PL_STEP_TABS: StepTab[] = [
   { key: 'plClose', label: 'ปิดงาน', reachedStep: 4, logAction: 'close' },
 ];
 
+// CR: 5 ขั้น — อนุมัติ → CR รับเรื่อง → CR ดำเนินการ → ต้นสังกัดรับงาน → CR ปิดงานที่แจ้งเรื่อง
+// ยึดตาม MdApi/CR-workflow-frontend-guide.md (contract จาก backend)
+//
+// ⚠️ ขั้นอนุมัติ (step 1) ไม่มีแท็บของตัวเอง — ปุ่มอนุมัติกับข้อมูลที่ใช้ตัดสินใจอยู่ที่
+//    แท็บ General ด้วยกัน (ผู้ใช้สั่ง 1 ก.ย. 2026) เหมือน IT/PL
+//    → ห้ามใส่ 'approve' ลง actionCodes ของแท็บไหน ไม่งั้นปุ่มจะหายจาก General
+//      (บล็อกปุ่มของ General รับเฉพาะ action ที่ "ไม่มีแท็บไหนจองไว้")
+//
+// ⚠️ step 1 กับ 4 เป็นของ "แผนกผู้แจ้ง" ไม่ใช่ CR (ในแม่แบบเก็บ DepartId = "00")
+//    ขั้น 4 จึงเป็นขั้นที่ค้างเงียบง่ายที่สุด — งานเสร็จแล้วแต่ไม่มีใครกดรับ
+const CR_STEP_TABS: StepTab[] = [
+  { key: 'general', label: 'General', reachedStep: 0, logAction: 'create', actionCodes: [] },
+  {
+    key: 'crReceive',
+    label: 'รับเรื่อง',
+    reachedStep: 2,
+    logAction: 'receive',
+    actionCodes: [],
+    panelCodes: ['receive'], // ต้องส่ง requestService ไปด้วย → ปุ่มอยู่ในแผง
+    wfCodes: ['Receive-Request', 'Receive'],
+  },
+  {
+    key: 'crService',
+    label: 'ดำเนินการ',
+    reachedStep: 3,
+    logAction: 'service',
+    actionCodes: [],
+    panelCodes: ['saveService', 'service'],
+    wfCodes: ['Service', 'Service And Close-Job'],
+  },
+  {
+    key: 'crReceiveJob',
+    label: 'รับงาน',
+    reachedStep: 4,
+    logAction: 'acceptWork',
+    logAliases: ['receiveJob', 'receive_job', 'Received-Service'],
+    actionCodes: ['acceptWork'], // ไม่มีฟิลด์ → ใช้กล่องยืนยันมาตรฐาน
+    wfCodes: ['Received-Service', 'Receive-Service'],
+  },
+  {
+    key: 'crClose',
+    label: 'ปิดงานที่แจ้งเรื่อง',
+    reachedStep: 5,
+    logAction: 'close',
+    actionCodes: [],
+    panelCodes: ['close'], // มีช่องรายละเอียดการปิดงาน (ไม่บังคับ) → ปุ่มอยู่ในแผง
+    wfCodes: ['Close-Job', 'Request-Close-Job', 'ReceiveJob-Close-Job', 'Mgr Close-Job'],
+  },
+];
+
 const STEP_TABS_BY_MODULE: Record<string, StepTab[]> = {
   IT: IT_STEP_TABS,
   PL: PL_STEP_TABS,
+  CR: CR_STEP_TABS,
 };
 
 // แผนกที่ยังไม่ได้ทำหน้าจอเฉพาะ ใช้ชุดของ IT ไปก่อน (ของเดิมก่อนแยกรายโมดูล)
 // — เปิดแผนกใหม่เมื่อไรให้เพิ่มชุดของแผนกนั้นในตารางข้างบน อย่าปล่อยให้ตกมาที่นี่
 const stepTabsOf = (module: string): StepTab[] => STEP_TABS_BY_MODULE[module] ?? IT_STEP_TABS;
 
+// เลขขั้นจริงของแท็บ — ยึด workflow ที่ API ส่งมาก่อนเสมอ (workflow เป็นข้อมูล ไม่ใช่โค้ด)
+// เลข reachedStep ที่ฝังไว้เป็นแค่ค่าสำรองตอน detail ยังโหลดไม่เสร็จ/โหลดไม่ได้
+const resolveReachedStep = (tab: StepTab, workflow?: RequestWorkflow | null): number => {
+  const codes = tab.wfCodes;
+  if (!codes || !workflow?.steps?.length) return tab.reachedStep;
+  const hit = workflow.steps.find((s) => s.code && codes.includes(s.code.trim()));
+  return hit?.step ?? tab.reachedStep;
+};
+
 // รหัส action ที่มี "ที่ทางของตัวเอง" อยู่แล้ว — แท็บใดแท็บหนึ่งเป็นคนแสดงปุ่มให้
 // (จาก actionCodes ของแท็บ + code ที่แผงในแท็บสร้างปุ่มเอง เช่น ปิดงานรับเรื่อง/
 //  ประเมิน/ปิดงาน) ที่เหลือทั้งหมดตกมาโผล่ในแท็บ General แทนที่จะหายไปเฉย ๆ
+//
+// ⚠️ คิดแยกรายโมดูล ห้ามรวมเป็นเซ็ตเดียวทั้งระบบ: CR มีแท็บ "อนุมัติ" ที่รับปุ่ม
+//    approve ไปแล้ว ถ้าใช้เซ็ตรวม ปุ่มอนุมัติของ IT/PL (ซึ่งไม่มีแท็บนั้น) จะหายไปทั้งใบ
 const PANEL_ACTION_CODES = ['saveService', 'service', 'closeReceive', 'survey', 'close'];
-const CLAIMED_ACTION_CODES = new Set<string>([
-  ...Object.values(STEP_TABS_BY_MODULE).flatMap((tabs) => tabs.flatMap((t) => t.actionCodes ?? [])),
-  ...PANEL_ACTION_CODES,
-]);
+const claimedCodesOf = (module: string): Set<string> =>
+  new Set<string>([
+    ...stepTabsOf(module).flatMap((t) => [...(t.actionCodes ?? []), ...(t.panelCodes ?? [])]),
+    ...PANEL_ACTION_CODES,
+  ]);
 
 type StepState = 'done' | 'current' | 'upcoming';
 
@@ -194,8 +273,6 @@ export function RequestDetailModal({
   onDismissNotice?: () => void;
 }) {
   const { user } = useAuth();
-  // ชุดแท็บของโมดูลนี้ — จำนวน/ชื่อขั้นต่างกันต่อแผนก (IT 6 แท็บ, PL 4 แท็บ)
-  const tabs = stepTabsOf(item.module);
   // โหลด detail ใหม่เมื่อ: ใบขยับ (updatedDate/wfStep) หรือเพิ่งกดปุ่มในแท็บ (refreshTick)
   // ต้องมี refreshTick เพราะ saveService/service ไม่เลื่อน step และไม่แตะ updatedDate
   // (= MAX(ApproveDate)) → ถ้าไม่บังคับโหลด จะไม่เห็น servicedBy / ค่าที่เพิ่งบันทึก
@@ -206,6 +283,18 @@ export function RequestDetailModal({
     user?.token,
     `${item.updatedDate ?? ''}|${item.wfStep ?? ''}|${refreshTick}`
   );
+
+  // ชุดแท็บของโมดูลนี้ — จำนวน/ชื่อขั้นต่างกันต่อแผนก (IT 6 แท็บ, PL 5 แท็บ, CR 6 แท็บ)
+  // เลขขั้นของแต่ละแท็บยึดจาก workflow ที่ API ส่งมาก่อน (ค่าในโค้ดเป็นแค่ตัวสำรอง)
+  const tabs = useMemo(
+    () =>
+      stepTabsOf(item.module).map((t) => ({
+        ...t,
+        reachedStep: resolveReachedStep(t, detail?.workflow),
+      })),
+    [item.module, detail?.workflow]
+  );
+  const claimedCodes = useMemo(() => claimedCodesOf(item.module), [item.module]);
 
   // ยิง action จากฟอร์มในแท็บ แล้วบังคับโหลดใบใหม่เพื่อดึงค่าที่เพิ่งบันทึกกลับมา
   const submitStep = async (action: RequestAction, fields: ActionFieldValues) => {
@@ -236,6 +325,18 @@ export function RequestDetailModal({
     user?.token,
     tabs.some((t) => t.key === 'service' || t.key === 'closeReceive')
   );
+  // ตัวเลือกของฟอร์มแก้ไขใบ CR (ส่วนงาน → ประเภทที่แจ้ง → รายละเอียดที่แจ้ง)
+  // โหลดที่นี่ไม่ใช่ในแผงแก้ไข เพราะ submitEdit ต้องใช้ชื่อประเภทชุดเดียวกันเพื่อถอด
+  // requestType ที่ API รวมร่างมา แล้วเทียบว่า "ผู้ใช้แก้อะไรจริงไหม"
+  const isCrItem = item.module === 'CR';
+  const crMaster = useCrMasterData(user?.token, isCrItem);
+  const crTypeOptions = crMaster.requestTypeOptions;
+  // ชื่อประเภทที่แจ้งของ "ส่วนงานเดิมในใบ" — ใช้ถอดค่าเดิมเท่านั้น
+  // (ตอนผู้ใช้เปลี่ยนส่วนงาน แผงแก้ไขคำนวณตัวเลือกใหม่จากค่าในฟอร์มเอง)
+  const crTypeNames = useMemo(
+    () => (isCrItem ? crTypeOptions(full.type ?? '').map((o) => o.value) : []),
+    [isCrItem, crTypeOptions, full.type]
+  );
   // รายการย่อยในรูปแบบที่ตารางใช้ (loading/error ใช้ก้อนเดียวกับใบ)
   const plLines = {
     lines: plDoc.doc?.lines ?? null,
@@ -255,6 +356,15 @@ export function RequestDetailModal({
   const lastLogOf = (action: string): RequestLog | null => {
     let found: RequestLog | null = null;
     for (const l of logs) if (l.action === action) found = l;
+    return found;
+  };
+
+  // log ของแท็บ — รับได้หลายชื่อ (logAliases) เพราะแต่ละแผนกตั้งชื่อ action ของขั้น
+  // เดียวกันไม่เหมือนกัน เช่นขั้น "รับงาน" ที่อาจบันทึกเป็น receiveJob หรือ Received-Service
+  const logOfTab = (t: StepTab): RequestLog | null => {
+    const codes = [t.logAction, ...(t.logAliases ?? [])];
+    let found: RequestLog | null = null;
+    for (const l of logs) if (codes.includes(l.action)) found = l;
     return found;
   };
 
@@ -291,8 +401,10 @@ export function RequestDetailModal({
       if (tabState(t) === 'done') lastDone = i;
     });
     return lastDone;
+    // tabs อยู่ในลิสต์ด้วย เพราะเลขขั้นของแท็บเปลี่ยนได้ตอน workflow จาก API มาถึง
+    // (wfStep เท่าเดิม แต่ reachedStep ขยับ → ขั้นปัจจุบันย้ายแท็บ)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [full.wfStep, closed, serviceDone]);
+  }, [tabs, full.wfStep, closed, serviceDone]);
 
   const [selected, setSelected] = useState(defaultTab);
 
@@ -301,14 +413,14 @@ export function RequestDetailModal({
   const currentIndex = useMemo(
     () => tabs.findIndex((t) => tabState(t) === 'current'),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [full.wfStep, closed, serviceDone]
+    [tabs, full.wfStep, closed, serviceDone]
   );
   useEffect(() => {
     if (currentIndex !== -1) setSelected(currentIndex);
   }, [currentIndex]);
   const activeTab = tabs[selected] ?? tabs[0];
   const activeState = tabState(activeTab);
-  const activeLog = lastLogOf(activeTab.logAction);
+  const activeLog = logOfTab(activeTab);
   // ปุ่มที่โชว์ในแท็บนี้ = availableActions กรองด้วย actionCodes ของแท็บ
   // (แท็บรับเรื่องจึงเหลือแค่ปุ่มรับเรื่อง, แท็บดำเนินการไม่มีปุ่ม workflow)
   const activeActions = activeTab.actionCodes
@@ -318,7 +430,7 @@ export function RequestDetailModal({
   // ของ MGR ต้นสังกัด + ยกเลิก + action ที่แผนกอื่นตั้งชื่อ code ไม่เหมือน IT)
   // ห้าม hardcode รายชื่อ code ตรงนี้ — แผนกที่ตั้งชื่อไม่ตรงลิสต์จะไม่มีที่ให้ปุ่ม
   // โผล่เลยทั้งใบ (กติกา "ปุ่มคือ data ไม่ใช่ code" ใน CLAUDE.md)
-  const generalActions = actions.filter((a) => !CLAIMED_ACTION_CODES.has(a.code));
+  const generalActions = actions.filter((a) => !claimedCodes.has(a.code));
 
   // ── แก้ไขข้อมูลใบ (ก่อนปลายทางกดรับงาน) ──────────────────────
   // สิทธิ์มาจาก item.canEdit ที่ API ส่งมา (ยังไม่ส่ง → fallback กติกาใน requestEdit.ts)
@@ -394,7 +506,7 @@ export function RequestDetailModal({
   const submitEdit = async (form: RequestEditForm) => {
     const attSlots = Object.keys(attRef.current).length;
     const fieldsChanged =
-      canEditFields && hasFormChanges(toEditForm(full, plLines.lines), form);
+      canEditFields && hasFormChanges(toEditForm(full, plLines.lines, crTypeNames), form);
     // ไม่ได้แก้อะไรเลย → ไม่ต้องยิง API ให้เปลืองรอบ
     if (!fieldsChanged && attSlots === 0) {
       setEditing(false);
@@ -403,7 +515,11 @@ export function RequestDetailModal({
 
     if (fieldsChanged) {
       const payload =
-        full.module === 'PL' ? toPlUpdatePayload(full, form, plDoc.doc) : toUpdatePayload(full, form);
+        full.module === 'PL'
+          ? toPlUpdatePayload(full, form, plDoc.doc)
+          : full.module === 'CR'
+          ? toCrUpdatePayload(form)
+          : toUpdatePayload(full, form);
       const res = await saveEdit(full, payload);
       if (res.item) onEdited?.(res.item);
       // ฟิลด์ไม่ผ่าน (403/409/400) → หยุดไว้ ไม่ยิงรูปตาม notice ตั้งไว้ให้แล้ว
@@ -548,7 +664,7 @@ export function RequestDetailModal({
                 const isSel = i === selected;
                 const leftOn = i > 0 && (done || current);
                 const rightOn = done;
-                const lg = lastLogOf(t.logAction);
+                const lg = logOfTab(t);
                 const tip = [lg?.actionByName, lg?.actionByDepartment, lg?.actionDate ? fmtDateTime(lg.actionDate) : null]
                   .filter(Boolean)
                   .join(' · ');
@@ -665,6 +781,8 @@ export function RequestDetailModal({
                 }
                 onEditCancel={() => setEditing(false)}
                 onEditSubmit={submitEdit}
+                crMaster={crMaster}
+                crTypeNames={crTypeNames}
                 canEditFields={canEditFields}
                 canAttachFiles={canAttachFiles}
                 attachBlockedReason={attachBlockedReason}
@@ -693,6 +811,44 @@ export function RequestDetailModal({
                 resolution={r}
                 serviceLog={lastLogOf('service')}
                 plLines={plLines}
+                pending={!!actionPending}
+                onSubmit={onStepSubmit ? submitStep : undefined}
+              />
+            ) : activeTab.key === 'crReceive' ? (
+              <CrReceivePanel
+                state={activeState}
+                actions={actions}
+                resolution={r}
+                receiveLog={lastLogOf('receive')}
+                pending={!!actionPending}
+                onSubmit={onStepSubmit ? submitStep : undefined}
+              />
+            ) : activeTab.key === 'crService' ? (
+              <CrServicePanel
+                state={activeState}
+                actions={actions}
+                resolution={r}
+                serviceLog={lastLogOf('service')}
+                pending={!!actionPending}
+                onSubmit={onStepSubmit ? submitStep : undefined}
+              />
+            ) : activeTab.key === 'crReceiveJob' ? (
+              <CrReceiveJobPanel
+                state={activeState}
+                resolution={r}
+                serviceLog={lastLogOf('service')}
+                acceptLog={logOfTab(activeTab)}
+                // isMyTurn ไม่ใช่ isRequesterSide: ขั้นนี้เป็นของฝั่งผู้แจ้งเสมอ
+                // (isRequesterSide จริงทั้งคู่) แต่คนของ CR ที่เปิดดูต้องเห็นว่า "รอผู้แจ้งกด"
+                // ไม่ใช่ "กดรับงานได้เลย" — API คำนวณ isMyTurn ให้คนที่เปิดดูใบอยู่แล้ว
+                isOurTurn={!!full.isMyTurn}
+              />
+            ) : activeTab.key === 'crClose' ? (
+              <CrClosePanel
+                state={activeState}
+                actions={actions}
+                resolution={r}
+                closeLog={lastCloseLog()}
                 pending={!!actionPending}
                 onSubmit={onStepSubmit ? submitStep : undefined}
               />
@@ -1626,6 +1782,8 @@ function GeneralPanel({
   pendingAtt,
   attachBusy,
   onStageAttachment,
+  crMaster,
+  crTypeNames,
 }: {
   item: RequestListItem;
   full: RequestListItem;
@@ -1647,9 +1805,18 @@ function GeneralPanel({
   pendingAtt?: PendingAttachments;
   attachBusy?: boolean;
   onStageAttachment?: (slot: number, change: PendingAttachment | null) => void;
+  // ตัวเลือก + ชื่อประเภทของใบ CR — ใช้เฉพาะตอนเปิดฟอร์มแก้ไข
+  crMaster: CrMasterData;
+  crTypeNames: string[];
 }) {
   const imgs = attachments ?? [];
   const isPl = full.module === 'PL';
+  // ใบ CR กรอกคนละชุดกับ IT/PL (ส่วนงาน → ประเภทที่แจ้ง → รายละเอียดที่แจ้ง)
+  // ถ้าไม่แยกออกมา ใบ CR จะไปโชว์ช่องของ IT (เบอร์ติดต่อ/ชื่อคอมพิวเตอร์) ซึ่งว่างเปล่าทุกใบ
+  const isCr = full.module === 'CR';
+  // โมดูลนี้มีเส้นรูปแนบไหม — ดูจากทะเบียน endpoint ไม่ใช่ชื่อโมดูล
+  // (เปิดเส้นให้ CR เมื่อไร หัวข้อรูปภาพจะกลับมาเองโดยไม่ต้องแก้ตรงนี้)
+  const hasAttachments = attachmentApiOf(full.module).slots.length > 0;
 
   if (editing && onEditSubmit) {
     return (
@@ -1667,6 +1834,8 @@ function GeneralPanel({
         onStageAttachment={onStageAttachment}
         onCancel={() => onEditCancel?.()}
         onSubmit={onEditSubmit}
+        crMaster={crMaster}
+        crTypeNames={crTypeNames}
       />
     );
   }
@@ -1685,6 +1854,20 @@ function GeneralPanel({
           <DetailRow label="เรื่องที่แจ้ง">{full.requestType || '—'}</DetailRow>
           <DetailRow label="วันที่ต้องการใช้งาน">
             {full.planDate ? <span className="mono">{fmtDate(full.planDate)}</span> : '—'}
+          </DetailRow>
+        </>
+      ) : isCr ? (
+        <>
+          {/* CR: type = ส่วนงาน HV/FL · requestType = "ประเภทที่แจ้ง / จัดทำ" (API รวมมาให้แล้ว)
+              ทั้งชุดนี้คือข้อมูลที่ Mgr ใช้ตัดสินใจก่อนกดอนุมัติ — ปุ่มอนุมัติอยู่ท้ายแท็บนี้ */}
+          <DetailRow label="ส่วนงาน">
+            {full.type ? <span className="mono font-semibold">{full.type}</span> : '—'}
+          </DetailRow>
+          <DetailRow label="ประเภทที่แจ้ง / จัดทำ">{full.requestType || '—'}</DetailRow>
+          {/* ⚠️ ใบ CR เก็บ "วันที่ต้องการ" ไว้ในคอลัมน์ RequestDate (ยืนยัน 1 ก.ย. 2026)
+              ไม่ใช่วันที่แจ้ง — ดู MdApi/API_SPEC_CR_FLOW.md §3 */}
+          <DetailRow label="วันที่ต้องการ">
+            {full.requestDate ? <span className="mono">{fmtDate(full.requestDate)}</span> : '—'}
           </DetailRow>
         </>
       ) : (
@@ -1720,22 +1903,26 @@ function GeneralPanel({
       )}
 
       {/* รูปภาพ — เสิร์ฟผ่าน API ที่ต้องใช้ token จึงโหลดเป็น blob เอง (ดู AttachmentThumb)
-          หน้าอ่านโชว์อย่างเดียว การเพิ่ม/ลบอยู่ในฟอร์มแก้ไขและมีผลตอนกดบันทึกเท่านั้น */}
-      <div className="col-span-2">
-        <span className="mb-1.5 block text-[11.5px] font-semibold text-gray-500">รูปภาพ</span>
-        {imgs.length === 0 ? (
-          <span className="text-[13px] text-slate-400">— ไม่มีรูปแนบ</span>
-        ) : (
-          <div className="flex flex-wrap gap-2">
-            {imgs.map((f) => (
-              <AttachmentThumb key={f.fileId} url={f.url} fileName={f.fileName} />
-            ))}
-          </div>
-        )}
-        {canAttachFiles === false && attachBlockedReason && (
-          <p className="mt-1.5 text-[11.5px] text-slate-400">{attachBlockedReason}</p>
-        )}
-      </div>
+          หน้าอ่านโชว์อย่างเดียว การเพิ่ม/ลบอยู่ในฟอร์มแก้ไขและมีผลตอนกดบันทึกเท่านั้น
+          โมดูลที่ไม่มีเส้นรูปแนบ (CR) ไม่ต้องขึ้นหัวข้อนี้เลย — ขึ้นแล้วบอกว่า
+          "ไม่มีรูปแนบ" ทุกใบตลอดกาล ทำให้คนอ่านนึกว่าผู้แจ้งลืมแนบ */}
+      {hasAttachments && (
+        <div className="col-span-2">
+          <span className="mb-1.5 block text-[11.5px] font-semibold text-gray-500">รูปภาพ</span>
+          {imgs.length === 0 ? (
+            <span className="text-[13px] text-slate-400">— ไม่มีรูปแนบ</span>
+          ) : (
+            <div className="flex flex-wrap gap-2">
+              {imgs.map((f) => (
+                <AttachmentThumb key={f.fileId} url={f.url} fileName={f.fileName} />
+              ))}
+            </div>
+          )}
+          {canAttachFiles === false && attachBlockedReason && (
+            <p className="mt-1.5 text-[11.5px] text-slate-400">{attachBlockedReason}</p>
+          )}
+        </div>
+      )}
 
       {/* ชื่อ MGR ที่อนุมัติ พร้อมวันเวลา — จาก logs (action = approve)
           workflow ที่อนุมัติหลายรอบ (เช่น PS) จะขึ้นครบทุกคน */}
@@ -2222,6 +2409,533 @@ function PlClosePanel({
   );
 }
 
+// ═══════════════════════════════════════════════════════════════
+//  แผงของใบ CR — 5 ขั้น (อนุมัติ → รับเรื่อง → ดำเนินการ → รับงาน → ปิดงาน)
+// ═══════════════════════════════════════════════════════════════
+//  ทุกปุ่มในแท็บพวกนี้มาจาก item.availableActions ที่ API ส่งมาเสมอ
+//  (ดูกติกา "ปุ่มคือ data ไม่ใช่ code" ใน CLAUDE.md) — แผงเป็นแค่ที่วาง
+//  ข้อมูล/ฟอร์ม ไม่ได้ตัดสินใจเองว่าใครกดได้
+//  ⚠️ ห้ามเดาว่า "ขั้นนี้ต้องมีปุ่ม" แล้ววาดปุ่มขึ้นมาเอง — ไม่มีปุ่ม = ยังไม่ใช่คิวเรา
+// ───────────────────────────────────────────────────────────────
+
+// กล่องข้อความอ่านอย่างเดียว (ผลงานที่บันทึกไว้) — ว่างก็ยังมีกรอบ ไม่ใช่ขีดกลางลอย ๆ
+function ReadBox({ text, empty }: { text?: string | null; empty?: string }) {
+  return (
+    <div className="min-h-[76px] rounded-lg border border-gray-200 bg-slate-50 px-3.5 py-3 text-[13px] leading-relaxed text-gray-800">
+      <span className="whitespace-pre-wrap">{text || empty || '— (ยังไม่ได้บันทึก)'}</span>
+    </div>
+  );
+}
+
+// ปุ่มที่ต้องกด 2 ครั้ง — ใช้กับ action ที่ย้อนไม่ได้ซึ่งวาดปุ่มเองในแผง
+// (ปุ่มที่ผ่านบล็อกมาตรฐานมีกล่องยืนยันของ RequestActionDialog อยู่แล้ว แต่ปุ่มในแผง
+//  ยิงตรงเพื่อพาค่าในฟอร์มไปด้วย จึงต้องมีจังหวะให้ทบทวนของตัวเอง)
+function ConfirmButton({
+  label,
+  className,
+  question,
+  pending,
+  guard,
+  onConfirm,
+}: {
+  label: string;
+  className: string;
+  question: string;
+  pending?: boolean;
+  // ตรวจฟอร์มก่อน "ติดอาวุธ" — คืน false = ยังกรอกไม่ครบ (ตัว guard เป็นคนโชว์ข้อความเอง)
+  // ถ้าไปตรวจตอนกดยืนยัน ผู้ใช้จะต้องกด 2 ครั้งก่อนถึงจะรู้ว่าลืมกรอกอะไร
+  guard?: () => boolean;
+  onConfirm: () => void;
+}) {
+  const [armed, setArmed] = useState(false);
+
+  if (!armed)
+    return (
+      <button
+        type="button"
+        disabled={pending}
+        onClick={() => {
+          if (guard && !guard()) return;
+          setArmed(true);
+        }}
+        className={`rounded-lg border px-4 py-2 text-[13px] font-semibold transition disabled:cursor-not-allowed disabled:opacity-50 ${className}`}
+      >
+        {label}
+      </button>
+    );
+
+  return (
+    <span className="inline-flex flex-wrap items-center gap-2 rounded-lg border border-amber-300 bg-amber-50 px-2.5 py-1.5">
+      <span className="text-[12px] font-semibold text-amber-900">{question}</span>
+      <button
+        type="button"
+        disabled={pending}
+        onClick={() => {
+          setArmed(false);
+          onConfirm();
+        }}
+        className={`rounded-lg border px-3 py-1.5 text-[12.5px] font-semibold transition disabled:cursor-not-allowed disabled:opacity-50 ${className}`}
+      >
+        ยืนยัน
+      </button>
+      <button
+        type="button"
+        onClick={() => setArmed(false)}
+        className="rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-[12.5px] font-semibold text-slate-700 transition hover:bg-slate-50"
+      >
+        ยกเลิก
+      </button>
+    </span>
+  );
+}
+
+// ── แท็บรับเรื่องของใบ CR (ขั้น 2 — แผนก CR) ────────────────────
+// action `receive` ต้องส่ง `requestService` ("ผู้ดำเนินการ" ≤ 100) ไปด้วย ปุ่มจึงอยู่ในแผง
+// ผู้รับเรื่อง / วันที่รับเรื่อง / มาตรฐานการดำเนินการ (= วันรับเรื่อง + 3 วัน)
+// backend เติมให้ทั้งหมด — ห้ามส่งขึ้นไปเอง (ส่งไปก็ถูกเมิน)
+const CR_REQUEST_SERVICE_MAX = 100;
+
+function CrReceivePanel({
+  state,
+  actions,
+  resolution,
+  receiveLog,
+  pending,
+  onSubmit,
+}: {
+  state: StepState;
+  actions: RequestAction[];
+  resolution: RequestResolution | null | undefined;
+  receiveLog: RequestLog | null;
+  pending: boolean;
+  onSubmit?: (action: RequestAction, fields: ActionFieldValues) => void | Promise<void>;
+}) {
+  const [requestService, setRequestService] = useState('');
+  const [touched, setTouched] = useState(false);
+
+  useEffect(() => {
+    if (resolution?.requestService) setRequestService(resolution.requestService);
+  }, [resolution]);
+
+  if (state === 'upcoming')
+    return (
+      <p className="text-[12.5px] text-slate-400">
+        — ยังไม่ถึงขั้นนี้ (รอ Mgr ต้นสังกัดอนุมัติก่อน แผนก CR จึงจะรับเรื่องได้)
+      </p>
+    );
+
+  const by = resolution?.receivedBy || receiveLog?.actionByName;
+  const when = resolution?.receivedDate || receiveLog?.actionDate;
+  const recv = actions.find((a) => a.code === 'receive');
+  const editable = !!recv && !!onSubmit;
+  const missing = requestService.trim() === '';
+
+  const check = () => {
+    setTouched(true);
+    return !missing;
+  };
+  const submit = () => {
+    if (missing || !recv) return;
+    onSubmit?.(recv, cleanFieldValues({ requestService }) ?? {});
+  };
+
+  return (
+    <div className="flex flex-col gap-4">
+      {state === 'current' && editable && (
+        <p className="flex items-center gap-1.5 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-[12.5px] font-semibold text-blue-800">
+          <IconBell size={14} className="shrink-0" />
+          ใบนี้อนุมัติแล้ว — ระบุผู้ดำเนินการแล้วกดรับเรื่องเพื่อเริ่มงาน
+        </p>
+      )}
+
+      {editable ? (
+        <div>
+          <label className={SVC_LABEL}>
+            ผู้ดำเนินการ<span className="text-rose-600"> *</span>
+          </label>
+          <input
+            value={requestService}
+            maxLength={CR_REQUEST_SERVICE_MAX}
+            disabled={pending}
+            placeholder="ระบุผู้ที่จะรับเรื่องนี้ไปดำเนินการ"
+            onChange={(e) => setRequestService(e.target.value)}
+            className={`${SVC_INPUT} ${touched && missing ? 'border-rose-300 bg-rose-50/40' : ''}`}
+          />
+          <p className="mt-1 text-[11px] text-slate-400">
+            {requestService.length}/{CR_REQUEST_SERVICE_MAX} ตัวอักษร · ผู้รับเรื่องและวันที่ระบบบันทึกให้เอง
+          </p>
+          {touched && missing && (
+            <p className="mt-1 text-[11.5px] font-semibold text-rose-600">ต้องระบุ “ผู้ดำเนินการ” ก่อนกดรับเรื่อง</p>
+          )}
+        </div>
+      ) : (
+        <DetailRow label="ผู้ดำเนินการ">{resolution?.requestService || '—'}</DetailRow>
+      )}
+
+      <div className="grid grid-cols-2 gap-x-5 gap-y-4">
+        <DetailRow label="ผู้รับเรื่อง">{by || '—'}</DetailRow>
+        <DetailRow label="วันที่รับเรื่อง">{when ? fmtDateTime(when) : '—'}</DetailRow>
+        <div className="col-span-2">
+          <DetailRow label="มาตรฐานการดำเนินการ">
+            {resolution?.planCompleteDate ? (
+              <span className="mono">{fmtDate(resolution.planCompleteDate)}</span>
+            ) : editable ? (
+              <span className="text-slate-400">— ระบบคำนวณให้ตอนกดรับเรื่อง (วันที่รับเรื่อง + 3 วัน)</span>
+            ) : (
+              '—'
+            )}
+          </DetailRow>
+        </div>
+      </div>
+
+      {editable && (
+        <div className="flex flex-wrap items-center gap-2 border-t border-gray-100 pt-4">
+          <ConfirmButton
+            label={recv!.label}
+            className={actionBtnClass(recv!.style)}
+            question="รับเรื่องใบนี้เข้าแผนก CR?"
+            pending={pending}
+            guard={check}
+            onConfirm={submit}
+          />
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── แท็บดำเนินการของใบ CR (ขั้น 3 — แผนก CR) ────────────────────
+// บันทึกได้เรื่อย ๆ ด้วย saveService (ไม่เลื่อนขั้น ไม่ประทับชื่อ/เวลา) แล้วค่อยกด
+// service เพื่อส่งต่อให้ต้นสังกัดรับงาน
+//
+// ⚠️ ชื่อฟิลด์ไม่สมมาตรโดยตั้งใจ (contract ของ backend):
+//    ส่งขึ้นไป = `serviceDetail` · อ่านกลับ = `resolution.resolutionDetail`
+const CR_SERVICE_DETAIL_MAX = 1000;
+
+function CrServicePanel({
+  state,
+  actions,
+  resolution,
+  serviceLog,
+  pending,
+  onSubmit,
+}: {
+  state: StepState;
+  actions: RequestAction[];
+  resolution: RequestResolution | null | undefined;
+  serviceLog: RequestLog | null;
+  pending: boolean;
+  onSubmit?: (action: RequestAction, fields: ActionFieldValues) => void | Promise<void>;
+}) {
+  const [serviceDetail, setServiceDetail] = useState('');
+  const [touched, setTouched] = useState(false);
+  // ผู้ใช้พิมพ์ค้างอยู่หรือยัง — กันเคสนี้: กด "บันทึก" แล้วพิมพ์ต่อทันที พอ refetch
+  // เสร็จค่าจากเซิร์ฟเวอร์ (ของตอนกด) จะทับสิ่งที่เพิ่งพิมพ์ไป
+  const typing = useRef(false);
+
+  // เติมฟอร์มจากค่าที่บันทึกไว้ — resolution เปลี่ยน reference เฉพาะตอนโหลดใบใหม่
+  // (เปิดใบ / หลังเซฟ) และต้องไม่ทับของที่ผู้ใช้พิมพ์ค้างไว้
+  useEffect(() => {
+    if (typing.current) return;
+    if (resolution?.resolutionDetail) setServiceDetail(resolution.resolutionDetail);
+  }, [resolution]);
+
+  // ชื่อ/เวลา ประทับตอนกด `service` เท่านั้น — `saveService` ไม่ประทับ
+  // จึงห้ามเอามาโชว์เป็น "บันทึกล่าสุด" (จะว่างตลอดทั้งที่บันทึกไปหลายรอบแล้ว)
+  const by = resolution?.servicedBy || serviceLog?.actionByName;
+  const when = resolution?.servicedDate || serviceLog?.actionDate;
+
+  if (state === 'upcoming')
+    return <p className="text-[12.5px] text-slate-400">— ยังไม่ถึงขั้นดำเนินการ (รอแผนก CR รับเรื่องก่อน)</p>;
+
+  // ปุ่มจาก API เท่านั้น: saveService = บันทึกเฉย ๆ · service = บันทึกแล้วเลื่อนขั้น
+  // ไม่มีปุ่ม = ไม่ใช่คิวเรา/ผ่านขั้นนี้ไปแล้ว → แผงกลายเป็นอ่านอย่างเดียวเอง
+  const save = actions.find((a) => a.code === 'saveService');
+  const done = actions.find((a) => a.code === 'service');
+  const editable = (!!save || !!done) && !!onSubmit;
+
+  if (!editable) {
+    return (
+      <div className="flex flex-col gap-4">
+        <div>
+          <span className="mb-1 block text-[11.5px] font-semibold text-gray-500">รายละเอียดการดำเนินการ</span>
+          <ReadBox text={resolution?.resolutionDetail} />
+        </div>
+        <div className="grid grid-cols-2 gap-x-5 gap-y-3">
+          <DetailRow label="ผู้ดำเนินการ">{resolution?.requestService || '—'}</DetailRow>
+          <DetailRow label="มาตรฐานการดำเนินการ">
+            {resolution?.planCompleteDate ? <span className="mono">{fmtDate(resolution.planCompleteDate)}</span> : '—'}
+          </DetailRow>
+          <DetailRow label="ผู้ดำเนินงาน">{by || '—'}</DetailRow>
+          <DetailRow label="วันที่ดำเนินการ">{when ? fmtDateTime(when) : '—'}</DetailRow>
+        </div>
+      </div>
+    );
+  }
+
+  const missing = serviceDetail.trim() === '';
+  // ยิงแล้ว = ค่าที่พิมพ์ไปถึงเซิร์ฟเวอร์แล้ว ปล่อยให้ค่าที่โหลดกลับมาทับได้ตามปกติ
+  const fields = (): ActionFieldValues => {
+    typing.current = false;
+    return cleanFieldValues({ serviceDetail }) ?? {};
+  };
+  // บังคับกรอกเฉพาะตอน "ดำเนินการเสร็จ" (เลื่อนขั้น) — กดบันทึกทิ้งไว้ว่าง ๆ ได้
+  const checkDone = () => {
+    setTouched(true);
+    return !missing;
+  };
+
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="grid grid-cols-2 gap-x-5 gap-y-3">
+        <DetailRow label="ผู้ดำเนินการ">{resolution?.requestService || '—'}</DetailRow>
+        <DetailRow label="มาตรฐานการดำเนินการ">
+          {resolution?.planCompleteDate ? (
+            <span className="mono">{fmtDate(resolution.planCompleteDate)}</span>
+          ) : (
+            '—'
+          )}
+        </DetailRow>
+      </div>
+
+      <div>
+        <label className={SVC_LABEL}>
+          การดำเนินการ<span className="text-rose-600"> *</span>
+        </label>
+        <textarea
+          rows={6}
+          value={serviceDetail}
+          maxLength={CR_SERVICE_DETAIL_MAX}
+          disabled={pending}
+          onChange={(e) => {
+            typing.current = true;
+            setServiceDetail(e.target.value);
+          }}
+          placeholder="บันทึกสิ่งที่ทำไปแล้ว / ความคืบหน้า — บันทึกกี่ครั้งก็ได้จนกว่าจะกดดำเนินการเสร็จ"
+          className={`${SVC_INPUT} resize-y leading-relaxed ${
+            touched && missing ? 'border-rose-300 bg-rose-50/40' : ''
+          }`}
+        />
+        <p className="mt-1 text-[11px] text-slate-400">
+          {serviceDetail.length}/{CR_SERVICE_DETAIL_MAX} ตัวอักษร · กด “บันทึก” แล้วข้อความจะยังอยู่เมื่อเปิดใบใหม่
+        </p>
+      </div>
+
+      {touched && missing && (
+        <p className="text-[11.5px] font-semibold text-rose-600">ต้องกรอก “การดำเนินการ” ก่อนกดดำเนินการเสร็จ</p>
+      )}
+
+      <div className="flex flex-wrap items-center gap-2 border-t border-gray-100 pt-4">
+        {/* บันทึกอยู่กับที่ = ย้อนได้ (บันทึกทับใหม่) จึงไม่ต้องยืนยัน */}
+        {save && (
+          <button
+            type="button"
+            disabled={pending}
+            onClick={() => onSubmit?.(save, fields())}
+            className={`rounded-lg border px-4 py-2 text-[13px] font-semibold transition disabled:cursor-not-allowed disabled:opacity-50 ${actionBtnClass(
+              save.style
+            )}`}
+          >
+            {save.label}
+          </button>
+        )}
+        {/* เลื่อนขั้นแล้วย้อนไม่ได้ ใบออกจากแผนก CR ทันที → ต้องยืนยันก่อน */}
+        {done && (
+          <ConfirmButton
+            label={done.label}
+            className={actionBtnClass(done.style)}
+            question="ส่งงานให้ต้นสังกัดตรวจรับ? กดแล้วกลับมาแก้ไม่ได้"
+            pending={pending}
+            guard={checkDone}
+            onConfirm={() => onSubmit?.(done, fields())}
+          />
+        )}
+        <span className="text-[11.5px] text-slate-400">
+          “{save?.label ?? 'บันทึกรายละเอียด'}” เก็บค่าไว้เฉย ๆ ไม่เลื่อนขั้น · “{done?.label ?? 'ดำเนินการเสร็จ'}”
+          ส่งต่อให้ต้นสังกัดรับงาน
+        </span>
+      </div>
+    </div>
+  );
+}
+
+// ── แท็บรับงานของใบ CR (ขั้น 4 — ฝั่งผู้แจ้ง) ─────────────────────
+// ⚠️ ขั้นนี้เป็นของ "ต้นสังกัดผู้แจ้ง" ไม่ใช่ CR → เป็นขั้นที่ค้างเงียบง่ายที่สุด
+//    (งานเสร็จหมดแล้วแต่ไม่มีใครกดรับ) จึงต้องบอกให้ชัดว่ารออะไรอยู่
+// ปุ่ม "รับงาน" (`acceptWork`) ไม่มีฟิลด์ → บล็อกปุ่มมาตรฐาน + กล่องยืนยันจัดการให้
+// ยังไม่มีปุ่ม "ไม่รับงาน" ในเฟสนี้ (เว็บเก่าก็มีปุ่มเดียว)
+function CrReceiveJobPanel({
+  state,
+  resolution,
+  serviceLog,
+  acceptLog,
+  isOurTurn,
+}: {
+  state: StepState;
+  resolution: RequestResolution | null | undefined;
+  serviceLog: RequestLog | null;
+  acceptLog: RequestLog | null;
+  isOurTurn: boolean;
+}) {
+  if (state === 'upcoming')
+    return <p className="text-[12.5px] text-slate-400">— ยังไม่ถึงขั้นรับงาน (รอแผนก CR ดำเนินการให้เสร็จก่อน)</p>;
+
+  const by = resolution?.acceptedBy || acceptLog?.actionByName;
+  // ReceiveDateJob เก็บเป็น date (ตัดเวลาทิ้ง) → โชว์เฉพาะวันที่ ไม่ใส่เวลาให้เข้าใจผิด
+  const when = resolution?.acceptedDate || acceptLog?.actionDate;
+  const serviceBy = resolution?.servicedBy || serviceLog?.actionByName;
+  const serviceAt = resolution?.servicedDate || serviceLog?.actionDate;
+  // เทียบวันที่ทำเสร็จจริงกับกำหนดมาตรฐาน (รับเรื่อง + 3 วัน) ให้ผู้ตรวจรับเห็นทันที
+  const late =
+    resolution?.planCompleteDate && serviceAt
+      ? new Date(serviceAt).getTime() > new Date(resolution.planCompleteDate).getTime()
+      : false;
+
+  return (
+    <div className="flex flex-col gap-4">
+      {state === 'current' && (
+        <p className="flex items-center gap-1.5 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-[12.5px] font-semibold text-amber-800">
+          <IconBell size={14} className="shrink-0" />
+          {isOurTurn
+            ? 'แผนก CR ดำเนินการเสร็จแล้ว — ตรวจผลงานด้านล่างแล้วกด “รับงาน”'
+            : 'งานเสร็จแล้ว รอ "หน่วยงานผู้แจ้ง" เป็นคนกดรับงาน'}
+        </p>
+      )}
+
+      {/* ต้องเห็นว่า CR ทำอะไรไปก่อนถึงจะกดรับงานได้อย่างมีความหมาย */}
+      <div>
+        <span className="mb-1 block text-[11.5px] font-semibold text-gray-500">รายละเอียดการดำเนินการของแผนก CR</span>
+        <ReadBox text={resolution?.resolutionDetail} />
+      </div>
+
+      <div className="grid grid-cols-2 gap-x-5 gap-y-3">
+        <DetailRow label="ผู้ดำเนินการ">{resolution?.requestService || '—'}</DetailRow>
+        <DetailRow label="ผู้ดำเนินงาน">{serviceBy || '—'}</DetailRow>
+        <DetailRow label="วันที่ดำเนินการ">{serviceAt ? fmtDateTime(serviceAt) : '—'}</DetailRow>
+        <DetailRow label="กำหนดแล้วเสร็จตามมาตรฐาน">
+          {resolution?.planCompleteDate ? (
+            <span className="flex items-center gap-1.5">
+              <span className="mono">{fmtDate(resolution.planCompleteDate)}</span>
+              {serviceAt && (
+                <span
+                  className={`rounded-md px-1.5 py-0.5 text-[11px] font-semibold ${
+                    late ? 'bg-rose-50 text-rose-700' : 'bg-emerald-50 text-emerald-700'
+                  }`}
+                >
+                  {late ? 'เกินกำหนด' : 'ตรงกำหนด'}
+                </span>
+              )}
+            </span>
+          ) : (
+            '—'
+          )}
+        </DetailRow>
+        <DetailRow label="ผู้รับงาน">{by || '—'}</DetailRow>
+        <DetailRow label="วันที่รับงาน">{when ? <span className="mono">{fmtDate(when)}</span> : '—'}</DetailRow>
+      </div>
+    </div>
+  );
+}
+
+// ── แท็บปิดงานที่แจ้งเรื่องของใบ CR (ขั้น 5 — แผนก CR) ────────────
+// action `close` รับ `actionDetail` (รายละเอียดการปิดงาน ≤ 500) แบบไม่บังคับ
+// ปุ่มจึงอยู่ในแผงเพื่อพาค่าในช่องไปด้วย
+// ⚠️ ใช้ jobClosedBy/jobClosedDate ก่อน แล้วค่อย fallback ไป closedBy/closedDate —
+//    CR ไม่มีขั้น "ปิดงานรับเรื่อง" มาแย่งคอลัมน์นี้ จึงใช้ต่อท้ายได้ (ต่างจาก IT)
+const CR_ACTION_DETAIL_MAX = 500;
+
+function CrClosePanel({
+  state,
+  actions,
+  resolution,
+  closeLog,
+  pending,
+  onSubmit,
+}: {
+  state: StepState;
+  actions: RequestAction[];
+  resolution: RequestResolution | null | undefined;
+  closeLog: RequestLog | null;
+  pending: boolean;
+  onSubmit?: (action: RequestAction, fields: ActionFieldValues) => void | Promise<void>;
+}) {
+  const [actionDetail, setActionDetail] = useState('');
+
+  useEffect(() => {
+    if (resolution?.actionDetail) setActionDetail(resolution.actionDetail);
+  }, [resolution]);
+
+  if (state === 'upcoming')
+    return (
+      <p className="text-[12.5px] text-slate-400">
+        — ยังไม่ถึงขั้นปิดงาน (รอหน่วยงานผู้แจ้งกดรับงานก่อน)
+      </p>
+    );
+
+  const by = resolution?.jobClosedBy || closeLog?.actionByName || resolution?.closedBy;
+  const when = resolution?.jobClosedDate || closeLog?.actionDate || resolution?.closedDate;
+  const close = actions.find((a) => a.code === 'close');
+  const editable = !!close && !!onSubmit;
+
+  return (
+    <div className="flex flex-col gap-4">
+      {state === 'current' && editable && (
+        <p className="flex items-center gap-1.5 rounded-lg border border-teal-200 bg-teal-50 px-3 py-2 text-[12.5px] font-semibold text-teal-800">
+          <IconBell size={14} className="shrink-0" />
+          ผู้แจ้งรับงานแล้ว — แผนก CR กด “{close!.label}” เพื่อจบใบนี้
+        </p>
+      )}
+
+      <div>
+        <span className="mb-1 block text-[11.5px] font-semibold text-gray-500">รายละเอียดการดำเนินการ</span>
+        <ReadBox text={resolution?.resolutionDetail} />
+      </div>
+
+      {editable ? (
+        <div>
+          <label className={SVC_LABEL}>รายละเอียดการปิดงาน</label>
+          <textarea
+            rows={3}
+            value={actionDetail}
+            maxLength={CR_ACTION_DETAIL_MAX}
+            disabled={pending}
+            placeholder="ไม่บังคับ — เช่น ลูกค้ารับเอกสารครบแล้ว"
+            onChange={(e) => setActionDetail(e.target.value)}
+            className={`${SVC_INPUT} resize-y leading-relaxed`}
+          />
+          <p className="mt-1 text-[11px] text-slate-400">
+            {actionDetail.length}/{CR_ACTION_DETAIL_MAX} ตัวอักษร
+          </p>
+        </div>
+      ) : (
+        resolution?.actionDetail && (
+          <div>
+            <span className="mb-1 block text-[11.5px] font-semibold text-gray-500">รายละเอียดการปิดงาน</span>
+            <ReadBox text={resolution.actionDetail} />
+          </div>
+        )
+      )}
+
+      <div className="grid grid-cols-2 gap-x-5 gap-y-3">
+        <DetailRow label="ผู้ปิดงาน">{by || '—'}</DetailRow>
+        <DetailRow label="วันที่ปิดงาน">{when ? fmtDateTime(when) : '—'}</DetailRow>
+      </div>
+
+      {editable && (
+        <div className="flex flex-wrap items-center gap-2 border-t border-gray-100 pt-4">
+          <ConfirmButton
+            label={close!.label}
+            className={actionBtnClass(close!.style)}
+            question="ปิดใบรับเรื่องนี้? กดแล้วใบจะจบและกลับมาแก้ไม่ได้"
+            pending={pending}
+            onConfirm={() => onSubmit?.(close!, cleanFieldValues({ actionDetail }) ?? {})}
+          />
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── รูปแนบแบบอ่านอย่างเดียว ────────────────────────────────────
 // ⚠️ <img src={url}> ตรง ๆ ใช้ไม่ได้ — endpoint รูปมี [Authorize] เบราว์เซอร์ไม่แนบ
 //    token ให้ จะได้ 401 เสมอ ต้องโหลดเป็น blob ผ่าน useAuthedImage
@@ -2321,6 +3035,8 @@ function RequestEditPanel({
   onStageAttachment,
   onCancel,
   onSubmit,
+  crMaster,
+  crTypeNames,
 }: {
   item: RequestListItem;
   lines: PlRequestLine[] | null;
@@ -2336,24 +3052,77 @@ function RequestEditPanel({
   onStageAttachment?: (slot: number, change: PendingAttachment | null) => void;
   onCancel: () => void;
   onSubmit: (form: RequestEditForm) => void | Promise<void>;
+  crMaster: CrMasterData;
+  crTypeNames: string[];
 }) {
   const isPl = item.module === 'PL';
+  const isCr = item.module === 'CR';
   const fields = editFieldsOf(item.module);
   // ตัวเลือกของใบ PL (ประเภท / เรื่องที่แจ้ง / หน่วย) — GET /MasterData/pl
   const { user } = useAuth();
   const plMaster = usePlMasterData(user?.token, isPl);
-  const masterOptions: Record<string, FieldOption[]> = {
-    plTypes: plMaster.typeOptions,
-    plRequestTypes: plMaster.requestTypeOptions,
-  };
-  const [form, setForm] = useState<RequestEditForm>(() => toEditForm(item, lines));
+  const [form, setForm] = useState<RequestEditForm>(() => toEditForm(item, lines, crTypeNames));
   const [errors, setErrors] = useState<ReturnType<typeof validateEditForm>>({});
   // ล็อกช่องกรอกทั้งหมดเมื่อเข้ามาเพื่อจัดการรูปอย่างเดียว (canEdit ปิดไปแล้ว)
   const lock = pending || !fieldsEditable;
 
-  const set = (k: EditFieldKey, v: string) => {
-    setForm((f) => ({ ...f, [k]: v }));
-    setErrors((e) => ({ ...e, [k]: undefined }));
+  // master ของ CR โหลดทีหลังกว่าฟอร์มถูกสร้าง → ตอน mount ยังถอด requestType ไม่ได้
+  // พอรายชื่อประเภทมาถึงค่อยเติมให้ (ผู้ใช้เลือกเองไปแล้วไม่ทับ)
+  useEffect(() => {
+    if (!isCr || crTypeNames.length === 0) return;
+    setForm((f) => {
+      if (f.requestType) return f;
+      const split = splitCrRequestType(item.requestType, crTypeNames);
+      return split.requestType ? { ...f, ...split } : f;
+    });
+  }, [isCr, crTypeNames, item.requestType]);
+
+  // ตัวเลือกของแต่ละช่อง — ของ CR เป็นลูกโซ่ จึงคำนวณจากค่าที่เลือกอยู่ในฟอร์ม
+  const optionsOf = (f: EditFieldDef): FieldOption[] => {
+    switch (f.master) {
+      case 'plTypes':
+        return plMaster.typeOptions;
+      case 'plRequestTypes':
+        return plMaster.requestTypeOptions;
+      // ป้ายเป็นโค้ด HV/FL เฉย ๆ คนอ่านไม่ออก — พ่วงชื่อไทยไว้ในป้ายเดียวกัน
+      case 'crSections':
+        return crMaster.sectionOptions.map((o) => ({ ...o, label: o.sub ? `${o.label} · ${o.sub}` : o.label }));
+      case 'crRequestTypes':
+        return crMaster.requestTypeOptions(form.section);
+      case 'crRequestSubTypes':
+        return crMaster.requestSubTypeOptions(form.section, form.requestType);
+      default:
+        return f.options ?? [];
+    }
+  };
+  const isCrMaster = (m?: MasterListKey) => m === 'crSections' || m === 'crRequestTypes' || m === 'crRequestSubTypes';
+
+  // ถอดค่าเดิมไม่ได้ = ประเภทในใบไม่ตรงกับ master แล้ว (ชื่อถูกแก้ / ส่วนงานเปลี่ยนไป)
+  // ต้องบอกให้เห็น ไม่ใช่ปล่อย select ว่างเงียบ ๆ แล้วผู้ใช้เผลอบันทึกทับ
+  const splitFailed =
+    isCr && !crMaster.loading && !!item.requestType && crTypeNames.length > 0 && !form.requestType;
+
+  // ผู้ใช้กำลังย้ายใบไปชุดเลขที่เอกสารอื่นหรือเปล่า — เทียบกับค่าเดิมในใบ
+  // (ไม่เก็บ original ไว้ใน state เพราะค่าเดิมถอดได้จาก item ตรง ๆ อยู่แล้ว)
+  const seriesChanged =
+    isCr &&
+    !splitFailed &&
+    ((!!form.section && form.section !== (item.type ?? '')) ||
+      (!!form.requestType &&
+        !!splitCrRequestType(item.requestType, crTypeNames).requestType &&
+        form.requestType !== splitCrRequestType(item.requestType, crTypeNames).requestType));
+
+  const set = (k: EditFieldKey, v: string, resets?: EditFieldKey[]) => {
+    setForm((f) => {
+      const next = { ...f, [k]: v };
+      for (const r of resets ?? []) next[r] = '';
+      return next;
+    });
+    setErrors((e) => {
+      const n = { ...e, [k]: undefined };
+      for (const r of resets ?? []) n[r] = undefined;
+      return n;
+    });
   };
 
   const setLines = (next: EditLine[]) => {
@@ -2378,14 +3147,31 @@ function RequestEditPanel({
       <div className="grid grid-cols-2 gap-x-5 gap-y-3 rounded-lg border border-gray-200 bg-slate-50 px-3.5 py-3">
         <DetailRow label="ผู้แจ้งเรื่อง">{item.requestBy || '—'}</DetailRow>
         <DetailRow label="หน่วยงาน">{item.departmentName || '—'}</DetailRow>
-        <DetailRow label="วันที่แจ้ง">{fmtDate(item.requestDate)}</DetailRow>
+        {/* ใบ CR เก็บ "วันที่ต้องการ" ไว้ในคอลัมน์ RequestDate ซึ่งเป็นช่องที่แก้ได้ในฟอร์มนี้
+            — โชว์ซ้ำตรงนี้ในชื่อ "วันที่แจ้ง" ด้วยจะกลายเป็นค่าเดียวกัน 2 ป้ายคนละความหมาย */}
+        {item.module !== 'CR' && <DetailRow label="วันที่แจ้ง">{fmtDate(item.requestDate)}</DetailRow>}
         <DetailRow label="สถานะ">{item.jobStatusName || '—'}</DetailRow>
       </div>
+
+      {/* ถอด "ประเภทที่แจ้ง / รายละเอียดที่แจ้ง" ที่ API รวมร่างมาไม่สำเร็จ
+          → 2 ช่องนั้นว่าง ถ้าไม่บอก ผู้ใช้จะเลือกใหม่ทั้งที่ตั้งใจแก้แค่ช่องอื่น */}
+      {splitFailed && (
+        <p className="flex items-start gap-1.5 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-[12px] text-amber-900">
+          <IconAlertTriangle size={14} className="mt-0.5 shrink-0" />
+          <span>
+            อ่านค่าเดิมของ “ประเภทที่แจ้ง / รายละเอียดที่แจ้ง” ไม่ได้ (ในใบเก็บไว้เป็น{' '}
+            <b>{item.requestType}</b>) — กรุณาเลือกใหม่ทั้งสองช่องก่อนบันทึก
+          </span>
+        </p>
+      )}
 
       <div className="grid grid-cols-2 gap-x-5 gap-y-4">
         {fields.map((f) => {
           const value = form[f.key] ?? '';
           const err = errors[f.key];
+          // ลูกโซ่: ยังไม่เลือกฟิลด์แม่ = ช่องนี้ยังไม่มีตัวเลือกให้เลือก
+          const waitingParent = !!f.dependsOn && !form[f.dependsOn];
+          const fieldLock = lock || waitingParent;
           const cls = `w-full rounded-lg border bg-white px-3 py-2 text-[13px] text-gray-800 outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/20 disabled:bg-slate-50 ${
             err ? 'border-red-300' : 'border-gray-200'
           }`;
@@ -2404,29 +3190,29 @@ function RequestEditPanel({
                 <textarea
                   value={value}
                   maxLength={f.maxLen}
-                  disabled={lock}
+                  disabled={fieldLock}
                   rows={5}
                   placeholder={f.placeholder}
-                  onChange={(e) => set(f.key, e.target.value)}
+                  onChange={(e) => set(f.key, e.target.value, f.resets)}
                   className={`${cls} resize-y leading-relaxed`}
                 />
               ) : f.kind === 'select' ? (
                 <SelectWithMaster
                   value={value}
-                  options={f.master ? masterOptions[f.master] ?? [] : f.options ?? []}
-                  disabled={lock}
-                  loading={!!f.master && plMaster.loading}
-                  error={f.master ? plMaster.error : null}
-                  onRetry={plMaster.reload}
+                  options={optionsOf(f)}
+                  disabled={fieldLock}
+                  loading={!!f.master && (isCrMaster(f.master) ? crMaster.loading : plMaster.loading)}
+                  error={f.master ? (isCrMaster(f.master) ? crMaster.error : plMaster.error) : null}
+                  onRetry={isCrMaster(f.master) ? crMaster.reload : plMaster.reload}
                   cls={cls}
-                  onChange={(v) => set(f.key, v)}
+                  onChange={(v) => set(f.key, v, f.resets)}
                 />
               ) : f.kind === 'date' ? (
                 <input
                   type="date"
                   value={value}
-                  disabled={lock}
-                  onChange={(e) => set(f.key, e.target.value)}
+                  disabled={fieldLock}
+                  onChange={(e) => set(f.key, e.target.value, f.resets)}
                   className={cls}
                 />
               ) : (
@@ -2434,13 +3220,18 @@ function RequestEditPanel({
                   type="text"
                   value={value}
                   maxLength={f.maxLen}
-                  disabled={lock}
+                  disabled={fieldLock}
                   placeholder={f.placeholder}
-                  onChange={(e) => set(f.key, e.target.value)}
+                  onChange={(e) => set(f.key, e.target.value, f.resets)}
                   className={cls}
                 />
               )}
               {err && <p className="mt-1 text-[11.5px] font-semibold text-red-600">{err}</p>}
+              {!err && waitingParent && (
+                <p className="mt-1 text-[11px] text-slate-400">
+                  เลือก{fields.find((p) => p.key === f.dependsOn)?.label ?? 'ช่องก่อนหน้า'}ก่อน
+                </p>
+              )}
             </div>
           );
         })}
@@ -2557,15 +3348,30 @@ function RequestEditPanel({
         </div>
       )}
 
-      <AttachmentSlots
-        module={item.module}
-        attachments={attachments}
-        pending={pendingAtt}
-        onStage={(slot, change) => onStageAttachment?.(slot, change)}
-        readOnly={!canAttachFiles}
-        blockedReason={attachBlockedReason}
-        busy={attachBusy}
-      />
+      {/* โมดูลที่ไม่มีเส้นรูปแนบ (CR) ไม่ต้องขึ้นช่องอัปโหลดที่กดแล้วได้แต่ error */}
+      {attachmentApiOf(item.module).slots.length > 0 && (
+        <AttachmentSlots
+          module={item.module}
+          attachments={attachments}
+          pending={pendingAtt}
+          onStage={(slot, change) => onStageAttachment?.(slot, change)}
+          readOnly={!canAttachFiles}
+          blockedReason={attachBlockedReason}
+          busy={attachBusy}
+        />
+      )}
+
+      {/* เลขที่ใบ CR ออกจากชุดของ (ส่วนงาน + ประเภทที่แจ้ง) ไปแล้วตอนสร้าง — 32 ชุด
+          เปลี่ยน 2 ค่านี้ = ใบย้ายชุด แต่เลขที่ใบเดิมยังเป็นของชุดเก่า เตือนก่อนกดบันทึก */}
+      {seriesChanged && (
+        <p className="flex items-start gap-1.5 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-[12px] font-semibold text-amber-900">
+          <IconAlertTriangle size={14} className="mt-0.5 shrink-0" />
+          <span>
+            กำลังเปลี่ยนส่วนงาน / ประเภทที่แจ้ง — เลขที่ใบ <span className="mono">{item.docNo}</span>{' '}
+            ถูกออกจากชุดเดิมไปแล้ว การเปลี่ยนจะทำให้ใบไปอยู่คนละชุดกับเลขที่ถืออยู่ ตรวจให้แน่ใจก่อนบันทึก
+          </span>
+        </p>
+      )}
 
       <p className="text-[11.5px] text-slate-400">
         {fieldsEditable

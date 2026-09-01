@@ -97,6 +97,17 @@ export interface RequestResolution {
   surveyRemark?: string | null;
   // คะแนนรายหัวข้อ 1–5 (key เดียวกับที่ส่งขึ้นไปตอน action survey) — null = ยังไม่ประเมิน
   surveyRatings?: Record<string, number> | null;
+  // ── ชุดของใบ CR (ดู MdApi/CR-workflow-frontend-guide.md §8) ─────────
+  // requestService = "ผู้ดำเนินการ" ที่ CR กรอกตอนกดรับเรื่อง (คนละช่องกับ receivedBy
+  //   ซึ่งเป็นชื่อคนกดปุ่ม) · planCompleteDate = มาตรฐานการดำเนินการ = วันรับเรื่อง + 3 วัน
+  //   (backend คำนวณให้ ส่งขึ้นไปก็ถูกเมิน)
+  requestService?: string | null;
+  planCompleteDate?: string | null;
+  // ชุด "รับงาน" (action `acceptWork`) — ขั้นที่วนกลับมาหาผู้แจ้ง
+  // ⚠️ คนละคู่กับ receivedBy/receivedDate ซึ่งเป็นของขั้น "รับเรื่อง" ฝั่งปลายทาง
+  // acceptedDate เก็บเป็น date ใน DB (ตัดเวลาทิ้ง) — อย่าโชว์เวลาให้ผู้ใช้เข้าใจผิด
+  acceptedBy?: string | null;
+  acceptedDate?: string | null;
   // ── ชุดปิดงาน (action `close`) — ขั้นสุดท้ายของ workflow ──────────
   // ⚠️ อย่าสับกับ closedBy/closedDate ด้านบน ซึ่งเป็นของขั้น "ปิดงานรับเรื่อง"
   //    (closeReceive) — คนละขั้น คนละคนกด จึงต้องใช้คีย์แยกกัน
@@ -145,9 +156,12 @@ export interface RequestListItem {
   // ── ฟิลด์เฉพาะใบ PL ──
   // optional เพราะ /Requests/{module}/{docNo} ของโมดูลอื่นไม่มีฟิลด์พวกนี้
   // (และ backend อาจยังไม่ส่งมาแม้กับ PL) — ไม่มีค่า = หน้าเว็บแสดง "—"
-  type?: string | null; // ประเภทผู้แจ้ง (ชื่อจาก master types)
+  // ⚠️ ใบ CR ใช้ 2 ฟิลด์นี้ร่วมกับ PL แต่คนละความหมาย (ดู CR-workflow-frontend-guide.md §2):
+  //    type = ส่วนงาน "HV"/"FL" · requestType = "ประเภทที่แจ้ง / จัดทำ" ที่ API รวมมาให้แล้ว
+  //    (ไม่มี requestSubType แยกมา และไม่มี planDate — วันที่ของใบ CR อยู่ใน requestDate)
+  type?: string | null; // ประเภทผู้แจ้ง (PL) · ส่วนงาน HV/FL (CR)
   requestType?: string | null; // เรื่องที่แจ้ง (ชื่อจาก master requestTypes)
-  planDate?: string | null; // วันที่ต้องการใช้งาน
+  planDate?: string | null; // วันที่ต้องการใช้งาน (PL)
   // หมายเหตุ: เช็คลิสต์เอกสารแนบ (attachBudget/attachSpec/…) ไม่ได้อยู่ในชุดนี้ —
   // มากับ GET /PLRequest/{docNo} เท่านั้น (ดู PlRequestDetail ใน api/plRequest.ts)
 }

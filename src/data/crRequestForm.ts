@@ -21,8 +21,10 @@ export function toCrRequestPayload(f: RequestFormState): CrRequestPayload {
     requestSubOther: other || null,
     // ไม่ส่ง requestBy / departid — ให้ backend ใช้ค่าจาก token
     // (ส่งเองแล้วผิดจะทำให้ใบไปอยู่ผิดหน่วยงาน แก้ทีหลังไม่ได้)
-    // ไม่ส่ง requestDate — คือวันที่สร้างเอกสาร ให้ backend ใส่วันนี้
-    jobDate: toApiDate(v.requireDate ?? ''), // "วันที่ต้องการ" ในฟอร์ม
+    // requestDate = "วันที่ต้องการ" ที่ผู้ใช้กรอก (ยืนยัน 1 ก.ย. 2026)
+    requestDate: toApiDate(v.requireDate ?? ''),
+    // ไม่ส่ง jobDate — คือ DocDate = วันที่สร้างเอกสาร/วันที่แจ้งเรื่อง
+    // ให้ backend ใส่เวลาปัจจุบันเอง (นาฬิกาเครื่องผู้ใช้เชื่อไม่ได้)
     requestDetail: f.detail,
   };
 }

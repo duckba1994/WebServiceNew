@@ -37,7 +37,15 @@ export function useRequestDetail(
         if (alive) setDetail(d);
       })
       .catch((e: unknown) => {
-        if (alive) setError(e instanceof Error ? e.message : 'โหลดรายละเอียดใบไม่สำเร็จ');
+        if (!alive) return;
+        const msg = e instanceof Error ? e.message : '';
+        // 404 = API หาใบไม่เจอ · apiGet ไม่ได้แกะ message จาก body มาให้ (ได้แค่รหัส HTTP)
+        // ส่วน apiSend แปลข้อความ debug ภาษาอังกฤษให้แล้ว — รับไว้ทั้งสองทาง
+        if (/HTTP 404/.test(msg) || /was not found|ไม่พบใบแจ้งเรื่อง/i.test(msg)) {
+          setError('ไม่พบใบแจ้งเรื่องนี้ในระบบ');
+          return;
+        }
+        setError(msg || 'โหลดรายละเอียดใบไม่สำเร็จ');
       })
       .finally(() => {
         if (alive) setLoading(false);

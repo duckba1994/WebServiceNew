@@ -1,6 +1,7 @@
 import { RequestListItem } from '../types/requestList';
 import { User } from '../types/user';
 import { ItRequestUpdatePayload } from '../api/itRequest';
+import { CrRequestUpdatePayload } from '../api/crRequest';
 import {
   PlChecklistPayload,
   PlRequestDetail,
@@ -23,6 +24,9 @@ import { DETAIL_MAX_LEN, FieldOption, MasterListKey } from './requestForm';
 const EDITABLE_WF_STATUS: Record<string, string[]> = {
   IT: ['Approved-Request'],
   PL: ['Approved-Request'],
+  // CR ใช้รหัสเดียวกันโดยบังเอิญ (workflow ของ CR ขั้น 1 = Approved-Request)
+  // ผู้ใช้ยืนยัน 1 ก.ย. 2026: อนุมัติแล้วห้ามแก้
+  CR: ['Approved-Request'],
 };
 
 // ใครแก้ได้: คนที่หน่วยงานตรงกับหน่วยงานผู้แจ้ง
@@ -60,7 +64,15 @@ export type EditFieldKey =
   | 'requestDetailRemark'
   | 'type'
   | 'requestType'
-  | 'planDate';
+  | 'planDate'
+  // CR เก็บ "วันที่ต้องการ" ไว้ในคอลัมน์ RequestDate ไม่ใช่ PlanDate
+  // (ดู MdApi/API_SPEC_CR_FLOW.md §3 — เป็นจุดที่ยังรอ backend ยืนยัน)
+  | 'requestDate'
+  // CR: ลูกโซ่ 3 ชั้น ส่วนงาน → ประเภทที่แจ้ง → รายละเอียดที่แจ้ง
+  // (ส่วนงานเก็บเป็น "โค้ด" HV/FL ไม่ใช่ชื่อ — เป็นคีย์ที่อีก 2 ชั้นใช้อ้างถึง)
+  | 'section'
+  | 'requestSubType'
+  | 'requestSubOther';
 
 export interface EditFieldDef {
   key: EditFieldKey;
@@ -76,7 +88,21 @@ export interface EditFieldDef {
   // — ใบเก็บ "ชื่อ" จึงต้องให้ value เป็นชื่อ ไม่ใช่ id ไม่งั้นค่าที่โหลดมาจะไม่ตรงกับ
   // ตัวเลือกไหนเลยแล้ว select เด้งว่าง
   master?: MasterListKey;
+  // ── ลูกโซ่ (CR) ──────────────────────────────────────────────
+  // dependsOn = ยังเลือกไม่ได้จนกว่าฟิลด์แม่จะมีค่า (ตัวเลือกขึ้นกับค่านั้น)
+  // resets    = เปลี่ยนฟิลด์นี้แล้วต้องล้างลูกทิ้ง เพราะตัวเลือกเดิมใช้กับค่าใหม่ไม่ได้
+  //             (ไม่ล้าง = ค่าที่ค้างอยู่จะถูกบันทึกทั้งที่ไม่มีในรายการใหม่)
+  dependsOn?: EditFieldKey;
+  resets?: EditFieldKey[];
+  // ซ่อนจนกว่าฟิลด์แม่จะมีค่าตามที่ระบุ (เช่น "ระบุเพิ่มเติม" ของ CR ที่โผล่เฉพาะ
+  // ตอนประเภทที่แจ้ง = "อื่นๆ") — ต้องใช้ทั้งตอนเรนเดอร์และตอน validate
+  // ไม่งั้นจะติด "กรุณากรอก…" ของช่องที่ผู้ใช้มองไม่เห็น
+  showWhen?: { key: EditFieldKey; equals: string };
 }
+
+// ช่องนี้ต้องแสดงไหม — ใช้ร่วมกันระหว่างการเรนเดอร์กับ validate
+export const editFieldVisible = (f: EditFieldDef, form: Record<string, string>): boolean =>
+  !f.showWhen || (form[f.showWhen.key] ?? '') === f.showWhen.equals;
 
 const IT_EDIT_FIELDS: EditFieldDef[] = [
   { key: 'phoneNumber', label: 'เบอร์ติดต่อ', kind: 'text', maxLen: 30, placeholder: 'เบอร์ที่ติดต่อกลับได้' },
@@ -117,9 +143,65 @@ const PL_EDIT_FIELDS: EditFieldDef[] = [
   },
 ];
 
+// ใบ CR แก้ได้ 5 ช่องตามฟอร์มตอนสร้างใบ (ผู้ใช้ยืนยัน 1 ก.ย. 2026)
+// เรียงเหมือนฟอร์มสร้างใบ: ส่วนงาน → ประเภทที่แจ้ง → รายละเอียดที่แจ้ง → วันที่ต้องการ → รายละเอียด
+//
+// ⚠️ เปลี่ยน "ส่วนงาน" หรือ "ประเภทที่แจ้ง" = เปลี่ยนชุดเลขที่เอกสาร
+//    เลขที่ใบถูกออกจากชุดของ (ส่วนงาน + ประเภทที่แจ้ง) ไปแล้ว (32 ชุด) ตั้งแต่ตอนสร้าง
+//    ใบที่แก้ 2 ช่องนี้จะถือเลขของชุดเดิมแต่ไปอยู่ใต้ชุดใหม่ — backend ต้องตัดสินว่าจะ
+//    ออกเลขใหม่หรือปฏิเสธ (ดู MdApi/API_SPEC_CR_FLOW.md §4.1)
+const CR_EDIT_FIELDS: EditFieldDef[] = [
+  {
+    key: 'section',
+    label: 'ส่วนงาน',
+    kind: 'select',
+    required: true,
+    master: 'crSections',
+    resets: ['requestType', 'requestSubType'],
+  },
+  {
+    key: 'requestType',
+    label: 'ประเภทที่แจ้ง',
+    kind: 'select',
+    required: true,
+    master: 'crRequestTypes',
+    dependsOn: 'section',
+    resets: ['requestSubType'],
+  },
+  {
+    key: 'requestSubType',
+    label: 'รายละเอียดที่แจ้ง',
+    kind: 'select',
+    required: true,
+    master: 'crRequestSubTypes',
+    dependsOn: 'requestType',
+  },
+  // โผล่เฉพาะตอนประเภทที่แจ้ง = "อื่นๆ" (เหมือนฟอร์มสร้างใบ) — ไม่บังคับ
+  {
+    key: 'requestSubOther',
+    label: 'ระบุเพิ่มเติม',
+    kind: 'text',
+    span2: true,
+    maxLen: 100,
+    placeholder: 'ระบุเรื่องที่ต้องการให้ชัดเจน',
+    showWhen: { key: 'requestType', equals: CR_OTHER_TYPE },
+  },
+  { key: 'requestDate', label: 'วันที่ต้องการ', kind: 'date', required: true },
+  {
+    key: 'requestDetail',
+    label: 'รายละเอียด',
+    kind: 'textarea',
+    required: true,
+    span2: true,
+    maxLen: 1000,
+    placeholder: 'อธิบายเรื่องที่ต้องการให้ชัดเจน',
+  },
+];
+
 const EDIT_FIELDS_BY_MODULE: Record<string, EditFieldDef[]> = {
   IT: IT_EDIT_FIELDS,
   PL: PL_EDIT_FIELDS,
+  CR: CR_EDIT_FIELDS,
 };
 
 export const editFieldsOf = (module: string): EditFieldDef[] => EDIT_FIELDS_BY_MODULE[module] ?? [];
@@ -190,14 +272,27 @@ const toDateInput = (iso?: string | null): string => (iso ? iso.slice(0, 10) : '
 // ใบ → ฟอร์ม (null/undefined กลายเป็นสตริงว่าง)
 // item.detail คือฟิลด์เดียวกับ requestDetail ที่ส่งขึ้น API (คนละชื่อคนละทิศทาง)
 // lines ส่งมาเฉพาะใบ PL — แถวที่ถูกยกเลิกไปแล้วไม่เอาเข้าฟอร์ม (แก้ไม่ได้)
-export const toEditForm = (item: RequestListItem, lines?: PlRequestLine[] | null): RequestEditForm => ({
-  requestDetail: item.detail ?? '',
+//
+// crDoc = ค่าดิบจาก GET /CRRequest/{docNo} (ใบ CR เท่านั้น) — **ต้องใช้ตัวนี้**
+// ห้ามเอา item.requestType ของเส้นกลางมาผูก dropdown เพราะเป็นข้อความรวมร่าง
+// ("ใบเสนอราคา / แก้ไขเอกสาร") ยังไม่โหลดเสร็จ = ช่องของ CR ว่างไว้ก่อน
+export const toEditForm = (
+  item: RequestListItem,
+  lines?: PlRequestLine[] | null,
+  crDoc?: CrRequestDetail | null
+): RequestEditForm => ({
+  requestDetail: item.module === 'CR' ? crDoc?.requestDetail ?? item.detail ?? '' : item.detail ?? '',
   phoneNumber: item.phoneNumber ?? '',
   comName: item.comName ?? '',
   requestDetailRemark: item.remark ?? '',
   type: item.type ?? '',
-  requestType: item.requestType ?? '',
+  // ใบ CR: section = โค้ดส่วนงาน (HV/FL) · โมดูลอื่นไม่มีฟิลด์ section ในฟอร์มอยู่แล้ว
+  section: crDoc?.section ?? (item.module === 'CR' ? item.type ?? '' : ''),
+  requestType: item.module === 'CR' ? crDoc?.requestType ?? '' : item.requestType ?? '',
+  requestSubType: crDoc?.requestSubType ?? '',
+  requestSubOther: crDoc?.requestSubOther ?? '',
   planDate: toDateInput(item.planDate),
+  requestDate: toDateInput(item.module === 'CR' ? crDoc?.requestDate ?? item.requestDate : item.requestDate),
   lines: (lines ?? [])
     .filter((l) => !l.cancel)
     .map((l) => ({
@@ -263,6 +358,18 @@ export const toUpdatePayload = (
   phoneNumber: form.phoneNumber.trim(), // "" = ล้างค่า (ตั้งใจ), null = ไม่เปลี่ยน
   departid: null,
   requestDate: null,
+});
+
+// ฟอร์ม → payload ของ PUT /CRRequest/{jobNo}
+// ส่งครบทั้ง 5 ช่องเสมอ (ไม่ใช่เฉพาะที่แก้) — ทั้งสามชั้นของลูกโซ่เป็นชุดเดียวกัน
+// ส่งไปครึ่ง ๆ backend จะได้ประเภทที่ไม่อยู่ในส่วนงานนั้น
+// เวลาท้องถิ่นแบบไม่มี timezone — แปลงเป็น ISO UTC แล้ว +07 จะดึงวันถอยไป 1 วัน
+export const toCrUpdatePayload = (form: RequestEditForm): CrRequestUpdatePayload => ({
+  section: form.section.trim(),
+  requestType: form.requestType.trim(),
+  requestSubType: form.requestSubType.trim(),
+  requestDetail: form.requestDetail.trim(),
+  requestDate: form.requestDate ? `${form.requestDate}T00:00:00` : undefined,
 });
 
 // ช่องเลขที่/รายละเอียดขึ้นกับหัวข้อที่ติ๊ก — ไม่ติ๊ก = ส่ง "" เพื่อล้างค่าใน DB

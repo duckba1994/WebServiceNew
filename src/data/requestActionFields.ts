@@ -41,6 +41,23 @@ export const ACTION_FIELDS: Record<string, ActionField> = {
     placeholder: 'อธิบายสิ่งที่ทำไป ผลการทดสอบ ฯลฯ',
   },
   repairStatus: { name: 'repairStatus', label: 'สถานะการซ่อม', type: 'text' },
+  // ── ใบ CR (ดู MdApi/CR-workflow-frontend-guide.md §8) ──
+  // ⚠️ ชื่อ "ส่งไป" กับ "อ่านกลับ" ไม่ตรงกันโดยตั้งใจ: ส่ง serviceDetail แต่อ่านที่
+  //    resolution.resolutionDetail (resolution เป็น shape กลางใช้ร่วมกับ IT/PL)
+  requestService: {
+    name: 'requestService',
+    label: 'ผู้ดำเนินการ',
+    type: 'text',
+    placeholder: 'ระบุผู้ที่จะรับไปดำเนินการ',
+    hint: 'ไม่เกิน 100 ตัวอักษร',
+  },
+  serviceDetail: {
+    name: 'serviceDetail',
+    label: 'รายละเอียดการดำเนินการ',
+    type: 'textarea',
+    wide: true,
+    placeholder: 'สรุปสิ่งที่ทำไป / ความคืบหน้า',
+  },
   // PL: ผลการดำเนินงาน (คนละช่องกับ solve ของฝั่ง IT)
   actionDetail: {
     name: 'actionDetail',
@@ -135,7 +152,10 @@ export const OPTIONAL_GROUPS: Record<string, OptionalGroup[]> = {
 // แผนกที่ขั้นปิดงานไม่เก็บอะไรเลย — ปุ่มปิดงานต้องเป็นกล่องยืนยันเปล่า ๆ
 // PL: ผู้ใช้ยืนยัน 31 ส.ค. 2026 ว่าปิดงานคือ "รับทราบว่าเสร็จ" ไม่มีฟิลด์ ไม่มี KPI
 //     (ผลงานถูกเก็บไปแล้วที่ขั้น Service ผ่าน repairDetail + actionDetail)
-const NO_CLOSE_FIELDS = new Set(['PL']);
+// CR: ปิดงานรับ actionDetail ได้ 1 ช่อง (ไม่บังคับ) แต่ไม่มี KPI — ช่องนั้นอยู่ในแผง
+//     ปิดงานของ CR เอง (CrClosePanel) ไม่ได้ผ่านกล่องนี้ · ใส่ไว้กัน KPI ของ IT
+//     หลุดไปโผล่กับใบ CR ถ้าวันหนึ่ง action close ตกมาที่กล่องยืนยัน
+const NO_CLOSE_FIELDS = new Set(['PL', 'CR']);
 
 export const optionalGroupsOf = (actionCode: string, module?: string): OptionalGroup[] => {
   if (actionCode === 'close' && module && NO_CLOSE_FIELDS.has(module)) return [];

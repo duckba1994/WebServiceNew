@@ -91,6 +91,10 @@ async function throwApiError(res: Response): Promise<never> {
   } catch {
     // ตอบกลับไม่ใช่ JSON — ใช้ข้อความ default
   }
+  // 404 ของ API เป็นข้อความ debug ภาษาอังกฤษตัวเดียวในระบบ
+  // ("Entity 'CR Request' with key (BHV-SER01%2F26-0010) was not found.")
+  // — ผู้ใช้ไม่ได้ประโยชน์อะไรจากมัน แปลก่อนโยนต่อ
+  if (/was not found/i.test(message)) message = 'ไม่พบใบแจ้งเรื่องนี้ในระบบ';
   throw new ApiError(message, res.status, traceId);
 }
 

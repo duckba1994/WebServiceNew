@@ -1,6 +1,7 @@
 import { useCallback, useState } from 'react';
 import { ItRequestUpdatePayload, updateItRequest } from '../api/itRequest';
 import { PlRequestUpdatePayload, updatePlRequest } from '../api/plRequest';
+import { CrRequestUpdatePayload, updateCrRequest } from '../api/crRequest';
 import { fetchRequestDetail } from '../api/requests';
 import { RequestListItem } from '../types/requestList';
 
@@ -33,15 +34,17 @@ export function useRequestEdit(token?: string) {
   const save = useCallback(
     async (
       item: RequestListItem,
-      payload: ItRequestUpdatePayload | PlRequestUpdatePayload
+      payload: ItRequestUpdatePayload | PlRequestUpdatePayload | CrRequestUpdatePayload
     ): Promise<EditResult> => {
       setPending(true);
       setNotice(null);
       try {
         // เลือกเส้นตามโมดูลของใบ — payload คนละ shape (ตัวเรียกเป็นคนสร้างให้ตรง
-        // ด้วย toUpdatePayload / toPlUpdatePayload ใน data/requestEdit.ts)
+        // ด้วย toUpdatePayload / toPlUpdatePayload / toCrUpdatePayload ใน data/requestEdit.ts)
         if (item.module === 'PL') {
           await updatePlRequest(item.docNo, payload as PlRequestUpdatePayload, token);
+        } else if (item.module === 'CR') {
+          await updateCrRequest(item.docNo, payload as CrRequestUpdatePayload, token);
         } else {
           await updateItRequest(item.docNo, payload as ItRequestUpdatePayload, token);
         }
@@ -56,7 +59,13 @@ export function useRequestEdit(token?: string) {
       } catch (e: unknown) {
         const status = (e as { status?: number })?.status;
         const traceId = (e as { traceId?: string })?.traceId;
-        const msg = e instanceof Error ? e.message : 'บันทึกการแก้ไขไม่สำเร็จ';
+        let msg = e instanceof Error ? e.message : 'บันทึกการแก้ไขไม่สำเร็จ';
+        // เส้นแก้ไขใบ CR ยังไม่ถูกพอร์ตมา (ดู MdApi/API_SPEC_CR_FLOW.md §4)
+        // 404/405 จึงมักแปลว่า "ยังไม่มีเส้น" ไม่ใช่ "ไม่พบใบ" — บอกให้ตรงเหตุ
+        // ดีกว่าปล่อยให้ผู้ใช้เห็นรหัส HTTP เปล่า ๆ แล้วเดาว่าตัวเองทำอะไรผิด
+        if (item.module === 'CR' && (status === 404 || status === 405)) {
+          msg = 'ระบบยังไม่เปิดให้แก้ไขใบ CR — กรุณาแจ้งผู้ดูแลระบบ (ข้อมูลที่แก้ไว้ยังอยู่ในฟอร์ม)';
+        }
         setNotice({
           kind: 'error',
           // 5xx = ทีม backend ต้องตามจาก log — แปะ traceId ไปให้ผู้ใช้อ่านให้ฟัง

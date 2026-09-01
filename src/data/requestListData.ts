@@ -114,6 +114,9 @@ export const fmtDateTime = (iso?: string | null): string => {
 // 2 จาก 6 (เพิ่งเริ่ม) หน้าตาเหมือนกันทั้งที่คนละเรื่อง
 export const stepText = (row: RequestListItem): string => {
   if (row.wfStep === null || row.wfStep === undefined) return '';
+  // ใบที่จบแล้ว backend ตั้ง wfStep เลยขั้นสุดท้ายไป 1 โดยตั้งใจ (CR: 6 จาก 5)
+  // เพื่อให้ "ขั้นปัจจุบัน" ว่าง ใบจะได้ไม่ค้างในคิวแผนกไหน — ห้ามโชว์ "6 จาก 5"
+  if (row.wfStepTotal && row.wfStep > row.wfStepTotal) return phaseLabel(row);
   return row.wfStepTotal ? `${row.wfStep} จาก ${row.wfStepTotal}` : String(row.wfStep);
 };
 
