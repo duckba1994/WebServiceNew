@@ -5,6 +5,17 @@
 // อยู่ที่ src/types/requestList.ts (ชื่อฟิลด์ต้องตรงกับ API)
 // ไฟล์นี้เก็บเฉพาะชนิดข้อมูลของ "ฟอร์มสร้างใบแจ้งเรื่อง"
 
-export type Dept = 'HR' | 'PL' | 'SV' | 'IT' | 'PU' | 'CR';
+export type Dept =
+  | 'HR'
+  | 'PL'
+  | 'SV'
+  | 'IT'
+  | 'PU'
+  | 'CR'
+  | 'GA'
+  | 'IM'
+  | 'AF'
+  | 'SQA'
+  | 'PS';
 
 export type RequestPriority = 'low' | 'normal' | 'high' | 'urgent';

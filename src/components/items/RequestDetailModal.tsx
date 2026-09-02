@@ -15,6 +15,7 @@ import {
   IconUser,
   IconFileText,
   IconShieldCheck,
+  IconList,
 } from '@tabler/icons-react';
 import {
   RequestAction,
@@ -1892,9 +1893,7 @@ function GeneralPanel({
   // ทุกบล็อกใช้ col-span-2 เพราะทั้งการ์ดและแผงเดิมเป็น grid 2 คอลัมน์เหมือนกัน
   const detailBlock = (
     <div className="col-span-2">
-      <span className="mb-1 block text-[11.5px] font-semibold text-gray-500">
-        {isPl ? 'ระบุเรื่องที่แจ้ง' : 'รายละเอียดเรื่องที่แจ้ง'}
-      </span>
+      <span className="mb-1 block text-[11.5px] font-semibold text-gray-500">รายละเอียด</span>
       <div className="rounded-lg border border-gray-200 bg-slate-50 px-3.5 py-3 text-[13px] leading-relaxed text-gray-800">
         <span className="whitespace-pre-wrap">{full.detail || '— (ผู้แจ้งไม่ได้กรอกรายละเอียด)'}</span>
       </div>
@@ -1907,7 +1906,6 @@ function GeneralPanel({
   // "ไม่มีรูปแนบ" ทุกใบตลอดกาล ทำให้คนอ่านนึกว่าผู้แจ้งลืมแนบ
   const attachmentsBlock = hasAttachments ? (
     <div className="col-span-2">
-      <span className="mb-1.5 block text-[11.5px] font-semibold text-gray-500">รูปภาพ</span>
       {imgs.length === 0 ? (
         <span className="text-[13px] text-slate-400">— ไม่มีรูปแนบ</span>
       ) : (
@@ -1953,13 +1951,13 @@ function GeneralPanel({
   // (ผู้ใช้สั่ง 2 ก.ย. 2026 — ลองที่ IT ก่อนแล้วขยายมาให้ครบ)
   // ช่องข้างในต่างกันตามโมดูลเหมือนเดิม แต่ "กลุ่ม" เหมือนกันหมด คนที่ดูใบ
   // ข้ามแผนกจะได้หาข้อมูลที่เดิมเสมอ:
-  //   ข้อมูลผู้แจ้ง = ใครขอ · ข้อมูลเรื่องที่แจ้ง = ขออะไร · การอนุมัติ = log
+  //   ผู้แจ้ง = ใครขอ · เรื่องที่แจ้ง = ขออะไร · รายละเอียด = อธิบายเพิ่ม · การอนุมัติ = log
   // "การอนุมัติ" แยกการ์ดเพราะเป็น log ของใบ ไม่ใช่สิ่งที่ผู้แจ้งกรอก
   // และต่อกับบล็อกปุ่มอนุมัติที่อยู่ท้ายแท็บพอดี
   return (
     <div className="flex flex-col gap-3.5">
       {/* ไม่ซ้ำเลขใบตรงนี้ — หัว modal โชว์ตัวใหญ่อยู่แล้ว (ผู้ใช้สั่ง 2 ก.ย. 2026) */}
-      <InfoCard title="ข้อมูลผู้แจ้ง" icon={IconUser}>
+      <InfoCard title="ผู้แจ้ง" icon={IconUser}>
         <DetailRow label="ผู้แจ้งเรื่อง">{full.requestBy || '—'}</DetailRow>
         <DetailRow label="หน่วยงาน">{full.departmentName || '—'}</DetailRow>
         {/* เบอร์ติดต่อ/ชื่อเครื่อง เป็นช่องของ IT — โมดูลอื่นที่ยังไม่มีแท็บของตัวเอง
@@ -1979,11 +1977,11 @@ function GeneralPanel({
         )}
       </InfoCard>
 
-      <InfoCard title="ข้อมูลเรื่องที่แจ้ง" icon={IconFileText}>
+      <InfoCard title="เรื่องที่แจ้ง" icon={IconFileText}>
         {isPl && (
           <>
             <DetailRow label="ประเภท">{full.type || '—'}</DetailRow>
-            <DetailRow label="เรื่องที่แจ้ง">{full.requestType || '—'}</DetailRow>
+            <DetailRow label="หัวข้อเรื่อง">{full.requestType || '—'}</DetailRow>
             {/* วันที่ต้องการใช้งาน = สิ่งที่ขอ ไม่ใช่ข้อมูลตัวผู้แจ้ง จึงอยู่การ์ดนี้
                 (ผู้ใช้สั่ง 2 ก.ย. 2026 — ย้ายมาจากการ์ด "ข้อมูลผู้แจ้ง" พร้อมกับหน้าสร้างใบ) */}
             <DetailRow label="วันที่ต้องการใช้งาน">
@@ -2008,13 +2006,14 @@ function GeneralPanel({
               {crDoc.doc?.requestType || full.requestType || '—'}
             </DetailRow>
             {crDoc.doc && (
-              <DetailRow label="รายละเอียดที่แจ้ง">{crDoc.doc.requestSubType || '—'}</DetailRow>
+              <DetailRow label="หัวข้อเรื่อง">{crDoc.doc.requestSubType || '—'}</DetailRow>
             )}
             {crDoc.doc?.requestSubOther && (
               <DetailRow label="ระบุเพิ่มเติม">{crDoc.doc.requestSubOther}</DetailRow>
             )}
-            {/* ⚠️ ใบ CR เก็บ "วันที่ต้องการ" ไว้ในคอลัมน์ RequestDate (ยืนยัน 1 ก.ย. 2026)
-                ไม่ใช่วันที่แจ้ง — ดู MdApi/API_SPEC_CR_FLOW.md §3 */}
+            {/* วันที่ต้องการ = สิ่งที่ขอ จึงอยู่กล่องนี้ เหมือน "วันที่ต้องการใช้งาน" ของ PL
+                ⚠️ ใบ CR เก็บค่านี้ไว้ในคอลัมน์ RequestDate ไม่ใช่วันที่แจ้ง
+                (ยืนยัน 1 ก.ย. 2026 — ดู MdApi/API_SPEC_CR_FLOW.md §3) */}
             <DetailRow label="วันที่ต้องการ">
               {crDoc.doc?.requestDate || full.requestDate ? (
                 <span className="mono">{fmtDate(crDoc.doc?.requestDate || full.requestDate)}</span>
@@ -2025,26 +2024,33 @@ function GeneralPanel({
           </>
         )}
 
+        {/* รายละเอียด/เหตุผล = เนื้อของเรื่องที่แจ้ง อยู่ในกล่องเดียวกัน
+            (ผู้ใช้สั่ง 2 ก.ย. 2026 — กล่องมาตรฐาน: ผู้แจ้ง / เรื่องที่แจ้ง / รายการที่ขอ / รูปภาพ) */}
         {detailBlock}
 
         {isPl && (
-          <>
-            <div className="col-span-2">
-              <span className="mb-1 block text-[11.5px] font-semibold text-gray-500">เหตุผลการขอ</span>
-              <div className="rounded-lg border border-gray-200 bg-slate-50 px-3.5 py-3 text-[13px] leading-relaxed text-gray-800">
-                <span className="whitespace-pre-wrap">{full.remark || '— (ไม่ได้ระบุ)'}</span>
-              </div>
+          <div className="col-span-2">
+            <span className="mb-1 block text-[11.5px] font-semibold text-gray-500">เหตุผลการขอ</span>
+            <div className="rounded-lg border border-gray-200 bg-slate-50 px-3.5 py-3 text-[13px] leading-relaxed text-gray-800">
+              <span className="whitespace-pre-wrap">{full.remark || '— (ไม่ได้ระบุ)'}</span>
             </div>
-
-            <div className="col-span-2">
-              <span className="mb-1.5 block text-[11.5px] font-semibold text-gray-500">รายการที่ขอ</span>
-              <PlLinesTable {...plLines} />
-            </div>
-          </>
+          </div>
         )}
-
-        {attachmentsBlock}
       </InfoCard>
+
+      {/* มีเฉพาะโมดูลที่ผู้แจ้งกรอกรายการมาด้วย (ตอนนี้ = PL) */}
+      {isPl && (
+        <InfoCard title="รายการที่ขอ" icon={IconList}>
+          <div className="col-span-2">
+            <PlLinesTable {...plLines} />
+          </div>
+        </InfoCard>
+      )}
+
+      {/* โมดูลที่ไม่มีเส้นรูปแนบ (CR) ไม่ต้องขึ้นกล่องนี้เลย */}
+      {attachmentsBlock && (
+        <InfoCard title="รูปภาพ" icon={IconPaperclip}>{attachmentsBlock}</InfoCard>
+      )}
 
       <InfoCard title="การอนุมัติ" icon={IconShieldCheck}>
         <div className="col-span-2">{approverList}</div>
@@ -3552,7 +3558,7 @@ function AttachmentSlots({
   return (
     <div>
       <div className="mb-1.5 flex items-baseline gap-1.5">
-        <span className="text-[11.5px] font-semibold text-gray-500">รูปภาพประกอบ</span>
+        <span className="text-[11.5px] font-semibold text-gray-500">รูปภาพ</span>
         <span className="text-[10.5px] text-slate-400">
           {readOnly ? '(3 ช่อง — ดูได้อย่างเดียว)' : '(3 ช่อง — เลือกไฟล์ทับช่องเดิมได้)'}
         </span>

@@ -110,7 +110,7 @@ const IT_EDIT_FIELDS: EditFieldDef[] = [
   { key: 'comName', label: 'ชื่อคอมพิวเตอร์', kind: 'text', required: true, maxLen: 100, placeholder: 'ชื่อเครื่องที่มีปัญหา' },
   {
     key: 'requestDetail',
-    label: 'รายละเอียดเรื่องที่แจ้ง',
+    label: 'รายละเอียด',
     kind: 'textarea',
     required: true,
     span2: true,
@@ -122,11 +122,11 @@ const IT_EDIT_FIELDS: EditFieldDef[] = [
 // เรียงตามแบบฟอร์มตอนสร้างใบ PL (ดู REQUEST_FORMS.PL ใน requestForm.ts)
 const PL_EDIT_FIELDS: EditFieldDef[] = [
   { key: 'type', label: 'ประเภท', kind: 'select', required: true, master: 'plTypes' },
-  { key: 'requestType', label: 'เรื่องที่แจ้ง', kind: 'select', required: true, master: 'plRequestTypes' },
+  { key: 'requestType', label: 'หัวข้อเรื่อง', kind: 'select', required: true, master: 'plRequestTypes' },
   { key: 'planDate', label: 'วันที่ต้องการใช้งาน', kind: 'date', required: true },
   {
     key: 'requestDetail',
-    label: 'ระบุเรื่องที่แจ้ง',
+    label: 'รายละเอียด',
     kind: 'textarea',
     required: true,
     span2: true,
@@ -159,7 +159,7 @@ const PL_EDIT_FIELDS: EditFieldDef[] = [
 const CR_EDIT_FIELDS: EditFieldDef[] = [
   {
     key: 'requestSubType',
-    label: 'รายละเอียดที่แจ้ง',
+    label: 'หัวข้อเรื่อง',
     kind: 'select',
     required: true,
     master: 'crRequestSubTypes',

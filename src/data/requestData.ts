@@ -23,6 +23,11 @@ export const DEPT_META: Record<Dept, { label: string; color: string; bg: string;
   IT: { label: 'IT', color: '#1a5fb4', bg: '#eff6ff', border: '#bfdbfe' },
   PU: { label: 'จัดซื้อ', color: '#0f766e', bg: '#f0fdfa', border: '#99f6e4' },
   CR: { label: 'CR', color: '#1a5fb4', bg: '#eff6ff', border: '#bfdbfe' },
+  GA: { label: 'GA', color: '#0e7490', bg: '#ecfeff', border: '#a5f3fc' },
+  IM: { label: 'IM', color: '#4338ca', bg: '#eef2ff', border: '#c7d2fe' },
+  AF: { label: 'AF', color: '#9b3068', bg: '#fdf2f8', border: '#fbcfe8' },
+  SQA: { label: 'SQA', color: '#be123c', bg: '#fff1f2', border: '#fecdd3' },
+  PS: { label: 'PS', color: '#7e22ce', bg: '#faf5ff', border: '#e9d5ff' },
 };
 
 // สีกลางสำหรับแผนกที่ยังไม่ได้กำหนดสีไว้ (master มีแผนกได้มากกว่าที่ประกาศ)

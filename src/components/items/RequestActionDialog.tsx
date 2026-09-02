@@ -220,7 +220,7 @@ export function RequestActionDialog({
           {item.detail && (
             <div className="mb-4">
               <span className="mb-1 block text-[11.5px] font-semibold text-gray-500">
-                รายละเอียดเรื่องที่แจ้ง
+                รายละเอียด
               </span>
               <div className="max-h-24 overflow-y-auto whitespace-pre-wrap rounded-lg border border-gray-200 bg-slate-50 px-3 py-2 text-[12.5px] text-slate-600">
                 {item.detail}

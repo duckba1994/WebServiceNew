@@ -29,6 +29,7 @@ import {
   ItMasterDataApi,
   PlMasterDataApi,
   CrMasterDataApi,
+  DeptMasterDataApi,
 } from '../types/masterData';
 
 // ── แผนก — ใช้เป็นแผนกปลายทางของใบแจ้งเรื่อง ──
@@ -129,3 +130,9 @@ export const fetchPlMasterData = (token?: string) =>
 // ── Master Data ของใบแจ้งเรื่อง CR — ส่วนงาน → ประเภท → รายละเอียด ──
 export const fetchCrMasterData = (token?: string) =>
   apiGet<CrMasterDataApi>('/MasterData/cr', token);
+
+// ── Master Data ของใบแจ้งเรื่องรายแผนก (GA / IM / AF / SV / SQA) ──
+// endpoint แยกตามแผนก แต่รูปร่างข้อมูลเดียวกัน (DeptMasterDataApi)
+// dept = departmentShort จาก /MasterData/departments
+export const fetchDeptMasterData = (dept: string, token?: string) =>
+  apiGet<DeptMasterDataApi>(`/MasterData/${dept.toLowerCase()}`, token);

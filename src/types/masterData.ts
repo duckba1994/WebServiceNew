@@ -306,3 +306,45 @@ export interface CrMasterDataApi {
   requestTypes: CrRequestTypeApi[];
   requestSubTypes: CrRequestSubTypeApi[];
 }
+
+// ── /MasterData/{ga|im|af|sv|sqa} — ตัวเลือกของใบแจ้งเรื่องรายแผนก ──
+// สัญญาเดียวใช้ได้ทุกแผนกในกลุ่มนี้ (คนละ endpoint คนละรายการ) — แผนกไหน
+// ไม่มีชุดไหนก็ไม่ต้องส่ง field นั้นมา ฟอร์มจะไม่แสดงตัวเลือกของชั้นนั้นเอง
+// ดู MdApi/API_SPEC_DEPT_MASTER.md สำหรับรูปแบบที่ฝั่งเว็บรออยู่
+export interface MasterSectionApi {
+  code: string; // 'HV' (รถใหญ่) / 'FL' (รถยก) — คีย์ที่รายการชั้นล่างอ้างถึง
+  name: string;
+}
+
+// ตัวเลือกของแผนก — ผูกกับชั้นบนได้ 2 ทาง (ไม่ผูก = ไม่ต้องส่ง field นั้น)
+// section  = ตัวเลือกนี้ใช้ได้เฉพาะส่วนงานนั้น (เหมือน CR)
+// typeId   = ตัวเลือกนี้อยู่ใต้ "ประเภท" ตัวไหน (ใช้กับ requestSubTypes ของ SQA)
+export interface DeptMasterOptionApi extends MasterOptionApi {
+  section?: string;
+  typeId?: number;
+}
+
+// ใบประเมินราคาที่อ้างถึงได้ในใบแจ้งเรื่อง PS — เลือกเลขที่ใบแล้วหน้าเว็บ
+// เอาข้อมูลทั้งใบมาเติมช่องอ่านอย่างเดียวให้ครบชุด (ผู้ใช้ไม่ต้องพิมพ์ซ้ำ)
+// ทุก field นอกจาก docNo เป็นข้อความพร้อมแสดง (backend จัดรูปแบบวันที่มาให้ได้เลย)
+export interface PsEstimateApi {
+  docNo: string; // เลขที่ใบประเมินราคา (คีย์ที่ฟอร์มเก็บ)
+  docDate?: string; // วันที่
+  machineType?: string; // ประเภทเครื่องจักร
+  engineModel?: string; // รุ่นเครื่องยนต์
+  serialNo?: string; // ทะเบียน S/N
+  machineNo?: string; // หมายเลขเครื่องจักร
+  machineModel?: string; // รุ่นเครื่องจักร
+  system?: string; // ระบบ
+  symptom?: string; // รายละเอียดอาการ
+  remark?: string; // รายละเอียดเพิ่มเติม
+}
+
+export interface DeptMasterDataApi {
+  sections?: MasterSectionApi[]; // ส่วนงาน (SV / SQA)
+  types?: DeptMasterOptionApi[]; // ประเภท (GA/IM) · ประเภทเรื่องที่แจ้ง (SQA)
+  requestTypes?: DeptMasterOptionApi[]; // เรื่องที่แจ้ง (GA/IM/AF/SV)
+  requestSubTypes?: DeptMasterOptionApi[]; // รายละเอียดที่แจ้ง (SQA) — ผูกกับ types ผ่าน typeId
+  units?: MasterOptionApi[]; // หน่วยของ "รายการที่ขอ"
+  estimates?: PsEstimateApi[]; // ใบประเมินราคา (PS)
+}

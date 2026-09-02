@@ -20,6 +20,7 @@ import { deptMeta, REQUEST_PRIORITY_META } from '../data/requestData';
 import { useDepartments } from '../hooks/useDepartments';
 import { usePlMasterData } from '../hooks/usePlMasterData';
 import { useCrMasterData } from '../hooks/useCrMasterData';
+import { useDeptMasterData } from '../hooks/useDeptMasterData';
 import {
   IT_ATTACHMENT_SLOTS,
   checkItAttachment,
@@ -46,6 +47,8 @@ import {
   fieldOptions,
   FieldOption,
   fieldVisible,
+  checkedValues,
+  toggleChecked,
 } from '../data/requestForm';
 
 // จำนวนช่องรูป (ImgPath1/2/3) — ฟอร์มจำกัดที่ max: 3 อยู่แล้ว แต่ต้องกันไว้
@@ -61,6 +64,10 @@ interface ImageUploader {
 const IT_UPLOADER: ImageUploader = { check: checkItAttachment, upload: uploadItAttachment };
 const PL_UPLOADER: ImageUploader = { check: checkPlAttachment, upload: uploadPlAttachment };
 
+
+// แผนกที่ตัวเลือกมาจาก GET /MasterData/{ชื่อย่อแผนก} (ดู useDeptMasterData)
+// แผนกใหม่ที่ใช้สัญญาเดียวกัน เพิ่มชื่อย่อที่นี่ที่เดียว
+const DEPT_MASTER_DEPTS = ['GA', 'IM', 'AF', 'SV', 'SQA', 'PS'];
 
 const INPUT_CLS =
   'rounded-lg border border-gray-200 bg-slate-50 px-3 py-2 text-[13px] text-gray-800 outline-none transition focus:bg-white';
@@ -268,10 +275,20 @@ function DeptPicker({
 function RequestForm({
   dep,
   auto,
+  departments,
+  deptsLoading,
+  deptsError,
+  reloadDepts,
   onBack,
 }: {
   dep: DepartmentApi;
   auto: AutoFillValues;
+  // รายชื่อแผนกทั้งหมด — หน้าแม่โหลดไว้ตั้งแต่ขั้นเลือกแผนกแล้ว จึงส่งต่อมาใช้
+  // (ฟิลด์ "แผนกลูกค้าภายใน" ของ SV) ไม่ยิงซ้ำ
+  departments: DepartmentApi[];
+  deptsLoading: boolean;
+  deptsError: string | null;
+  reloadDepts: () => void;
   onBack: () => void;
 }) {
   const cfg = getDeptForm(dep.departmentShort);
@@ -286,6 +303,11 @@ function RequestForm({
   // ตัวเลือกของแผนก CR (ส่วนงาน → ประเภทที่แจ้ง → รายละเอียดที่แจ้ง) — GET /MasterData/cr
   const isCr = dep.departmentShort === 'CR';
   const crMaster = useCrMasterData(user?.token, isCr);
+  // ตัวเลือกของแผนกที่ใช้สัญญากลาง (GA/IM/AF/SV/SQA) — GET /MasterData/{แผนก}
+  const usesDeptMaster = DEPT_MASTER_DEPTS.includes(dep.departmentShort);
+  const deptMaster = useDeptMasterData(usesDeptMaster ? dep.departmentShort : null, user?.token);
+  // ตัวเลือกแผนก (ค้นหาได้) — ใช้กับฟิลด์ kind='searchSelect' ที่ master='departments'
+  const deptOptions = useMemo(() => toDeptOptions(departments), [departments]);
   const [f, setF] = useState<RequestFormState>(() => createEmptyForm(dep, auto));
   const [errors, setErrors] = useState<FormErrors>({});
   const [saved, setSaved] = useState(false);
@@ -320,6 +342,25 @@ function RequestForm({
     });
     clearError(key);
     for (const r of resets ?? []) clearError(r);
+  };
+
+  // เลือกจากรายการที่ตัวเลือกหิ้วข้อมูลทั้งระเบียนมาด้วย (FieldOption.data)
+  // เช่นเลขที่ใบประเมินราคาของ PS — เลือกใบใหม่ทับทั้งชุด, ล้างตัวเลือกก็ล้างทั้งชุด
+  // (ไม่งั้นข้อมูลของใบเก่าจะค้างอยู่ข้าง ๆ เลขที่ใบใหม่)
+  const setFromOption = (fd: FieldDef, v: string, opts: FieldOption[]) => {
+    if (!fd.fills) {
+      setValue(fd.key, v, fd.resets);
+      return;
+    }
+    const data = opts.find((o) => o.value === v)?.data;
+    setF((prev) => {
+      const values = { ...prev.values, [fd.key]: v };
+      for (const r of fd.resets ?? []) values[r] = '';
+      for (const k of fd.fills ?? []) values[k] = data?.[k] ?? '';
+      return { ...prev, values };
+    });
+    clearError(fd.key);
+    for (const r of fd.resets ?? []) clearError(r);
   };
 
   const errorCount = Object.keys(errors).length;
@@ -463,6 +504,7 @@ function RequestForm({
   ): { options: FieldOption[]; loading: boolean; error: string | null; reload: () => void } | null => {
     const pl = { loading: plMaster.loading, error: plMaster.error, reload: plMaster.reload };
     const cr = { loading: crMaster.loading, error: crMaster.error, reload: crMaster.reload };
+    const dm = { loading: deptMaster.loading, error: deptMaster.error, reload: deptMaster.reload };
     switch (fd.master) {
       case 'plTypes':
         return { options: plMaster.typeOptions, ...pl };
@@ -476,6 +518,28 @@ function RequestForm({
         return {
           options: crMaster.requestSubTypeOptions(f.values.section ?? '', f.values.requestType ?? ''),
           ...cr,
+        };
+      // ── ชุดกลางของ GA / IM / AF / SV / SQA ──
+      // ส่ง section ที่เลือกไว้เข้าไปเสมอ — แผนกที่ไม่มีฟิลด์ส่วนงานจะได้ทุกแถวเหมือนเดิม
+      case 'deptSections':
+        return { options: deptMaster.sectionOptions, ...dm };
+      case 'deptTypes':
+        return { options: deptMaster.typeOptions(f.values.section ?? ''), ...dm };
+      case 'deptRequestTypes':
+        return { options: deptMaster.requestTypeOptions(f.values.section ?? ''), ...dm };
+      case 'deptRequestSubTypes':
+        return {
+          options: deptMaster.subTypeOptions(f.values.section ?? '', f.values.requestType ?? ''),
+          ...dm,
+        };
+      case 'psEstimates':
+        return { options: deptMaster.estimateOptions, ...dm };
+      case 'departments':
+        return {
+          options: deptOptions,
+          loading: deptsLoading,
+          error: deptsError,
+          reload: reloadDepts,
         };
       default:
         return null;
@@ -546,7 +610,14 @@ function RequestForm({
         return (
           <LineItemsTable
             variant={fd.variant}
-            units={isPl ? plMaster.unitNames : undefined}
+            // หน่วยจาก master ของแผนก (ไม่มี = ใช้ชุดกลางของ LineItemsTable)
+            units={
+              isPl
+                ? plMaster.unitNames
+                : deptMaster.unitNames.length > 0
+                ? deptMaster.unitNames
+                : undefined
+            }
             value={f.lineItems}
             onChange={(items) => {
               setF((prev) => ({ ...prev, lineItems: items }));
@@ -604,7 +675,9 @@ function RequestForm({
                         on ? 'text-white' : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50'
                       }`}
                     >
-                      <span className="mono text-[13.5px] font-bold">{o.label}</span>
+                      {/* ป้ายที่มีข้อความรอง = โค้ดส่วนงาน (HV/FL) → mono ให้อ่านเป็นรหัส
+                          ป้ายข้อความไทยล้วน (ลูกค้าภายนอก/ภายใน) ใช้ฟอนต์ปกติ */}
+                      <span className={`text-[13.5px] font-bold ${o.sub ? 'mono' : ''}`}>{o.label}</span>
                       {o.sub && (
                         <span className={`text-[12px] ${on ? 'text-white/80' : 'text-slate-400'}`}>{o.sub}</span>
                       )}
@@ -613,6 +686,78 @@ function RequestForm({
                 })}
               </div>
             )}
+            {m && masterError(m)}
+          </>
+        );
+      }
+      // ค่าที่ถูกเติมมาจากตัวเลือกของฟิลด์อื่น (เช่นข้อมูลเครื่องจักรจากใบประเมินราคา)
+      // อ่านอย่างเดียว — แก้ได้ที่เอกสารต้นทางเท่านั้น จึงไม่ให้พิมพ์ทับ
+      case 'filled': {
+        const v = f.values[fd.key] ?? '';
+        return (
+          <div
+            className={`min-h-[38px] whitespace-pre-wrap break-words rounded-lg border px-3 py-2 text-[13px] ${
+              v ? 'border-gray-200 bg-gray-100 font-semibold text-gray-700' : 'border-dashed border-gray-200 bg-white text-gray-400'
+            }`}
+          >
+            {v || 'ยังไม่ได้เลือกเอกสาร'}
+          </div>
+        );
+      }
+      // ติ๊กได้หลายข้อ — เก็บรวมเป็นสตริงเดียวใน values (ดู CHECK_SEP ใน requestForm.ts)
+      case 'checkboxes': {
+        const m = masterFor(fd);
+        const opts = m?.options ?? fieldOptions(fd.options);
+        const picked = checkedValues(f.values[fd.key]);
+        return (
+          <>
+            {m?.loading ? (
+              <span className="text-[12.5px] text-gray-400">กำลังโหลดตัวเลือก…</span>
+            ) : (
+              <div className={`flex flex-wrap gap-2 ${bad ? 'rounded-lg p-0.5 ring-1 ring-red-300' : ''}`}>
+                {opts.map((o) => {
+                  const on = picked.includes(o.value);
+                  return (
+                    <button
+                      key={o.value}
+                      type="button"
+                      onClick={() => setValue(fd.key, toggleChecked(f.values[fd.key], o.value), fd.resets)}
+                      style={on ? { borderColor: accentColor, backgroundColor: accentColor } : undefined}
+                      className={`flex items-center gap-2 rounded-lg border px-3.5 py-2 text-[13px] font-semibold transition ${
+                        on ? 'text-white' : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50'
+                      }`}
+                    >
+                      <span
+                        className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border ${
+                          on ? 'border-white/70 bg-white/20' : 'border-gray-300 bg-white'
+                        }`}
+                      >
+                        {on && <IconCheck size={12} stroke={3} />}
+                      </span>
+                      {o.label}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+            {m && masterError(m)}
+          </>
+        );
+      }
+      // รายการยาว (เช่น รายชื่อแผนก) — ต้องค้นหาได้ และเลือกได้เฉพาะค่าที่มีใน master
+      case 'searchSelect': {
+        const m = masterFor(fd);
+        const opts = m?.options ?? fieldOptions(fd.options);
+        return (
+          <>
+            <SearchSelect
+              value={f.values[fd.key] ?? ''}
+              onChange={(v) => setFromOption(fd, v, opts)}
+              options={opts.map((o) => ({ value: o.value, label: o.label, hint: o.sub }))}
+              disabled={!!m?.loading}
+              invalid={bad}
+              placeholder={m?.loading ? 'กำลังโหลด…' : fd.placeholder ?? '-- เลือก --'}
+            />
             {m && masterError(m)}
           </>
         );
@@ -632,7 +777,7 @@ function RequestForm({
             <select
               value={f.values[fd.key] ?? ''}
               disabled={!!m?.loading || waiting}
-              onChange={(e) => setValue(fd.key, e.target.value, fd.resets)}
+              onChange={(e) => setFromOption(fd, e.target.value, opts)}
               className={`${common} cursor-pointer disabled:cursor-not-allowed disabled:bg-gray-100`}
             >
               <option value="">
@@ -692,13 +837,9 @@ function RequestForm({
   };
 
   // ── ส่วนกลาง: เรนเดอร์เฉพาะฟิลด์ที่แผนกนี้ใช้ (cfg.common) ──
-  const renderCommonSection = (no: number) => (
-    <SectionCard
-      key="__common"
-      no={no}
-      title={cfg.commonTitle ?? 'ข้อมูลเรื่องที่แจ้ง'}
-      accentColor={accentColor}
-    >
+  // เป็น "แถว" ล้วน ๆ เพราะบางแผนกให้ไปอยู่ในกล่องของแผนกเอง (cfg.commonInto)
+  const commonRows = (
+    <>
       {commonFields.includes('category') && (
         <FormRow label="ประเภทเรื่อง" required error={errors.category}>
           <select
@@ -763,7 +904,7 @@ function RequestForm({
       )}
 
       {commonFields.includes('detail') && (
-        <FormRow label="รายละเอียดที่แจ้ง" required span2 error={errors.detail}>
+        <FormRow label="รายละเอียด" required span2 error={errors.detail}>
           <textarea
             value={f.detail}
             // ตัดที่ 1000 ตัวอักษร (maxLength ไม่กันการวางข้อความยาวในบางเบราว์เซอร์)
@@ -782,6 +923,12 @@ function RequestForm({
           </span>
         </FormRow>
       )}
+    </>
+  );
+
+  const renderCommonSection = (no: number) => (
+    <SectionCard key="__common" no={no} title={cfg.commonTitle ?? 'เรื่องที่แจ้ง'} accentColor={accentColor}>
+      {commonRows}
     </SectionCard>
   );
 
@@ -794,18 +941,21 @@ function RequestForm({
           label={fd.label}
           hint={fd.hint}
           required={fd.required}
-          span2={fd.span2 || fd.kind === 'lineItems' || fd.kind === 'images' || fd.kind === 'textarea'}
+          span2={fd.span2 || fd.kind === 'lineItems' || fd.kind === 'images' || fd.kind === 'textarea' || fd.kind === 'checkboxes'}
           error={errors[fd.key]}
         >
           {renderField(fd)}
         </FormRow>
       ))}
+      {/* ฟิลด์ส่วนกลางของแผนกที่ให้รวมอยู่ในกล่องนี้ (เช่น "รายละเอียด" ของ CR) */}
+      {cfg.commonInto === sec.title && commonFields.length > 0 && commonRows}
     </SectionCard>
   ));
 
-  // แทรกส่วนกลางตามลำดับที่ schema กำหนด (IT: ผู้แจ้ง → รายละเอียด → รูปภาพ)
+  // แทรกส่วนกลางตามลำดับที่ schema กำหนด (IT: ผู้แจ้ง → เรื่องที่แจ้ง → รูปภาพ)
+  // แผนกที่ตั้ง commonInto ไว้ ส่วนกลางไปอยู่ในกล่องนั้นแล้ว ไม่ต้องแทรกกล่องใหม่
   const orderedSections = [...deptSections];
-  if (commonFields.length > 0) {
+  if (commonFields.length > 0 && !cfg.commonInto) {
     const at = Math.min(Math.max(cfg.commonPosition ?? 0, 0), deptSections.length);
     orderedSections.splice(at, 0, renderCommonSection);
   }
@@ -980,7 +1130,7 @@ function RequestForm({
               <span className="mono font-bold text-gray-900">{f.values.section || '—'}</span>
               <span className="text-slate-500">ประเภทที่แจ้ง</span>
               <span className="font-semibold text-gray-900">{f.values.requestType || '—'}</span>
-              <span className="text-slate-500">รายละเอียดที่แจ้ง</span>
+              <span className="text-slate-500">หัวข้อเรื่อง</span>
               <span className="font-semibold text-gray-900">{f.values.requestSubType || '—'}</span>
               {f.values.requestSubOther && (
                 <>
@@ -1086,7 +1236,16 @@ export function CreateItem() {
         />
       ) : (
         // เปลี่ยนแผนก → remount ฟอร์มเพื่อล้างค่าเดิมทั้งหมด
-        <RequestForm key={dep.departid} dep={dep} auto={auto} onBack={() => setDep(null)} />
+        <RequestForm
+          key={dep.departid}
+          dep={dep}
+          auto={auto}
+          departments={departments}
+          deptsLoading={loading}
+          deptsError={error}
+          reloadDepts={reload}
+          onBack={() => setDep(null)}
+        />
       )}
     </Layout>
   );

@@ -81,16 +81,18 @@ export function DateQuickPick({
           );
         })}
       </div>
-      <div className="flex items-center gap-2">
+      {/* อยู่ในคอลัมน์แคบ ๆ ได้ — ข้อความวันที่ห้ามตัดขึ้นบรรทัดใหม่
+          (ผู้ใช้สั่ง 2 ก.ย. 2026: เลือกวันแล้วป้ายแตกเป็น 2 บรรทัด) */}
+      <div className="flex min-w-0 items-center gap-2">
         <input
           type="date"
           value={value}
           min={min}
           onChange={(e) => onChange(e.target.value)}
-          className={`${inputClass} mono w-auto`}
+          className={`${inputClass} mono w-auto shrink-0`}
         />
         {label && (
-          <span className="flex items-center gap-1 text-[12.5px] font-semibold text-slate-600">
+          <span className="flex min-w-0 items-center gap-1 whitespace-nowrap text-[12.5px] font-semibold text-slate-600">
             <IconCalendar size={14} className="shrink-0 text-slate-400" />
             {label}
           </span>
