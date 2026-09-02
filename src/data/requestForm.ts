@@ -240,7 +240,6 @@ export const DEPT_FORMS: Record<string, DeptFormConfig> = {
           { key: 'reporterName', label: 'ผู้แจ้งเรื่อง', kind: 'auto', auto: 'reporter', required: true },
           { key: 'reporterDept', label: 'หน่วยงาน', kind: 'auto', auto: 'department', required: true },
           { key: 'requestDate', label: 'วันที่แจ้งเรื่อง', kind: 'auto', auto: 'today', required: true },
-          { key: 'dueDate', label: 'วันที่ต้องการใช้งาน', kind: 'date', required: true },
         ],
       },
       {
@@ -248,6 +247,9 @@ export const DEPT_FORMS: Record<string, DeptFormConfig> = {
         fields: [
           { key: 'requestType', label: 'ประเภท', kind: 'select', required: true, master: 'plTypes' },
           { key: 'topic', label: 'เรื่องที่แจ้ง', kind: 'select', required: true, master: 'plRequestTypes' },
+          // วันที่ต้องการใช้งาน = สิ่งที่ขอ ไม่ใช่ข้อมูลตัวผู้แจ้ง จึงอยู่การ์ดนี้
+          // (ผู้ใช้สั่ง 2 ก.ย. 2026 — เดิมอยู่กลุ่ม "ข้อมูลผู้แจ้ง")
+          { key: 'dueDate', label: 'วันที่ต้องการใช้งาน', kind: 'date', required: true },
           {
             key: 'topicDetail',
             label: 'ระบุเรื่องที่แจ้ง',

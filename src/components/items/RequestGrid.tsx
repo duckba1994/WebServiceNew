@@ -23,7 +23,7 @@ import { ColumnFilter } from '../ui/ColumnFilter';
 import { RequestDetailModal } from './RequestDetailModal';
 import { RequestActionDialog } from './RequestActionDialog';
 import { RequestAction, RequestListItem, RequestStatusSummary } from '../../types/requestList';
-import { ActionFieldValues } from '../../data/requestActionFields';
+import { ActionFieldValues, visibleActionsOf } from '../../data/requestActionFields';
 import {
   RequestColumn,
   ReqPresetKey,
@@ -126,8 +126,10 @@ export function RequestGrid({
 
   // ตั้งใจไม่มีปุ่มดำเนินการในตาราง — ทุก action ต้องเปิดใบเข้าไปกดข้างใน
   // เพื่อบังคับให้คนอนุมัติได้อ่านก่อนว่าลูกน้องขออะไรมา (ตัดสินใจจากแถวเดียวไม่พอ)
+  // นับเฉพาะ action ที่โผล่บนจอจริง — ตัวที่สั่งซ่อน (เช่น skipService ของ IT)
+  // ไม่นับ ไม่งั้นแถวจะเน้นสีชวนให้เปิด แล้วข้างในไม่มีปุ่มให้กดสักปุ่ม
   const hasAction = React.useCallback(
-    (row: RequestListItem): boolean => !!onAction && (row.availableActions?.length ?? 0) > 0,
+    (row: RequestListItem): boolean => !!onAction && visibleActionsOf(row).length > 0,
     [onAction]
   );
 

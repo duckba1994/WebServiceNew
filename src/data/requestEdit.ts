@@ -121,9 +121,9 @@ const IT_EDIT_FIELDS: EditFieldDef[] = [
 
 // เรียงตามแบบฟอร์มตอนสร้างใบ PL (ดู REQUEST_FORMS.PL ใน requestForm.ts)
 const PL_EDIT_FIELDS: EditFieldDef[] = [
-  { key: 'planDate', label: 'วันที่ต้องการใช้งาน', kind: 'date', required: true },
   { key: 'type', label: 'ประเภท', kind: 'select', required: true, master: 'plTypes' },
   { key: 'requestType', label: 'เรื่องที่แจ้ง', kind: 'select', required: true, master: 'plRequestTypes' },
+  { key: 'planDate', label: 'วันที่ต้องการใช้งาน', kind: 'date', required: true },
   {
     key: 'requestDetail',
     label: 'ระบุเรื่องที่แจ้ง',

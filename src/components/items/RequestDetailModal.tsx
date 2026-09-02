@@ -12,6 +12,9 @@ import {
   IconTrash,
   IconPlus,
   IconPhotoPlus,
+  IconUser,
+  IconFileText,
+  IconShieldCheck,
 } from '@tabler/icons-react';
 import {
   RequestAction,
@@ -22,10 +25,15 @@ import {
   RequestResolution,
   RequestWorkflow,
 } from '../../types/requestList';
-import { fmtDate, fmtDateTime, jobStatusMeta } from '../../data/requestListData';
-import { isRequesterSide } from '../../data/requestPhase';
+import { fmtDate, fmtDateTime } from '../../data/requestListData';
+import { phaseLabel, phaseMetaOf } from '../../data/requestPhase';
 import { actionBtnClass } from './RequestActionDialog';
-import { ActionFieldValues, cleanFieldValues, fieldSpec } from '../../data/requestActionFields';
+import {
+  ActionFieldValues,
+  cleanFieldValues,
+  fieldSpec,
+  isHiddenAction,
+} from '../../data/requestActionFields';
 import { useRequestDetail } from '../../hooks/useRequestDetail';
 import { useRequestEdit } from '../../hooks/useRequestEdit';
 import { ItMasterData, useItMasterData } from '../../hooks/useItMasterData';
@@ -92,6 +100,31 @@ function DetailRow({ label, children }: { label: string; children: React.ReactNo
       <span className="text-[11.5px] font-semibold text-gray-500">{label}</span>
       <span className="text-[13px] text-gray-800">{children}</span>
     </div>
+  );
+}
+
+// ── การ์ดกลุ่มข้อมูลในแท็บ General ────────────────────────────
+// แผง General เดิมเป็นตารางแบน ๆ ก้อนเดียว คนอ่านแยกไม่ออกว่าอะไรคือข้อมูล
+// "ผู้แจ้ง" อะไรคือ "เรื่องที่แจ้ง" — แบ่งเป็นการ์ดหัวข้อเหมือนหน้าสร้างใบ
+// (SectionCard ใน ui/FormControls) แต่ย่อส่วนลงให้พอดีความกว้างของ modal
+// ตัวการ์ดเป็น grid 2 คอลัมน์ในตัวเอง ของเดิมที่ใช้ col-span-2 จึงยกมาวางได้เลย
+function InfoCard({
+  title,
+  icon: Icon,
+  children,
+}: {
+  title: string;
+  icon: React.ElementType;
+  children: React.ReactNode;
+}) {
+  return (
+    <section className="overflow-hidden rounded-xl border border-gray-200">
+      <div className="flex items-center gap-2 border-b border-gray-200 bg-slate-50 px-4 py-2">
+        <Icon size={15} className="text-slate-400" />
+        <h5 className="text-[12.5px] font-bold text-gray-700">{title}</h5>
+      </div>
+      <div className="grid grid-cols-2 gap-x-5 gap-y-4 px-4 py-4">{children}</div>
+    </section>
   );
 }
 
@@ -347,8 +380,17 @@ export function RequestDetailModal({
   // ⚠️ ต้องอ่านจาก full (= detail.item) ไม่ใช่ item ของลิสต์:
   // /Requests/{module}/{docNo} คำนวณ availableActions ให้ "คนที่เปิดดูใบนี้"
   // ส่วนลิสต์อาจไม่ส่งมา/ส่งไม่ครบ → ถ้าอ่านจาก item ปุ่มจะไม่ขึ้นทั้งที่มีสิทธิ์
-  const actions = onPickAction ? full.availableActions ?? [] : [];
-  const status = jobStatusMeta(item);
+  const actions = (onPickAction ? full.availableActions ?? [] : []).filter(
+    (a) => !isHiddenAction(full.module, a.code)
+  );
+  // ป้ายบนหัว modal = "จังหวะงาน" (phase) ไม่ใช่ jobStatusName ของแผนก
+  // ชื่อในตาราง JobStatus เขียนจากมุมของแผนกเจ้าของ workflow: ใบ IT ที่ยังรอ IT
+  // กดรับเรื่อง มีชื่อสถานะว่า "รับเรื่องแจ้งซ่อมแล้ว" (แปลว่าระบบรับเรื่องไว้แล้ว)
+  // คนอ่านนึกว่า IT รับไปแล้วทั้งที่ยังไม่มีใครแตะ (ผู้ใช้ทัก 2 ก.ย. 2026)
+  // → ใช้ phase ที่ backend คำนวณมา เทียบข้ามแผนกได้และตรงกับ stepper ข้างล่าง
+  //   (สีชุดเดิม — jobStatusMeta ก็ใช้สีของ phase อยู่แล้ว ต่างกันแค่ข้อความ)
+  // ชื่อสถานะของแผนกยังดูได้จากคอลัมน์ "สถานะ (ตามแผนก)" ในตาราง
+  const status = { ...phaseMetaOf(item), label: phaseLabel(item) };
   const r = full.resolution;
   const logs = detail?.logs ?? [];
   const closed = full.phase === 'closed';
@@ -619,13 +661,11 @@ export function RequestDetailModal({
             </div>
           </div>
           <div className="ml-auto flex items-center gap-2">
+            {/* ป้ายเดียวพอ = สถานะปัจจุบันของใบ (ผู้ใช้สั่ง 2 ก.ย. 2026)
+                เดิมมีป้าย "ถึงคิวเรา / รอแผนกผู้แจ้ง" ต่อท้ายด้วย แต่สองป้ายติดกัน
+                อ่านแล้วงงว่าตกลงใบอยู่สถานะไหน — ใครต้องลงมือดูได้จาก stepper
+                กับปุ่มที่ขึ้นให้อยู่แล้ว และในตารางยังมีคอลัมน์ "รอเราลงมือ" */}
             <Pill meta={status} dot />
-            {(item.isMyTurn || isRequesterSide(item)) && (
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-300 bg-amber-50 px-2.5 py-0.5 text-[11.5px] font-bold text-amber-700">
-                <IconBell size={13} />
-                {isRequesterSide(item) ? 'รอแผนกผู้แจ้ง' : 'ถึงคิวเรา'}
-              </span>
-            )}
             <button
               onClick={onClose}
               className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-gray-200 bg-white transition hover:bg-slate-100"
@@ -1765,7 +1805,8 @@ function KpiPanel({
 }
 
 // ── Tab General — ข้อมูลเรื่องที่แจ้งเข้ามา ────────────────────
-// ส่วนกลาง: เลขใบ / ผู้แจ้ง / หน่วยงาน / รายละเอียด / รูป / ผู้อนุมัติ(MGR)+เวลา
+// ส่วนกลาง: ผู้แจ้ง / หน่วยงาน / รายละเอียด / รูป / ผู้อนุมัติ(MGR)+เวลา
+// (เลขใบไม่ซ้ำตรงนี้ หัว modal โชว์อยู่แล้ว)
 // ช่องที่เหลือขึ้นกับโมดูล เพราะแต่ละแผนกกรอกคนละอย่างตอนสร้างใบ —
 //   IT = เบอร์ติดต่อ + ชื่อคอมพิวเตอร์
 //   PL = ประเภท + เรื่องที่แจ้ง + วันที่ต้องการใช้งาน + เหตุผลการขอ + รายการที่ขอ
@@ -1846,134 +1887,170 @@ function GeneralPanel({
     );
   }
 
-  return (
-    <div className="grid grid-cols-2 gap-x-5 gap-y-4">
-      <DetailRow label="เลขใบแจ้งเรื่อง">
-        <span className="mono font-semibold text-gray-900">{item.docNo}</span>
-      </DetailRow>
-      <DetailRow label="ผู้แจ้งเรื่อง">{full.requestBy || '—'}</DetailRow>
-      <DetailRow label="หน่วยงาน">{full.departmentName || '—'}</DetailRow>
+  // ── บล็อกที่ใช้ร่วมกันทั้งแบบการ์ด (IT) และแบบตารางแบน (PL/CR) ──
+  // ประกาศไว้ที่เดียว จะได้ไม่ต้องก๊อปโครงเดิมไปวางสองที่แล้วแก้ตกทีหลัง
+  // ทุกบล็อกใช้ col-span-2 เพราะทั้งการ์ดและแผงเดิมเป็น grid 2 คอลัมน์เหมือนกัน
+  const detailBlock = (
+    <div className="col-span-2">
+      <span className="mb-1 block text-[11.5px] font-semibold text-gray-500">
+        {isPl ? 'ระบุเรื่องที่แจ้ง' : 'รายละเอียดเรื่องที่แจ้ง'}
+      </span>
+      <div className="rounded-lg border border-gray-200 bg-slate-50 px-3.5 py-3 text-[13px] leading-relaxed text-gray-800">
+        <span className="whitespace-pre-wrap">{full.detail || '— (ผู้แจ้งไม่ได้กรอกรายละเอียด)'}</span>
+      </div>
+    </div>
+  );
 
-      {isPl ? (
-        <>
-          <DetailRow label="ประเภท">{full.type || '—'}</DetailRow>
-          <DetailRow label="เรื่องที่แจ้ง">{full.requestType || '—'}</DetailRow>
-          <DetailRow label="วันที่ต้องการใช้งาน">
-            {full.planDate ? <span className="mono">{fmtDate(full.planDate)}</span> : '—'}
-          </DetailRow>
-        </>
-      ) : isCr ? (
-        <>
-          {/* ชุดนี้คือข้อมูลที่ Mgr ใช้ตัดสินใจก่อนกดอนุมัติ — ปุ่มอนุมัติอยู่ท้ายแท็บนี้
-              ค่าดิบจาก GET /CRRequest/{docNo} แยกช่องมาให้ (เส้นกลางรวม ประเภท+รายละเอียด
-              เป็นข้อความเดียว) — ยังโหลดไม่เสร็จ/ไม่ติด ค่อย fallback ไปใช้ของเส้นกลาง */}
-          <DetailRow label="ส่วนงาน">
-            {crDoc.doc?.section || full.type ? (
-              <span className="mono font-semibold">{crDoc.doc?.section || full.type}</span>
-            ) : (
-              '—'
-            )}
-          </DetailRow>
-          <DetailRow label="ประเภทที่แจ้ง">
-            {crDoc.doc?.requestType || full.requestType || '—'}
-          </DetailRow>
-          {crDoc.doc && (
-            <DetailRow label="รายละเอียดที่แจ้ง">{crDoc.doc.requestSubType || '—'}</DetailRow>
-          )}
-          {crDoc.doc?.requestSubOther && (
-            <DetailRow label="ระบุเพิ่มเติม">{crDoc.doc.requestSubOther}</DetailRow>
-          )}
-          {/* ⚠️ ใบ CR เก็บ "วันที่ต้องการ" ไว้ในคอลัมน์ RequestDate (ยืนยัน 1 ก.ย. 2026)
-              ไม่ใช่วันที่แจ้ง — ดู MdApi/API_SPEC_CR_FLOW.md §3 */}
-          <DetailRow label="วันที่ต้องการ">
-            {crDoc.doc?.requestDate || full.requestDate ? (
-              <span className="mono">{fmtDate(crDoc.doc?.requestDate || full.requestDate)}</span>
-            ) : (
-              '—'
-            )}
-          </DetailRow>
-        </>
+  // รูปภาพ — เสิร์ฟผ่าน API ที่ต้องใช้ token จึงโหลดเป็น blob เอง (ดู AttachmentThumb)
+  // หน้าอ่านโชว์อย่างเดียว การเพิ่ม/ลบอยู่ในฟอร์มแก้ไขและมีผลตอนกดบันทึกเท่านั้น
+  // โมดูลที่ไม่มีเส้นรูปแนบ (CR) ไม่ต้องขึ้นหัวข้อนี้เลย — ขึ้นแล้วบอกว่า
+  // "ไม่มีรูปแนบ" ทุกใบตลอดกาล ทำให้คนอ่านนึกว่าผู้แจ้งลืมแนบ
+  const attachmentsBlock = hasAttachments ? (
+    <div className="col-span-2">
+      <span className="mb-1.5 block text-[11.5px] font-semibold text-gray-500">รูปภาพ</span>
+      {imgs.length === 0 ? (
+        <span className="text-[13px] text-slate-400">— ไม่มีรูปแนบ</span>
       ) : (
-        <>
-          <DetailRow label="เบอร์ติดต่อ">{full.phoneNumber || '—'}</DetailRow>
-          <DetailRow label="ชื่อคอมพิวเตอร์">{full.comName || '—'}</DetailRow>
-        </>
-      )}
-
-      <div className="col-span-2">
-        <span className="mb-1 block text-[11.5px] font-semibold text-gray-500">
-          {isPl ? 'ระบุเรื่องที่แจ้ง' : 'รายละเอียดเรื่องที่แจ้ง'}
-        </span>
-        <div className="rounded-lg border border-gray-200 bg-slate-50 px-3.5 py-3 text-[13px] leading-relaxed text-gray-800">
-          <span className="whitespace-pre-wrap">{full.detail || '— (ผู้แจ้งไม่ได้กรอกรายละเอียด)'}</span>
+        <div className="flex flex-wrap gap-2">
+          {imgs.map((f) => (
+            <AttachmentThumb key={f.fileId} url={f.url} fileName={f.fileName} />
+          ))}
         </div>
+      )}
+      {canAttachFiles === false && attachBlockedReason && (
+        <p className="mt-1.5 text-[11.5px] text-slate-400">{attachBlockedReason}</p>
+      )}
+    </div>
+  ) : null;
+
+  // ชื่อ MGR ที่อนุมัติ พร้อมวันเวลา — จาก logs (action = approve)
+  // workflow ที่อนุมัติหลายรอบ (เช่น PS) จะขึ้นครบทุกคน
+  const approverList =
+    approveLogs.length === 0 ? (
+      <span className="text-[13px] text-slate-400">— ยังไม่มีการอนุมัติ</span>
+    ) : (
+      <div className="flex flex-col gap-1.5">
+        {approveLogs.map((l, i) => (
+          <div
+            key={i}
+            className="flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-[12.5px]"
+          >
+            <IconCircleCheck size={15} className="shrink-0 text-emerald-600" />
+            <span className="font-semibold text-gray-800">{l.actionByName || '—'}</span>
+            {l.actionByDepartment && <span className="text-slate-500">· {l.actionByDepartment}</span>}
+            {l.actionDate && <span className="mono ml-auto text-slate-500">{fmtDateTime(l.actionDate)}</span>}
+          </div>
+        ))}
       </div>
+    );
 
-      {isPl && (
-        <>
-          <div className="col-span-2">
-            <span className="mb-1 block text-[11.5px] font-semibold text-gray-500">เหตุผลการขอ</span>
-            <div className="rounded-lg border border-gray-200 bg-slate-50 px-3.5 py-3 text-[13px] leading-relaxed text-gray-800">
-              <span className="whitespace-pre-wrap">{full.remark || '— (ไม่ได้ระบุ)'}</span>
-            </div>
-          </div>
+  // แก้ไม่ได้ = บอกเหตุผลไปเลย ดีกว่าปล่อยให้หาปุ่มที่ไม่มี
+  const hintBlock = editHint ? (
+    <p className="col-span-2 text-[12px] text-slate-400">— {editHint}</p>
+  ) : null;
 
-          <div className="col-span-2">
-            <span className="mb-1.5 block text-[11.5px] font-semibold text-gray-500">รายการที่ขอ</span>
-            <PlLinesTable {...plLines} />
-          </div>
-        </>
-      )}
-
-      {/* รูปภาพ — เสิร์ฟผ่าน API ที่ต้องใช้ token จึงโหลดเป็น blob เอง (ดู AttachmentThumb)
-          หน้าอ่านโชว์อย่างเดียว การเพิ่ม/ลบอยู่ในฟอร์มแก้ไขและมีผลตอนกดบันทึกเท่านั้น
-          โมดูลที่ไม่มีเส้นรูปแนบ (CR) ไม่ต้องขึ้นหัวข้อนี้เลย — ขึ้นแล้วบอกว่า
-          "ไม่มีรูปแนบ" ทุกใบตลอดกาล ทำให้คนอ่านนึกว่าผู้แจ้งลืมแนบ */}
-      {hasAttachments && (
-        <div className="col-span-2">
-          <span className="mb-1.5 block text-[11.5px] font-semibold text-gray-500">รูปภาพ</span>
-          {imgs.length === 0 ? (
-            <span className="text-[13px] text-slate-400">— ไม่มีรูปแนบ</span>
-          ) : (
-            <div className="flex flex-wrap gap-2">
-              {imgs.map((f) => (
-                <AttachmentThumb key={f.fileId} url={f.url} fileName={f.fileName} />
-              ))}
-            </div>
-          )}
-          {canAttachFiles === false && attachBlockedReason && (
-            <p className="mt-1.5 text-[11.5px] text-slate-400">{attachBlockedReason}</p>
-          )}
-        </div>
-      )}
-
-      {/* ชื่อ MGR ที่อนุมัติ พร้อมวันเวลา — จาก logs (action = approve)
-          workflow ที่อนุมัติหลายรอบ (เช่น PS) จะขึ้นครบทุกคน */}
-      <div className="col-span-2">
-        <span className="mb-1.5 block text-[11.5px] font-semibold text-gray-500">ผู้อนุมัติ (MGR)</span>
-        {approveLogs.length === 0 ? (
-          <span className="text-[13px] text-slate-400">— ยังไม่มีการอนุมัติ</span>
-        ) : (
-          <div className="flex flex-col gap-1.5">
-            {approveLogs.map((l, i) => (
-              <div
-                key={i}
-                className="flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-[12.5px]"
-              >
-                <IconCircleCheck size={15} className="shrink-0 text-emerald-600" />
-                <span className="font-semibold text-gray-800">{l.actionByName || '—'}</span>
-                {l.actionByDepartment && <span className="text-slate-500">· {l.actionByDepartment}</span>}
-                {l.actionDate && <span className="mono ml-auto text-slate-500">{fmtDateTime(l.actionDate)}</span>}
-              </div>
-            ))}
-          </div>
+  // ── แบ่งเป็นการ์ดตามหัวข้อเดียวกับหน้าสร้างใบ ทุกโมดูล ────────
+  // (ผู้ใช้สั่ง 2 ก.ย. 2026 — ลองที่ IT ก่อนแล้วขยายมาให้ครบ)
+  // ช่องข้างในต่างกันตามโมดูลเหมือนเดิม แต่ "กลุ่ม" เหมือนกันหมด คนที่ดูใบ
+  // ข้ามแผนกจะได้หาข้อมูลที่เดิมเสมอ:
+  //   ข้อมูลผู้แจ้ง = ใครขอ · ข้อมูลเรื่องที่แจ้ง = ขออะไร · การอนุมัติ = log
+  // "การอนุมัติ" แยกการ์ดเพราะเป็น log ของใบ ไม่ใช่สิ่งที่ผู้แจ้งกรอก
+  // และต่อกับบล็อกปุ่มอนุมัติที่อยู่ท้ายแท็บพอดี
+  return (
+    <div className="flex flex-col gap-3.5">
+      {/* ไม่ซ้ำเลขใบตรงนี้ — หัว modal โชว์ตัวใหญ่อยู่แล้ว (ผู้ใช้สั่ง 2 ก.ย. 2026) */}
+      <InfoCard title="ข้อมูลผู้แจ้ง" icon={IconUser}>
+        <DetailRow label="ผู้แจ้งเรื่อง">{full.requestBy || '—'}</DetailRow>
+        <DetailRow label="หน่วยงาน">{full.departmentName || '—'}</DetailRow>
+        {/* เบอร์ติดต่อ/ชื่อเครื่อง เป็นช่องของ IT — โมดูลอื่นที่ยังไม่มีแท็บของตัวเอง
+            ก็ตกมาชุดนี้เหมือนเดิม (ของเดิมเป็น else ของ PL/CR ไม่ใช่ isIt) */}
+        {!isPl && !isCr && (
+          <>
+            <DetailRow label="เบอร์ติดต่อ">{full.phoneNumber || '—'}</DetailRow>
+            <DetailRow label="ชื่อคอมพิวเตอร์">{full.comName || '—'}</DetailRow>
+          </>
         )}
-      </div>
+        {/* ใบ PL: วันที่แจ้งเรื่อง = requestDate (ผู้ใช้สั่ง 2 ก.ย. 2026)
+            ⚠️ เฉพาะ PL — ใบ CR ใช้คอลัมน์เดียวกันนี้เก็บ "วันที่ต้องการ" ไม่ใช่วันที่แจ้ง */}
+        {isPl && (
+          <DetailRow label="วันที่แจ้งเรื่อง">
+            {full.requestDate ? <span className="mono">{fmtDate(full.requestDate)}</span> : '—'}
+          </DetailRow>
+        )}
+      </InfoCard>
 
-      {/* แก้ไม่ได้ = บอกเหตุผลไปเลย ดีกว่าปล่อยให้หาปุ่มที่ไม่มี */}
-      {editHint && (
-        <p className="col-span-2 text-[12px] text-slate-400">— {editHint}</p>
-      )}
+      <InfoCard title="ข้อมูลเรื่องที่แจ้ง" icon={IconFileText}>
+        {isPl && (
+          <>
+            <DetailRow label="ประเภท">{full.type || '—'}</DetailRow>
+            <DetailRow label="เรื่องที่แจ้ง">{full.requestType || '—'}</DetailRow>
+            {/* วันที่ต้องการใช้งาน = สิ่งที่ขอ ไม่ใช่ข้อมูลตัวผู้แจ้ง จึงอยู่การ์ดนี้
+                (ผู้ใช้สั่ง 2 ก.ย. 2026 — ย้ายมาจากการ์ด "ข้อมูลผู้แจ้ง" พร้อมกับหน้าสร้างใบ) */}
+            <DetailRow label="วันที่ต้องการใช้งาน">
+              {full.planDate ? <span className="mono">{fmtDate(full.planDate)}</span> : '—'}
+            </DetailRow>
+          </>
+        )}
+
+        {isCr && (
+          <>
+            {/* ชุดนี้คือข้อมูลที่ Mgr ใช้ตัดสินใจก่อนกดอนุมัติ — ปุ่มอนุมัติอยู่ท้ายแท็บนี้
+                ค่าดิบจาก GET /CRRequest/{docNo} แยกช่องมาให้ (เส้นกลางรวม ประเภท+รายละเอียด
+                เป็นข้อความเดียว) — ยังโหลดไม่เสร็จ/ไม่ติด ค่อย fallback ไปใช้ของเส้นกลาง */}
+            <DetailRow label="ส่วนงาน">
+              {crDoc.doc?.section || full.type ? (
+                <span className="mono font-semibold">{crDoc.doc?.section || full.type}</span>
+              ) : (
+                '—'
+              )}
+            </DetailRow>
+            <DetailRow label="ประเภทที่แจ้ง">
+              {crDoc.doc?.requestType || full.requestType || '—'}
+            </DetailRow>
+            {crDoc.doc && (
+              <DetailRow label="รายละเอียดที่แจ้ง">{crDoc.doc.requestSubType || '—'}</DetailRow>
+            )}
+            {crDoc.doc?.requestSubOther && (
+              <DetailRow label="ระบุเพิ่มเติม">{crDoc.doc.requestSubOther}</DetailRow>
+            )}
+            {/* ⚠️ ใบ CR เก็บ "วันที่ต้องการ" ไว้ในคอลัมน์ RequestDate (ยืนยัน 1 ก.ย. 2026)
+                ไม่ใช่วันที่แจ้ง — ดู MdApi/API_SPEC_CR_FLOW.md §3 */}
+            <DetailRow label="วันที่ต้องการ">
+              {crDoc.doc?.requestDate || full.requestDate ? (
+                <span className="mono">{fmtDate(crDoc.doc?.requestDate || full.requestDate)}</span>
+              ) : (
+                '—'
+              )}
+            </DetailRow>
+          </>
+        )}
+
+        {detailBlock}
+
+        {isPl && (
+          <>
+            <div className="col-span-2">
+              <span className="mb-1 block text-[11.5px] font-semibold text-gray-500">เหตุผลการขอ</span>
+              <div className="rounded-lg border border-gray-200 bg-slate-50 px-3.5 py-3 text-[13px] leading-relaxed text-gray-800">
+                <span className="whitespace-pre-wrap">{full.remark || '— (ไม่ได้ระบุ)'}</span>
+              </div>
+            </div>
+
+            <div className="col-span-2">
+              <span className="mb-1.5 block text-[11.5px] font-semibold text-gray-500">รายการที่ขอ</span>
+              <PlLinesTable {...plLines} />
+            </div>
+          </>
+        )}
+
+        {attachmentsBlock}
+      </InfoCard>
+
+      <InfoCard title="การอนุมัติ" icon={IconShieldCheck}>
+        <div className="col-span-2">{approverList}</div>
+      </InfoCard>
+
+      {hintBlock}
     </div>
   );
 }

@@ -184,6 +184,30 @@ export function cleanFieldValues(values: ActionFieldValues): ActionFieldValues |
   return Object.keys(out).length > 0 ? out : undefined;
 }
 
+// ── action ที่สั่งไม่ให้ขึ้นบนหน้าเว็บ ─────────────────────────
+// ปกติปุ่มคือ data ไม่ใช่ code (กติกาใน CLAUDE.md) — ตารางนี้เป็นข้อยกเว้นที่ตั้งใจ
+// สำหรับ action ที่ API ยังส่งมาแต่ผู้ใช้สั่งว่าไม่ต้องการให้กดได้จากหน้าเว็บ
+//
+// IT · skipService "ปิดรับเรื่อง (ไม่ดำเนินการ)" — ผู้ใช้สั่งเอาออก 2 ก.ย. 2026
+//   (ปิดใบทิ้งโดยไม่ทำงาน ไม่ใช่ทางเลือกที่ต้องการให้มีอยู่บนจอ)
+//   ⚠️ เป็นแค่การซ่อนปุ่ม: backend ยังรับ action นี้อยู่ ใครยิง POST ตรงยังทำได้
+//      ถ้าจะปิดจริงต้องให้ backend เลิกส่ง skipService มาใน availableActions
+//
+// ต้องกรองที่เดียวกันทั้งในใบ (ปุ่ม) และในตาราง (ปุ่มตาที่เน้นสีว่า "กดได้") —
+// ไม่งั้นแถวจะเน้นสีชวนให้เปิด แล้วเปิดเข้าไปไม่มีปุ่มอะไรให้กดเลย
+const HIDDEN_ACTION_CODES: Record<string, string[]> = {
+  IT: ['skipService'],
+};
+
+export const isHiddenAction = (module: string, code: string): boolean =>
+  (HIDDEN_ACTION_CODES[module] ?? []).includes(code);
+
+// action ที่ผู้ใช้กดได้จริงบนหน้าเว็บ (ตัดตัวที่สั่งซ่อนออก)
+export const visibleActionsOf = (item: {
+  module: string;
+  availableActions?: { code: string }[] | null;
+}): { code: string }[] => (item.availableActions ?? []).filter((a) => !isHiddenAction(item.module, a.code));
+
 // ตรวจฟิลด์บังคับก่อนยิง — API ตรวจซ้ำอยู่แล้ว แต่บอกผู้ใช้ตั้งแต่ยังไม่ยิงดีกว่า
 export function missingRequired(required: string[], values: ActionFieldValues): string[] {
   return required.filter((name) => {

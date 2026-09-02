@@ -206,7 +206,7 @@ export function RequestActionDialog({
           <div className="min-w-0">
             <h3 className="text-[15px] font-bold text-gray-900">ยืนยัน{action.label}</h3>
             <p className="mt-0.5 text-[12.5px] text-slate-500">
-              ใบเลขที่ <span className="mono font-semibold text-gray-700">{item.docNo}</span>
+              เลขที่ใบแจ้งเรื่อง <span className="mono font-semibold text-gray-700">{item.docNo}</span>
               {' · '}
               <span className="mono font-semibold text-gray-700">{item.module}</span>
               {item.requestBy ? ` · ${item.requestBy}` : ''}
@@ -215,9 +215,16 @@ export function RequestActionDialog({
         </div>
 
         <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-4">
+          {/* คนกดอนุมัติต้องเห็นว่ากำลังอนุมัติ "เรื่องอะไร" — กล่องนี้เคยเป็นข้อความลอย ๆ
+              ไม่มีหัวข้อ อ่านแล้วไม่รู้ว่าเป็นรายละเอียดของใบหรือคำอธิบายของปุ่ม */}
           {item.detail && (
-            <div className="mb-4 max-h-24 overflow-y-auto rounded-lg border border-gray-200 bg-slate-50 px-3 py-2 text-[12.5px] text-slate-600">
-              {item.detail}
+            <div className="mb-4">
+              <span className="mb-1 block text-[11.5px] font-semibold text-gray-500">
+                รายละเอียดเรื่องที่แจ้ง
+              </span>
+              <div className="max-h-24 overflow-y-auto whitespace-pre-wrap rounded-lg border border-gray-200 bg-slate-50 px-3 py-2 text-[12.5px] text-slate-600">
+                {item.detail}
+              </div>
             </div>
           )}
 
