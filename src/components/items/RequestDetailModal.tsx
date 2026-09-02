@@ -31,6 +31,8 @@ import { useRequestEdit } from '../../hooks/useRequestEdit';
 import { ItMasterData, useItMasterData } from '../../hooks/useItMasterData';
 import { usePlMasterData } from '../../hooks/usePlMasterData';
 import { CrMasterData, useCrMasterData } from '../../hooks/useCrMasterData';
+import { useCrRequest } from '../../hooks/useCrRequest';
+import { CrRequestDetail } from '../../api/crRequest';
 import { FieldOption, MasterListKey } from '../../data/requestForm';
 import {
   EditFieldDef,
@@ -46,8 +48,8 @@ import {
   editBlockedReason,
   editFieldsOf,
   emptyEditLine,
+  editFieldVisible,
   hasFormChanges,
-  splitCrRequestType,
   toCrUpdatePayload,
   toEditForm,
   toPlUpdatePayload,
@@ -326,16 +328,15 @@ export function RequestDetailModal({
     tabs.some((t) => t.key === 'service' || t.key === 'closeReceive')
   );
   // ตัวเลือกของฟอร์มแก้ไขใบ CR (ส่วนงาน → ประเภทที่แจ้ง → รายละเอียดที่แจ้ง)
-  // โหลดที่นี่ไม่ใช่ในแผงแก้ไข เพราะ submitEdit ต้องใช้ชื่อประเภทชุดเดียวกันเพื่อถอด
-  // requestType ที่ API รวมร่างมา แล้วเทียบว่า "ผู้ใช้แก้อะไรจริงไหม"
   const isCrItem = item.module === 'CR';
   const crMaster = useCrMasterData(user?.token, isCrItem);
-  const crTypeOptions = crMaster.requestTypeOptions;
-  // ชื่อประเภทที่แจ้งของ "ส่วนงานเดิมในใบ" — ใช้ถอดค่าเดิมเท่านั้น
-  // (ตอนผู้ใช้เปลี่ยนส่วนงาน แผงแก้ไขคำนวณตัวเลือกใหม่จากค่าในฟอร์มเอง)
-  const crTypeNames = useMemo(
-    () => (isCrItem ? crTypeOptions(full.type ?? '').map((o) => o.value) : []),
-    [isCrItem, crTypeOptions, full.type]
+  // ค่าดิบของใบ CR — ต้องใช้เส้นนี้เติมฟอร์มแก้ไข ไม่ใช่ item ของเส้นกลาง
+  // (เส้นกลางรวม requestType กับ requestSubType เป็นข้อความเดียว ผูก dropdown ไม่ได้)
+  // โหลดที่นี่ไม่ใช่ในแผง เพราะทั้งหน้าอ่าน ฟอร์มแก้ไข และ submitEdit ต้องใช้ชุดเดียวกัน
+  const crDoc = useCrRequest(
+    isCrItem ? item.docNo : null,
+    user?.token,
+    `${item.updatedDate ?? ''}|${refreshTick}`
   );
   // รายการย่อยในรูปแบบที่ตารางใช้ (loading/error ใช้ก้อนเดียวกับใบ)
   const plLines = {
@@ -442,9 +443,14 @@ export function RequestDetailModal({
     dismissNotice: dismissEditNotice,
   } = useRequestEdit(user?.token);
   const [editing, setEditing] = useState(false);
-  // สิทธิ์แก้ไข = กติกาหน้าเว็บ AND canEdit ที่ API ส่งมา (PL ส่งมาแล้ว, โมดูลอื่นยังไม่ส่ง
+  // สิทธิ์แก้ไข = กติกาหน้าเว็บ AND canEdit ที่ API ส่งมา (PL/CR ส่งมาแล้ว, IT ยังไม่ส่ง
   // → undefined ถือว่าไม่คัดค้าน) backend ตรวจซ้ำตอน PUT อยู่ดี ปุ่มเป็นแค่ UX
-  const apiCanEdit = plDoc.doc?.canEdit;
+  //
+  // ⚠️ CR: backend เปิดให้แก้ได้ตลอด step 1-5 (canEdit = false เฉพาะใบปิด/ยกเลิก)
+  //    แต่ผู้ใช้สั่งว่า "อนุมัติแล้วห้ามแก้" (1 ก.ย. 2026) กติกาหน้าเว็บจึงเข้มกว่า
+  //    → ตอนนี้เป็นแค่การซ่อนปุ่ม ไม่ใช่การบังคับ ใครยิง PUT ตรงยังแก้ได้อยู่
+  //    ต้องให้ backend ใส่เงื่อนไขเดียวกันด้วย (เขาเสนอไว้เองใน guide §7)
+  const apiCanEdit = plDoc.doc?.canEdit ?? crDoc.doc?.canEdit;
   // สิทธิ์แก้ "ฟิลด์หัวใบ + รายการที่ขอ" (PUT /{module}/{docNo})
   const canEditFields = !!onEdited && canEditRequest(full, user) && apiCanEdit !== false;
   // สิทธิ์แนบ/ลบรูปเป็นคนละชุด — ห้ามผูกกับ canEdit เพราะปลายทางที่รับงานแล้ว
@@ -506,7 +512,7 @@ export function RequestDetailModal({
   const submitEdit = async (form: RequestEditForm) => {
     const attSlots = Object.keys(attRef.current).length;
     const fieldsChanged =
-      canEditFields && hasFormChanges(toEditForm(full, plLines.lines, crTypeNames), form);
+      canEditFields && hasFormChanges(toEditForm(full, plLines.lines, crDoc.doc), form);
     // ไม่ได้แก้อะไรเลย → ไม่ต้องยิง API ให้เปลืองรอบ
     if (!fieldsChanged && attSlots === 0) {
       setEditing(false);
@@ -782,7 +788,7 @@ export function RequestDetailModal({
                 onEditCancel={() => setEditing(false)}
                 onEditSubmit={submitEdit}
                 crMaster={crMaster}
-                crTypeNames={crTypeNames}
+                crDoc={crDoc}
                 canEditFields={canEditFields}
                 canAttachFiles={canAttachFiles}
                 attachBlockedReason={attachBlockedReason}
@@ -1783,7 +1789,7 @@ function GeneralPanel({
   attachBusy,
   onStageAttachment,
   crMaster,
-  crTypeNames,
+  crDoc,
 }: {
   item: RequestListItem;
   full: RequestListItem;
@@ -1805,9 +1811,9 @@ function GeneralPanel({
   pendingAtt?: PendingAttachments;
   attachBusy?: boolean;
   onStageAttachment?: (slot: number, change: PendingAttachment | null) => void;
-  // ตัวเลือก + ชื่อประเภทของใบ CR — ใช้เฉพาะตอนเปิดฟอร์มแก้ไข
+  // ตัวเลือก + ค่าดิบของใบ CR (ใช้ทั้งหน้าอ่านและฟอร์มแก้ไข)
   crMaster: CrMasterData;
-  crTypeNames: string[];
+  crDoc: { doc: CrRequestDetail | null; loading: boolean; error: string | null };
 }) {
   const imgs = attachments ?? [];
   const isPl = full.module === 'PL';
@@ -1835,7 +1841,7 @@ function GeneralPanel({
         onCancel={() => onEditCancel?.()}
         onSubmit={onEditSubmit}
         crMaster={crMaster}
-        crTypeNames={crTypeNames}
+        crDoc={crDoc}
       />
     );
   }
@@ -1858,16 +1864,33 @@ function GeneralPanel({
         </>
       ) : isCr ? (
         <>
-          {/* CR: type = ส่วนงาน HV/FL · requestType = "ประเภทที่แจ้ง / จัดทำ" (API รวมมาให้แล้ว)
-              ทั้งชุดนี้คือข้อมูลที่ Mgr ใช้ตัดสินใจก่อนกดอนุมัติ — ปุ่มอนุมัติอยู่ท้ายแท็บนี้ */}
+          {/* ชุดนี้คือข้อมูลที่ Mgr ใช้ตัดสินใจก่อนกดอนุมัติ — ปุ่มอนุมัติอยู่ท้ายแท็บนี้
+              ค่าดิบจาก GET /CRRequest/{docNo} แยกช่องมาให้ (เส้นกลางรวม ประเภท+รายละเอียด
+              เป็นข้อความเดียว) — ยังโหลดไม่เสร็จ/ไม่ติด ค่อย fallback ไปใช้ของเส้นกลาง */}
           <DetailRow label="ส่วนงาน">
-            {full.type ? <span className="mono font-semibold">{full.type}</span> : '—'}
+            {crDoc.doc?.section || full.type ? (
+              <span className="mono font-semibold">{crDoc.doc?.section || full.type}</span>
+            ) : (
+              '—'
+            )}
           </DetailRow>
-          <DetailRow label="ประเภทที่แจ้ง / จัดทำ">{full.requestType || '—'}</DetailRow>
+          <DetailRow label="ประเภทที่แจ้ง">
+            {crDoc.doc?.requestType || full.requestType || '—'}
+          </DetailRow>
+          {crDoc.doc && (
+            <DetailRow label="รายละเอียดที่แจ้ง">{crDoc.doc.requestSubType || '—'}</DetailRow>
+          )}
+          {crDoc.doc?.requestSubOther && (
+            <DetailRow label="ระบุเพิ่มเติม">{crDoc.doc.requestSubOther}</DetailRow>
+          )}
           {/* ⚠️ ใบ CR เก็บ "วันที่ต้องการ" ไว้ในคอลัมน์ RequestDate (ยืนยัน 1 ก.ย. 2026)
               ไม่ใช่วันที่แจ้ง — ดู MdApi/API_SPEC_CR_FLOW.md §3 */}
           <DetailRow label="วันที่ต้องการ">
-            {full.requestDate ? <span className="mono">{fmtDate(full.requestDate)}</span> : '—'}
+            {crDoc.doc?.requestDate || full.requestDate ? (
+              <span className="mono">{fmtDate(crDoc.doc?.requestDate || full.requestDate)}</span>
+            ) : (
+              '—'
+            )}
           </DetailRow>
         </>
       ) : (
@@ -3036,7 +3059,7 @@ function RequestEditPanel({
   onCancel,
   onSubmit,
   crMaster,
-  crTypeNames,
+  crDoc,
 }: {
   item: RequestListItem;
   lines: PlRequestLine[] | null;
@@ -3053,7 +3076,7 @@ function RequestEditPanel({
   onCancel: () => void;
   onSubmit: (form: RequestEditForm) => void | Promise<void>;
   crMaster: CrMasterData;
-  crTypeNames: string[];
+  crDoc: { doc: CrRequestDetail | null; loading: boolean; error: string | null };
 }) {
   const isPl = item.module === 'PL';
   const isCr = item.module === 'CR';
@@ -3061,21 +3084,19 @@ function RequestEditPanel({
   // ตัวเลือกของใบ PL (ประเภท / เรื่องที่แจ้ง / หน่วย) — GET /MasterData/pl
   const { user } = useAuth();
   const plMaster = usePlMasterData(user?.token, isPl);
-  const [form, setForm] = useState<RequestEditForm>(() => toEditForm(item, lines, crTypeNames));
+  const [form, setForm] = useState<RequestEditForm>(() => toEditForm(item, lines, crDoc.doc));
   const [errors, setErrors] = useState<ReturnType<typeof validateEditForm>>({});
   // ล็อกช่องกรอกทั้งหมดเมื่อเข้ามาเพื่อจัดการรูปอย่างเดียว (canEdit ปิดไปแล้ว)
   const lock = pending || !fieldsEditable;
 
-  // master ของ CR โหลดทีหลังกว่าฟอร์มถูกสร้าง → ตอน mount ยังถอด requestType ไม่ได้
-  // พอรายชื่อประเภทมาถึงค่อยเติมให้ (ผู้ใช้เลือกเองไปแล้วไม่ทับ)
+  // ค่าดิบของใบ CR อาจมาถึงหลังฟอร์มถูกสร้าง (เปิดแท็บแก้ไขเร็วกว่า API ตอบ)
+  // → เติมให้เมื่อมาถึง แต่ไม่ทับของที่ผู้ใช้เริ่มแก้แล้ว
+  const crRaw = crDoc.doc;
   useEffect(() => {
-    if (!isCr || crTypeNames.length === 0) return;
-    setForm((f) => {
-      if (f.requestType) return f;
-      const split = splitCrRequestType(item.requestType, crTypeNames);
-      return split.requestType ? { ...f, ...split } : f;
-    });
-  }, [isCr, crTypeNames, item.requestType]);
+    if (!isCr || !crRaw) return;
+    setForm((f) => (f.requestType ? f : toEditForm(item, lines, crRaw)));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isCr, crRaw]);
 
   // ตัวเลือกของแต่ละช่อง — ของ CR เป็นลูกโซ่ จึงคำนวณจากค่าที่เลือกอยู่ในฟอร์ม
   const optionsOf = (f: EditFieldDef): FieldOption[] => {
@@ -3097,20 +3118,9 @@ function RequestEditPanel({
   };
   const isCrMaster = (m?: MasterListKey) => m === 'crSections' || m === 'crRequestTypes' || m === 'crRequestSubTypes';
 
-  // ถอดค่าเดิมไม่ได้ = ประเภทในใบไม่ตรงกับ master แล้ว (ชื่อถูกแก้ / ส่วนงานเปลี่ยนไป)
-  // ต้องบอกให้เห็น ไม่ใช่ปล่อย select ว่างเงียบ ๆ แล้วผู้ใช้เผลอบันทึกทับ
-  const splitFailed =
-    isCr && !crMaster.loading && !!item.requestType && crTypeNames.length > 0 && !form.requestType;
-
-  // ผู้ใช้กำลังย้ายใบไปชุดเลขที่เอกสารอื่นหรือเปล่า — เทียบกับค่าเดิมในใบ
-  // (ไม่เก็บ original ไว้ใน state เพราะค่าเดิมถอดได้จาก item ตรง ๆ อยู่แล้ว)
-  const seriesChanged =
-    isCr &&
-    !splitFailed &&
-    ((!!form.section && form.section !== (item.type ?? '')) ||
-      (!!form.requestType &&
-        !!splitCrRequestType(item.requestType, crTypeNames).requestType &&
-        form.requestType !== splitCrRequestType(item.requestType, crTypeNames).requestType));
+  // โหลดค่าดิบไม่สำเร็จ = ฟอร์มไม่รู้ค่าเดิมของส่วนงาน/ประเภทที่แจ้ง ซึ่งต้องส่งกลับไปกับ PUT
+  // ด้วยค่าเดิมเสมอ → ปล่อยให้กดบันทึกไม่ได้ (บันทึกทั้งที่ค่าว่าง = เขียนทับประเภทของใบ)
+  const crDocFailed = isCr && !crDoc.loading && !crDoc.doc;
 
   const set = (k: EditFieldKey, v: string, resets?: EditFieldKey[]) => {
     setForm((f) => {
@@ -3133,6 +3143,8 @@ function RequestEditPanel({
     setLines(form.lines.map((l, n) => (n === i ? { ...l, ...patch } : l)));
 
   const submit = () => {
+    // ใบ CR ที่ยังไม่รู้ค่าเดิม = ห้ามบันทึก (จะเขียนทับประเภทของใบด้วยค่าว่าง)
+    if (isCr && !crDoc.doc) return;
     // ฟิลด์ถูกล็อกอยู่ = ไม่มีอะไรให้ตรวจ (บันทึกรอบนี้เป็นเรื่องรูปแนบล้วน)
     if (fieldsEditable) {
       const errs = validateEditForm(item.module, form);
@@ -3151,22 +3163,43 @@ function RequestEditPanel({
             — โชว์ซ้ำตรงนี้ในชื่อ "วันที่แจ้ง" ด้วยจะกลายเป็นค่าเดียวกัน 2 ป้ายคนละความหมาย */}
         {item.module !== 'CR' && <DetailRow label="วันที่แจ้ง">{fmtDate(item.requestDate)}</DetailRow>}
         <DetailRow label="สถานะ">{item.jobStatusName || '—'}</DetailRow>
+        {/* ส่วนงาน + ประเภทที่แจ้ง แก้ไม่ได้ — เลขที่ใบออกจากชุดของ 2 ค่านี้ไปแล้ว
+            และเลขไม่เปลี่ยนตามเวลาแก้ (guide §7) จึงโชว์ไว้เฉย ๆ ให้เห็นว่าใบนี้คือเรื่องอะไร */}
+        {isCr && (
+          <>
+            <DetailRow label="ส่วนงาน">
+              <span className="mono font-semibold">{crDoc.doc?.section || item.type || '—'}</span>
+            </DetailRow>
+            <DetailRow label="ประเภทที่แจ้ง">{crDoc.doc?.requestType || '—'}</DetailRow>
+            <div className="col-span-2 text-[11px] text-slate-400">
+              ส่วนงานและประเภทที่แจ้งแก้ไม่ได้ — เลขที่ใบ <span className="mono">{item.docNo}</span>{' '}
+              ถูกออกจากชุดของสองค่านี้ไปแล้ว ถ้าเลือกผิดต้องเปิดใบใหม่
+            </div>
+          </>
+        )}
       </div>
 
-      {/* ถอด "ประเภทที่แจ้ง / รายละเอียดที่แจ้ง" ที่ API รวมร่างมาไม่สำเร็จ
-          → 2 ช่องนั้นว่าง ถ้าไม่บอก ผู้ใช้จะเลือกใหม่ทั้งที่ตั้งใจแก้แค่ช่องอื่น */}
-      {splitFailed && (
-        <p className="flex items-start gap-1.5 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-[12px] text-amber-900">
+      {/* โหลดค่าดิบของใบไม่สำเร็จ = ช่องส่วนงาน/ประเภท/รายละเอียดที่แจ้ง ไม่มีค่าเดิม
+          ห้ามให้บันทึก ไม่งั้นจะเขียนทับประเภทของใบด้วยค่าว่าง */}
+      {isCr && crDoc.loading && (
+        <p className="flex items-center gap-1.5 text-[12px] text-slate-400">
+          <IconLoader2 size={14} className="animate-spin" />
+          กำลังโหลดข้อมูลเดิมของใบ...
+        </p>
+      )}
+      {crDocFailed && (
+        <p className="flex items-start gap-1.5 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-[12px] font-semibold text-red-700">
           <IconAlertTriangle size={14} className="mt-0.5 shrink-0" />
           <span>
-            อ่านค่าเดิมของ “ประเภทที่แจ้ง / รายละเอียดที่แจ้ง” ไม่ได้ (ในใบเก็บไว้เป็น{' '}
-            <b>{item.requestType}</b>) — กรุณาเลือกใหม่ทั้งสองช่องก่อนบันทึก
+            โหลดข้อมูลเดิมของใบไม่สำเร็จ{crDoc.error ? ` (${crDoc.error})` : ''} — แก้ไขไม่ได้ตอนนี้
+            ปิดหน้าต่างแล้วเปิดใหม่อีกครั้ง
           </span>
         </p>
       )}
 
       <div className="grid grid-cols-2 gap-x-5 gap-y-4">
-        {fields.map((f) => {
+        {/* ช่องที่มีเงื่อนไข showWhen (เช่น "ระบุเพิ่มเติม" ของ CR) ซ่อนจนกว่าจะถึงเงื่อนไข */}
+        {fields.filter((f) => editFieldVisible(f, form)).map((f) => {
           const value = form[f.key] ?? '';
           const err = errors[f.key];
           // ลูกโซ่: ยังไม่เลือกฟิลด์แม่ = ช่องนี้ยังไม่มีตัวเลือกให้เลือก
@@ -3361,18 +3394,6 @@ function RequestEditPanel({
         />
       )}
 
-      {/* เลขที่ใบ CR ออกจากชุดของ (ส่วนงาน + ประเภทที่แจ้ง) ไปแล้วตอนสร้าง — 32 ชุด
-          เปลี่ยน 2 ค่านี้ = ใบย้ายชุด แต่เลขที่ใบเดิมยังเป็นของชุดเก่า เตือนก่อนกดบันทึก */}
-      {seriesChanged && (
-        <p className="flex items-start gap-1.5 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-[12px] font-semibold text-amber-900">
-          <IconAlertTriangle size={14} className="mt-0.5 shrink-0" />
-          <span>
-            กำลังเปลี่ยนส่วนงาน / ประเภทที่แจ้ง — เลขที่ใบ <span className="mono">{item.docNo}</span>{' '}
-            ถูกออกจากชุดเดิมไปแล้ว การเปลี่ยนจะทำให้ใบไปอยู่คนละชุดกับเลขที่ถืออยู่ ตรวจให้แน่ใจก่อนบันทึก
-          </span>
-        </p>
-      )}
-
       <p className="text-[11.5px] text-slate-400">
         {fieldsEditable
           ? 'แก้ไขได้ก่อน Mgr อนุมัติเท่านั้น — อนุมัติแล้วต้องแจ้งกับผู้รับเรื่องโดยตรง'
@@ -3382,7 +3403,7 @@ function RequestEditPanel({
       <div className="flex items-center gap-2 border-t border-gray-100 pt-4">
         <button
           type="button"
-          disabled={pending}
+          disabled={pending || (isCr && !crDoc.doc)}
           onClick={submit}
           className="inline-flex items-center gap-1.5 rounded-lg border border-accent bg-accent px-4 py-2 text-[13px] font-semibold text-white transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50"
         >

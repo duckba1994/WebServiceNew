@@ -1,14 +1,14 @@
 import { RequestListItem } from '../types/requestList';
 import { User } from '../types/user';
 import { ItRequestUpdatePayload } from '../api/itRequest';
-import { CrRequestUpdatePayload } from '../api/crRequest';
+import { CrRequestDetail, CrRequestUpdatePayload } from '../api/crRequest';
 import {
   PlChecklistPayload,
   PlRequestDetail,
   PlRequestLine,
   PlRequestUpdatePayload,
 } from '../api/plRequest';
-import { DETAIL_MAX_LEN, FieldOption, MasterListKey } from './requestForm';
+import { CR_OTHER_TYPE, DETAIL_MAX_LEN, FieldOption, MasterListKey } from './requestForm';
 
 // ── แก้ไขใบแจ้งเรื่อง "ก่อน Mgr อนุมัติ" เท่านั้น ─────────────────
 // PURE logic (ไม่มี JSX/hooks) — สิทธิ์แก้ไข + ฟิลด์ที่แก้ได้ + validate
@@ -101,7 +101,8 @@ export interface EditFieldDef {
 }
 
 // ช่องนี้ต้องแสดงไหม — ใช้ร่วมกันระหว่างการเรนเดอร์กับ validate
-export const editFieldVisible = (f: EditFieldDef, form: Record<string, string>): boolean =>
+// รับ form ทั้งก้อน (มี lines ที่ไม่ใช่ string ปนอยู่) จึงอ่านเฉพาะคีย์ที่ showWhen ชี้
+export const editFieldVisible = (f: EditFieldDef, form: RequestEditForm): boolean =>
   !f.showWhen || (form[f.showWhen.key] ?? '') === f.showWhen.equals;
 
 const IT_EDIT_FIELDS: EditFieldDef[] = [
@@ -143,31 +144,19 @@ const PL_EDIT_FIELDS: EditFieldDef[] = [
   },
 ];
 
-// ใบ CR แก้ได้ 5 ช่องตามฟอร์มตอนสร้างใบ (ผู้ใช้ยืนยัน 1 ก.ย. 2026)
-// เรียงเหมือนฟอร์มสร้างใบ: ส่วนงาน → ประเภทที่แจ้ง → รายละเอียดที่แจ้ง → วันที่ต้องการ → รายละเอียด
+// ใบ CR แก้ได้ 3 ช่อง: รายละเอียดที่แจ้ง → วันที่ต้องการ → รายละเอียด
+// (ผู้ใช้ตัดสิน 1 ก.ย. 2026)
 //
-// ⚠️ เปลี่ยน "ส่วนงาน" หรือ "ประเภทที่แจ้ง" = เปลี่ยนชุดเลขที่เอกสาร
-//    เลขที่ใบถูกออกจากชุดของ (ส่วนงาน + ประเภทที่แจ้ง) ไปแล้ว (32 ชุด) ตั้งแต่ตอนสร้าง
-//    ใบที่แก้ 2 ช่องนี้จะถือเลขของชุดเดิมแต่ไปอยู่ใต้ชุดใหม่ — backend ต้องตัดสินว่าจะ
-//    ออกเลขใหม่หรือปฏิเสธ (ดู MdApi/API_SPEC_CR_FLOW.md §4.1)
+// ⚠️ **ส่วนงาน กับ ประเภทที่แจ้ง ตั้งใจไม่ให้แก้** — เลขที่ใบถูกออกจากชุดของ
+//    (ส่วนงาน + ประเภทที่แจ้ง) ไปแล้ว (32 ชุด) ตั้งแต่ตอนสร้าง และ **เลขไม่เปลี่ยนตาม
+//    เวลาแก้ 2 ค่านี้** (CR-create-frontend-guide.md §7) ใบจะกลายเป็นเลขของชุดหนึ่ง
+//    แต่เนื้อหาเป็นอีกชุด → ไม่เปิดให้แก้ตั้งแต่แรกดีกว่าเตือนแล้วปล่อยกด
+//    ทั้ง 2 ค่ายังอยู่ใน form state (มาจาก GET /CRRequest) และถูกส่งกลับไปกับ PUT
+//    ด้วยค่าเดิมเสมอ เพราะ API บังคับให้ส่งครบ
+//
+// รายละเอียดที่แจ้ง (requestSubType) ไม่ได้อยู่ในสูตรออกเลข จึงแก้ได้ปลอดภัย
+// — ตัวเลือกยังกรองด้วย (ส่วนงาน + ประเภทที่แจ้ง) ของใบตามเดิม
 const CR_EDIT_FIELDS: EditFieldDef[] = [
-  {
-    key: 'section',
-    label: 'ส่วนงาน',
-    kind: 'select',
-    required: true,
-    master: 'crSections',
-    resets: ['requestType', 'requestSubType'],
-  },
-  {
-    key: 'requestType',
-    label: 'ประเภทที่แจ้ง',
-    kind: 'select',
-    required: true,
-    master: 'crRequestTypes',
-    dependsOn: 'section',
-    resets: ['requestSubType'],
-  },
   {
     key: 'requestSubType',
     label: 'รายละเอียดที่แจ้ง',
@@ -309,6 +298,8 @@ export type EditErrors = Partial<Record<EditFieldKey, string>> & { lines?: strin
 export function validateEditForm(module: string, form: RequestEditForm): EditErrors {
   const errors: EditErrors = {};
   for (const f of editFieldsOf(module)) {
+    // ช่องที่ซ่อนอยู่ไม่ต้องตรวจ — ไม่งั้นติด "กรุณากรอก…" ของช่องที่ผู้ใช้มองไม่เห็น
+    if (!editFieldVisible(f, form)) continue;
     const v = (form[f.key] ?? '').trim();
     if (f.required && !v) errors[f.key] = `กรุณากรอก${f.label}`;
     else if (f.maxLen && v.length > f.maxLen) errors[f.key] = `${f.label}ยาวเกิน ${f.maxLen} ตัวอักษร`;
@@ -368,6 +359,9 @@ export const toCrUpdatePayload = (form: RequestEditForm): CrRequestUpdatePayload
   section: form.section.trim(),
   requestType: form.requestType.trim(),
   requestSubType: form.requestSubType.trim(),
+  // ประเภทอื่นส่งไปก็ถูกเมิน (API เก็บเป็น null ให้) แต่ส่ง null ไปตรง ๆ ชัดกว่า
+  requestSubOther:
+    form.requestType.trim() === CR_OTHER_TYPE ? form.requestSubOther.trim() || null : null,
   requestDetail: form.requestDetail.trim(),
   requestDate: form.requestDate ? `${form.requestDate}T00:00:00` : undefined,
 });
