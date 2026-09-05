@@ -5,37 +5,37 @@ export const BOOKING_STATUS_META: Record<
   BookingDocStatus,
   { label: string; color: string; bg: string; border: string }
 > = {
-  created: { label: 'สร้างเอกสาร', color: '#2563eb', bg: '#eff6ff', border: '#bfdbfe' },
-  creatorConfirmed: { label: 'ผู้สร้างยืนยันเอกสาร', color: '#1d4ed8', bg: '#eff6ff', border: '#bfdbfe' },
-  creatorMgrApproved: { label: 'Mgr ผู้สร้างอนุมัติเอกสาร', color: '#4338ca', bg: '#eef2ff', border: '#c7d2fe' },
-  plAssigned: { label: 'PL ระบุเบอร์รถ', color: '#6d28d9', bg: '#f5f3ff', border: '#ddd6fe' },
-  plMgrApproved: { label: 'Mgr PL อนุมัติ', color: '#7c3aed', bg: '#f5f3ff', border: '#ddd6fe' },
-  svConfirmed: { label: 'SV ยืนยันเบอร์รถ', color: '#b45309', bg: '#fffbeb', border: '#fde68a' },
-  svMgrApproved: { label: 'Mgr SV อนุมัติ', color: '#a16207', bg: '#fffbeb', border: '#fde68a' },
-  approved: { label: 'อนุมัติแล้ว (จบ)', color: '#047857', bg: '#ecfdf5', border: '#a7f3d0' },
-  rejected: { label: 'ไม่อนุมัติ (ตีกลับ)', color: '#dc2626', bg: '#fef2f2', border: '#fecaca' },
-  cancelled: { label: 'ยกเลิกเอกสาร', color: '#64748b', bg: '#f1f5f9', border: '#e2e8f0' },
+  created: { label: 'สร้างเอกสาร', color: 'var(--tint-blue-fg)', bg: 'var(--tint-blue-bg)', border: 'var(--tint-blue-bd)' },
+  creatorConfirmed: { label: 'ผู้สร้างยืนยันเอกสาร', color: 'var(--tint-blue-fg)', bg: 'var(--tint-blue-bg)', border: 'var(--tint-blue-bd)' },
+  creatorMgrApproved: { label: 'Mgr ผู้สร้างอนุมัติเอกสาร', color: 'var(--tint-indigo-fg)', bg: 'var(--tint-indigo-bg)', border: 'var(--tint-indigo-bd)' },
+  plAssigned: { label: 'PL ระบุเบอร์รถ', color: 'var(--tint-purple-fg)', bg: 'var(--tint-purple-bg)', border: 'var(--tint-purple-bd)' },
+  plMgrApproved: { label: 'Mgr PL อนุมัติ', color: 'var(--tint-purple-fg)', bg: 'var(--tint-purple-bg)', border: 'var(--tint-purple-bd)' },
+  svConfirmed: { label: 'SV ยืนยันเบอร์รถ', color: 'var(--tint-amber-fg)', bg: 'var(--tint-amber-bg)', border: 'var(--tint-amber-bd)' },
+  svMgrApproved: { label: 'Mgr SV อนุมัติ', color: 'var(--tint-amber-fg)', bg: 'var(--tint-amber-bg)', border: 'var(--tint-amber-bd)' },
+  approved: { label: 'อนุมัติแล้ว (จบ)', color: 'var(--tint-green-fg)', bg: 'var(--tint-green-bg)', border: 'var(--tint-green-bd)' },
+  rejected: { label: 'ไม่อนุมัติ (ตีกลับ)', color: 'var(--tint-red-fg)', bg: 'var(--tint-red-bg)', border: 'var(--tint-red-bd)' },
+  cancelled: { label: 'ยกเลิกเอกสาร', color: 'var(--tint-slate-fg)', bg: 'var(--tint-slate-bg)', border: 'var(--tint-slate-bd)' },
 };
 
 // ── สีป้ายสถานะเอกสารตาม StateCode (BWS.StateCode) ───────────
 // อ้างอิงสีจากฝั่ง WinForms (VB): แต่ละ StateCode → โทนสีเดียวกัน (ปรับเป็นพาเลตต์ pill ให้อ่านง่ายบนเว็บ)
 export interface StateColor { color: string; bg: string; border: string }
 export const BOOKING_STATE_COLORS: Record<string, StateColor> = {
-  CREATE: { color: '#475569', bg: '#f8fafc', border: '#e2e8f0' }, // White → เทา/ขาว (neutral)
-  DOC_CONFIRMED: { color: '#dc2626', bg: '#fef2f2', border: '#fecaca' }, // Red
-  MGR_DOC_APPROVAL: { color: '#ea7c47', bg: '#fff4ed', border: '#fed7aa' }, // LightSalmon
-  PL_ASSIGN_VEHICLE: { color: '#ea7c47', bg: '#fff4ed', border: '#fed7aa' }, // LightSalmon
-  PL_MGR_APPROVAL: { color: '#b4530e', bg: '#fdf3ec', border: '#f0c9a8' }, // Chocolate
-  SV_CONFIRM_VEHICLE: { color: '#db2777', bg: '#fdf2f8', border: '#fbcfe8' }, // Pink
-  SV_MGR_APPROVAL: { color: '#ca8a04', bg: '#fefce8', border: '#fde68a' }, // Gold
-  FINAL_MGR_APPROVAL: { color: '#2563eb', bg: '#eff6ff', border: '#bfdbfe' }, // Blue
-  REJECTED: { color: '#7c3aed', bg: '#f5f3ff', border: '#ddd6fe' }, // Violet
-  CANCEL: { color: '#0ea5e9', bg: '#f0f9ff', border: '#bae6fd' }, // SkyBlue
+  CREATE: { color: 'var(--tint-slate-fg)', bg: 'var(--tint-slate-bg)', border: 'var(--tint-slate-bd)' }, // White → เทา/ขาว (neutral)
+  DOC_CONFIRMED: { color: 'var(--tint-red-fg)', bg: 'var(--tint-red-bg)', border: 'var(--tint-red-bd)' }, // Red
+  MGR_DOC_APPROVAL: { color: 'var(--tint-salmon-fg)', bg: 'var(--tint-salmon-bg)', border: 'var(--tint-salmon-bd)' }, // LightSalmon
+  PL_ASSIGN_VEHICLE: { color: 'var(--tint-salmon-fg)', bg: 'var(--tint-salmon-bg)', border: 'var(--tint-salmon-bd)' }, // LightSalmon
+  PL_MGR_APPROVAL: { color: 'var(--tint-choco-fg)', bg: 'var(--tint-choco-bg)', border: 'var(--tint-choco-bd)' }, // Chocolate
+  SV_CONFIRM_VEHICLE: { color: 'var(--tint-pink-fg)', bg: 'var(--tint-pink-bg)', border: 'var(--tint-pink-bd)' }, // Pink
+  SV_MGR_APPROVAL: { color: 'var(--tint-gold-fg)', bg: 'var(--tint-gold-bg)', border: 'var(--tint-gold-bd)' }, // Gold
+  FINAL_MGR_APPROVAL: { color: 'var(--tint-blue-fg)', bg: 'var(--tint-blue-bg)', border: 'var(--tint-blue-bd)' }, // Blue
+  REJECTED: { color: 'var(--tint-purple-fg)', bg: 'var(--tint-purple-bg)', border: 'var(--tint-purple-bd)' }, // Violet
+  CANCEL: { color: 'var(--tint-sky-fg)', bg: 'var(--tint-sky-bg)', border: 'var(--tint-sky-bd)' }, // SkyBlue
 };
 
 // StateCode → สีป้าย (fallback = โทนเทากลาง ถ้าไม่รู้จักรหัส)
 export function stateColorOf(stateCode: string): StateColor {
-  return BOOKING_STATE_COLORS[stateCode] ?? { color: '#475569', bg: '#f1f5f9', border: '#e2e8f0' };
+  return BOOKING_STATE_COLORS[stateCode] ?? { color: 'var(--tint-slate-fg)', bg: 'var(--tint-slate-bg)', border: 'var(--tint-slate-bd)' };
 }
 
 // docStatus (enum ภายใน) → StateCode ของ backend (ใช้กับ mock / เดาสีเมื่อ API ไม่ส่ง StateCode)

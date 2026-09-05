@@ -51,15 +51,15 @@ const JOB_NATURE_CHECKS = [
 
 // หัวข้อฟอร์ม 9 หมวด + สีป้ายหมายเลขตามกลุ่ม
 const FORM_SECTIONS = [
-  { no: 1, label: 'วัตถุประสงค์', badge: 'bg-blue-50 text-blue-700' },
-  { no: 2, label: 'ข้อมูลลูกค้า', badge: 'bg-blue-50 text-blue-700' },
-  { no: 3, label: 'เครื่องจักรที่ต้องการ', badge: 'bg-amber-50 text-amber-700' },
-  { no: 4, label: 'ลักษณะงาน', badge: 'bg-amber-50 text-amber-700' },
+  { no: 1, label: 'วัตถุประสงค์', badge: 'bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300' },
+  { no: 2, label: 'ข้อมูลลูกค้า', badge: 'bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300' },
+  { no: 3, label: 'เครื่องจักรที่ต้องการ', badge: 'bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300' },
+  { no: 4, label: 'ลักษณะงาน', badge: 'bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300' },
   { no: 5, label: 'การนำเสนองาน', badge: 'bg-violet-50 text-violet-700' },
   { no: 6, label: 'สำรวจหน้างาน', badge: 'bg-violet-50 text-violet-700' },
-  { no: 7, label: 'เพิ่มเติม Operation', badge: 'bg-emerald-50 text-emerald-600' },
-  { no: 8, label: 'เพิ่มเติมฝ่ายขาย', badge: 'bg-emerald-50 text-emerald-600' },
-  { no: 9, label: 'หมายเหตุอื่นๆ', badge: 'bg-slate-100 text-slate-600' },
+  { no: 7, label: 'เพิ่มเติม Operation', badge: 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400' },
+  { no: 8, label: 'เพิ่มเติมฝ่ายขาย', badge: 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400' },
+  { no: 9, label: 'หมายเหตุอื่นๆ', badge: 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300' },
 ];
 
 function DlSection({ no, title, children }: { no: number; title: string; children: React.ReactNode }) {
@@ -80,7 +80,7 @@ function ExtraEquipRow({ label, units, wide }: { label: string; units?: string[]
       {units?.map((u) => (
         <React.Fragment key={u}>
           <input className={`${INPUT_CLS} mono w-20 py-1.5 text-right`} />
-          <span className="shrink-0 text-[12px] text-gray-500">{u}</span>
+          <span className="shrink-0 text-[12px] text-gray-500 dark:text-slate-400">{u}</span>
         </React.Fragment>
       ))}
     </div>
@@ -135,36 +135,36 @@ export function Delivery() {
         );
       case 'mono':
         return value === '—' || value === '' ? (
-          <span className="mono text-slate-300">—</span>
+          <span className="mono text-slate-300 dark:text-slate-600">—</span>
         ) : (
           <span className="mono">{String(value)}</span>
         );
       case 'date':
         return value === '—' || value === '' ? (
-          <span className="text-slate-300">—</span>
+          <span className="text-slate-300 dark:text-slate-600">—</span>
         ) : (
-          <span className="text-slate-600">{String(value)}</span>
+          <span className="text-slate-600 dark:text-slate-300">{String(value)}</span>
         );
       default:
-        if (col.key === 'no') return <span className="text-xs text-slate-400">{row.id}</span>;
-        if (col.key === 'customer') return <span className="font-semibold text-gray-900">{row.customer}</span>;
-        return value === '' ? <span className="text-slate-300">—</span> : <span>{String(value)}</span>;
+        if (col.key === 'no') return <span className="text-xs text-slate-400 dark:text-slate-500">{row.id}</span>;
+        if (col.key === 'customer') return <span className="font-semibold text-gray-900 dark:text-slate-100">{row.customer}</span>;
+        return value === '' ? <span className="text-slate-300 dark:text-slate-600">—</span> : <span>{String(value)}</span>;
     }
   };
 
   const rowClass = (row: DeliveryRow) => {
-    if (row.flag === 'ok') return 'bg-emerald-50 hover:bg-emerald-100 shadow-[inset_3px_0_0_#34d399]';
+    if (row.flag === 'ok') return 'bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 shadow-[inset_3px_0_0_#34d399]';
     if (row.flag === 'rejected') return 'bg-pink-50 hover:bg-pink-100 shadow-[inset_3px_0_0_#f472b6]';
-    return 'bg-white hover:bg-slate-50';
+    return 'bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800';
   };
 
   return (
     <Layout title="ใบแจ้งจัดส่ง" subtitle="Delivery">
-      <div className="flex h-full flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
+      <div className="flex h-full flex-col overflow-hidden rounded-2xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-sm">
         {view === 'list' ? (
           <>
             {/* ===== Toolbar ===== */}
-            <div className="flex shrink-0 flex-wrap items-center gap-2.5 border-b border-gray-200 bg-white px-5 py-2.5">
+            <div className="flex shrink-0 flex-wrap items-center gap-2.5 border-b border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-5 py-2.5">
               <button
                 onClick={() => openForm(null)}
                 className="flex items-center gap-1.5 rounded-lg bg-accent px-4 py-2 text-[13.5px] font-semibold text-white shadow-md shadow-accent/30 transition hover:bg-[#134a8e]"
@@ -172,38 +172,38 @@ export function Delivery() {
                 <IconPlus size={16} stroke={2.2} />
                 ADD <span className="font-medium opacity-85">สร้างใบจัดส่ง</span>
               </button>
-              <button className="flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-2 text-[12.5px] font-medium text-red-700 transition hover:border-red-200 hover:bg-red-50">
+              <button className="flex items-center gap-1.5 rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-[12.5px] font-medium text-red-700 dark:text-red-300 transition hover:border-red-200 dark:hover:border-red-900 hover:bg-red-50 dark:hover:bg-red-950/40">
                 <IconTrash size={15} />
-                CANCEL <span className="text-gray-400">ยกเลิกใบจัดส่ง</span>
+                CANCEL <span className="text-gray-400 dark:text-slate-500">ยกเลิกใบจัดส่ง</span>
               </button>
-              <button className="flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-2 text-[12.5px] font-medium text-slate-700 transition hover:border-gray-300 hover:bg-slate-50">
+              <button className="flex items-center gap-1.5 rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-[12.5px] font-medium text-slate-700 dark:text-slate-200 transition hover:border-gray-300 dark:hover:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-800">
                 <IconPrinter size={15} />
-                PRINT <span className="text-gray-400">พิมพ์ใบจัดส่ง</span>
+                PRINT <span className="text-gray-400 dark:text-slate-500">พิมพ์ใบจัดส่ง</span>
               </button>
-              <button className="flex items-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-[12.5px] font-semibold text-emerald-700 transition hover:bg-emerald-100">
+              <button className="flex items-center gap-1.5 rounded-lg border border-emerald-200 dark:border-emerald-900 bg-emerald-50 dark:bg-emerald-950/40 px-3 py-2 text-[12.5px] font-semibold text-emerald-700 dark:text-emerald-300 transition hover:bg-emerald-100 dark:hover:bg-emerald-900/40">
                 <IconFileSpreadsheet size={15} />
                 Export Excel
               </button>
             </div>
 
             {/* ===== Search bar ===== */}
-            <div className="flex shrink-0 flex-wrap items-center gap-3 border-b border-gray-200 bg-slate-50 px-5 py-2.5">
-              <span className="text-xs font-bold text-slate-600">ค้นหาข้อมูล ใบจัดส่งสินค้า</span>
-              <div className="flex w-[300px] max-w-[34vw] items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-1.5 transition focus-within:border-accent">
-                <IconSearch size={16} className="shrink-0 text-gray-400" />
+            <div className="flex shrink-0 flex-wrap items-center gap-3 border-b border-gray-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 px-5 py-2.5">
+              <span className="text-xs font-bold text-slate-600 dark:text-slate-300">ค้นหาข้อมูล ใบจัดส่งสินค้า</span>
+              <div className="flex w-[300px] max-w-[34vw] items-center gap-2 rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-1.5 transition focus-within:border-accent">
+                <IconSearch size={16} className="shrink-0 text-gray-400 dark:text-slate-500" />
                 <input
                   type="text"
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   placeholder="เลขที่ใบจัดส่ง..."
-                  className="min-w-0 flex-1 bg-transparent text-[13px] outline-none placeholder:text-gray-400"
+                  className="min-w-0 flex-1 bg-transparent text-[13px] outline-none placeholder:text-gray-400 dark:placeholder:text-slate-500"
                 />
               </div>
               <button className="flex items-center gap-1.5 rounded-lg bg-[#0b1220] px-3.5 py-2 text-[12.5px] font-semibold text-white transition hover:bg-slate-800">
                 <IconSearch size={14} stroke={2} />
                 ค้นหา
               </button>
-              <button className="rounded-lg border border-gray-200 bg-white px-3.5 py-2 text-[12.5px] font-medium text-slate-700 transition hover:border-gray-300 hover:bg-slate-50">
+              <button className="rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3.5 py-2 text-[12.5px] font-medium text-slate-700 dark:text-slate-200 transition hover:border-gray-300 dark:hover:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-800">
                 Today
               </button>
               <button
@@ -217,15 +217,15 @@ export function Delivery() {
 
             {/* ===== Advanced filter panel ===== */}
             {filterOpen && (
-              <div className="form-slide-enter shrink-0 border-b border-gray-200 bg-white px-5 py-4">
+              <div className="form-slide-enter shrink-0 border-b border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-5 py-4">
                 <div className="grid grid-cols-3 gap-x-5 gap-y-4">
                   {['วันที่แจ้งจัดส่ง', 'วันที่เริ่มทำงาน'].map((t) => (
-                    <div key={t} className="rounded-xl border border-[#eef1f6] bg-slate-50 p-3">
-                      <div className="mb-2 text-[11.5px] font-bold text-slate-600">{t}</div>
+                    <div key={t} className="rounded-xl border border-[#eef1f6] dark:border-slate-800 bg-slate-50 dark:bg-slate-800/60 p-3">
+                      <div className="mb-2 text-[11.5px] font-bold text-slate-600 dark:text-slate-300">{t}</div>
                       <div className="flex items-center gap-2">
-                        <input defaultValue={today} className={`${INPUT_CLS} mono w-full !bg-white py-1.5 text-[12.5px]`} />
-                        <span className="text-xs text-gray-400">ถึง</span>
-                        <input defaultValue={today} className={`${INPUT_CLS} mono w-full !bg-white py-1.5 text-[12.5px]`} />
+                        <input defaultValue={today} className={`${INPUT_CLS} mono w-full !bg-white dark:bg-slate-900 py-1.5 text-[12.5px]`} />
+                        <span className="text-xs text-gray-400 dark:text-slate-500">ถึง</span>
+                        <input defaultValue={today} className={`${INPUT_CLS} mono w-full !bg-white dark:bg-slate-900 py-1.5 text-[12.5px]`} />
                       </div>
                     </div>
                   ))}
@@ -236,16 +236,16 @@ export function Delivery() {
             )}
 
             {/* ===== Status legend + count ===== */}
-            <div className="flex shrink-0 items-center gap-4 border-b border-gray-200 bg-slate-50 px-5 py-2">
-              <span className="flex items-center gap-1.5 text-[11.5px] text-slate-500">
+            <div className="flex shrink-0 items-center gap-4 border-b border-gray-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 px-5 py-2">
+              <span className="flex items-center gap-1.5 text-[11.5px] text-slate-500 dark:text-slate-400">
                 <span className="h-2.5 w-2.5 rounded bg-emerald-300" />
                 PL ยืนยันเบอร์รถแล้ว
               </span>
-              <span className="flex items-center gap-1.5 text-[11.5px] text-slate-500">
+              <span className="flex items-center gap-1.5 text-[11.5px] text-slate-500 dark:text-slate-400">
                 <span className="h-2.5 w-2.5 rounded bg-pink-300" />
                 ไม่อนุมัติการจัดส่ง
               </span>
-              <span className="flex items-center gap-1.5 text-[11.5px] text-slate-500">
+              <span className="flex items-center gap-1.5 text-[11.5px] text-slate-500 dark:text-slate-400">
                 <span className="h-2.5 w-2.5 rounded bg-slate-200" />
                 ปกติ
               </span>
@@ -253,21 +253,21 @@ export function Delivery() {
                 <IconPencil size={13} />
                 คลิกที่แถวเพื่อแก้ไข / อนุมัติ
               </span>
-              <div className="ml-auto text-xs text-slate-400">
-                แสดง <b className="text-gray-900">{rows.length}</b> รายการ
+              <div className="ml-auto text-xs text-slate-400 dark:text-slate-500">
+                แสดง <b className="text-gray-900 dark:text-slate-100">{rows.length}</b> รายการ
               </div>
             </div>
 
             {/* ===== Grid ===== */}
             <div className="relative min-h-0 flex-1">
-              <div className="absolute inset-0 overflow-auto bg-white">
+              <div className="absolute inset-0 overflow-auto bg-white dark:bg-slate-900">
                 <table className="w-full min-w-max border-separate border-spacing-0">
                   <thead>
                     <tr>
                       {DELIVERY_COLUMNS.map((col) => (
                         <th
                           key={col.key}
-                          className="sticky top-0 z-10 whitespace-nowrap border-b-2 border-accent bg-[#0b1220] px-3 py-2.5 text-[11.5px] font-semibold text-slate-300"
+                          className="sticky top-0 z-10 whitespace-nowrap border-b-2 border-accent bg-[#0b1220] px-3 py-2.5 text-[11.5px] font-semibold text-slate-300 dark:text-slate-600"
                           style={{ minWidth: col.width, textAlign: col.align }}
                         >
                           {col.label}
@@ -286,7 +286,7 @@ export function Delivery() {
                         {DELIVERY_COLUMNS.map((col) => (
                           <td
                             key={col.key}
-                            className="h-12 overflow-hidden text-ellipsis whitespace-nowrap border-b border-[#eef1f6] px-3 text-[13px] text-slate-700"
+                            className="h-12 overflow-hidden text-ellipsis whitespace-nowrap border-b border-[#eef1f6] dark:border-slate-800 px-3 text-[13px] text-slate-700 dark:text-slate-200"
                             style={{ maxWidth: col.width, textAlign: col.align }}
                           >
                             {renderCell(row, col)}
@@ -302,19 +302,19 @@ export function Delivery() {
         ) : (
           <>
             {/* ===== Form header ===== */}
-            <div className="flex shrink-0 items-center gap-4 border-b border-gray-200 bg-white px-5 py-3">
+            <div className="flex shrink-0 items-center gap-4 border-b border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-5 py-3">
               <button
                 onClick={() => setView('list')}
-                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-gray-200 bg-white transition hover:bg-slate-100"
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 transition hover:bg-slate-100 dark:hover:bg-slate-700"
                 aria-label="กลับไปหน้ารายการ"
               >
-                <IconChevronLeft size={18} className="text-slate-700" />
+                <IconChevronLeft size={18} className="text-slate-700 dark:text-slate-200" />
               </button>
               <div>
-                <div className="text-[17px] font-bold leading-tight text-gray-900">
+                <div className="text-[17px] font-bold leading-tight text-gray-900 dark:text-slate-100">
                   {editing ? 'แก้ไขใบจัดส่งสินค้า' : 'สร้างใบจัดส่งสินค้า'}
                 </div>
-                <div className="text-xs text-gray-400">{COMPANY.nameTh}</div>
+                <div className="text-xs text-gray-400 dark:text-slate-500">{COMPANY.nameTh}</div>
               </div>
               {editing ? (
                 <span
@@ -332,33 +332,33 @@ export function Delivery() {
                   {DELIVERY_STATUS_META[editing.docStatus].label}
                 </span>
               ) : (
-                <span className="ml-2 rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-[11.5px] font-semibold text-amber-700">
+                <span className="ml-2 rounded-full border border-amber-200 dark:border-amber-900 bg-amber-50 dark:bg-amber-950/40 px-3 py-1 text-[11.5px] font-semibold text-amber-700 dark:text-amber-300">
                   ส่วนที่ 1 · สำหรับฝ่ายขาย / ผู้จอง (เพื่อให้รายละเอียดการจัดส่ง)
                 </span>
               )}
               <div className="ml-auto flex gap-2.5">
-                <div className="flex flex-col items-end rounded-lg border border-gray-200 bg-slate-100 px-3.5 py-1">
-                  <span className="text-[9.5px] tracking-wide text-gray-400">เลขที่ใบจัดส่ง</span>
-                  <span className="mono text-sm font-bold text-gray-900">{editing?.delivery ?? 'AUTO'}</span>
+                <div className="flex flex-col items-end rounded-lg border border-gray-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 px-3.5 py-1">
+                  <span className="text-[9.5px] tracking-wide text-gray-400 dark:text-slate-500">เลขที่ใบจัดส่ง</span>
+                  <span className="mono text-sm font-bold text-gray-900 dark:text-slate-100">{editing?.delivery ?? 'AUTO'}</span>
                 </div>
-                <div className="flex flex-col items-end rounded-lg border border-gray-200 bg-slate-100 px-3.5 py-1">
-                  <span className="text-[9.5px] tracking-wide text-gray-400">วันที่สร้างใบจัดส่ง</span>
-                  <span className="mono text-sm font-bold text-gray-900">{editing?.deliveryDate ?? today}</span>
+                <div className="flex flex-col items-end rounded-lg border border-gray-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 px-3.5 py-1">
+                  <span className="text-[9.5px] tracking-wide text-gray-400 dark:text-slate-500">วันที่สร้างใบจัดส่ง</span>
+                  <span className="mono text-sm font-bold text-gray-900 dark:text-slate-100">{editing?.deliveryDate ?? today}</span>
                 </div>
               </div>
             </div>
 
             {/* ===== Form body: nav + scroll sections ===== */}
             <div className="flex min-h-0 flex-1">
-              <nav className="flex w-56 shrink-0 flex-col gap-0.5 overflow-y-auto border-r border-gray-200 bg-white p-3">
-                <div className="px-3 pb-2 pt-1.5 text-[10px] font-bold uppercase tracking-widest text-gray-400">
+              <nav className="flex w-56 shrink-0 flex-col gap-0.5 overflow-y-auto border-r border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-3">
+                <div className="px-3 pb-2 pt-1.5 text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-slate-500">
                   หัวข้อฟอร์ม
                 </div>
                 {FORM_SECTIONS.map((s) => (
                   <button
                     key={s.no}
                     onClick={() => goSection(s.no)}
-                    className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-[13px] font-medium text-slate-700 transition hover:bg-slate-100"
+                    className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-[13px] font-medium text-slate-700 dark:text-slate-200 transition hover:bg-slate-100 dark:hover:bg-slate-700"
                   >
                     <span
                       className={`flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-md text-[11px] font-bold ${s.badge}`}
@@ -373,7 +373,7 @@ export function Delivery() {
               <div
                 ref={formScrollRef}
                 key={editing?.id ?? 'new'}
-                className="flex min-w-0 flex-1 flex-col gap-4 overflow-y-auto bg-[#f4f6fa] p-5 pb-10"
+                className="flex min-w-0 flex-1 flex-col gap-4 overflow-y-auto bg-[#f4f6fa] dark:bg-slate-950 p-5 pb-10"
               >
                 <DlSection no={1} title="วัตถุประสงค์">
                   <div className="grid grid-cols-3 gap-x-4 gap-y-3">
@@ -445,35 +445,35 @@ export function Delivery() {
                   </div>
 
                   {/* ข้อมูลใบจองสินค้าที่ PL และ SV ตอบกลับ */}
-                  <div className="mb-4 rounded-xl border border-[#eef1f6] bg-slate-50 p-3.5">
-                    <div className="mb-2.5 text-xs font-bold text-slate-600">
+                  <div className="mb-4 rounded-xl border border-[#eef1f6] dark:border-slate-800 bg-slate-50 dark:bg-slate-800/60 p-3.5">
+                    <div className="mb-2.5 text-xs font-bold text-slate-600 dark:text-slate-300">
                       ข้อมูลใบจองสินค้าที่ PL และ SV ตอบกลับ
                     </div>
                     <div className="flex flex-col gap-2">
                       <div className="flex items-center gap-2.5">
-                        <span className="w-16 shrink-0 text-[12px] text-gray-500">สถานะ PL</span>
-                        <div className="min-w-0 flex-1 truncate rounded-md border border-orange-200 bg-orange-100 px-3 py-1.5 text-[12.5px] font-semibold text-orange-800">
+                        <span className="w-16 shrink-0 text-[12px] text-gray-500 dark:text-slate-400">สถานะ PL</span>
+                        <div className="min-w-0 flex-1 truncate rounded-md border border-orange-200 bg-orange-100 px-3 py-1.5 text-[12.5px] font-semibold text-orange-800 dark:text-orange-200">
                           {editing?.plReply || 'เครื่องจักรและอปต. พร้อม'}
                         </div>
-                        <span className="shrink-0 text-[12px] text-gray-500">เบอร์รถ</span>
-                        <span className="mono w-16 shrink-0 rounded-md border border-orange-200 bg-orange-100 px-2 py-1.5 text-center text-[12.5px] font-semibold text-orange-800">
+                        <span className="shrink-0 text-[12px] text-gray-500 dark:text-slate-400">เบอร์รถ</span>
+                        <span className="mono w-16 shrink-0 rounded-md border border-orange-200 bg-orange-100 px-2 py-1.5 text-center text-[12.5px] font-semibold text-orange-800 dark:text-orange-200">
                           {editing?.truckPL ?? '10/33'}
                         </span>
-                        <span className="shrink-0 text-[12px] text-gray-500">วันที่</span>
-                        <span className="mono w-16 shrink-0 rounded-md border border-orange-200 bg-orange-100 px-2 py-1.5 text-center text-[12.5px] text-orange-800">
+                        <span className="shrink-0 text-[12px] text-gray-500 dark:text-slate-400">วันที่</span>
+                        <span className="mono w-16 shrink-0 rounded-md border border-orange-200 bg-orange-100 px-2 py-1.5 text-center text-[12.5px] text-orange-800 dark:text-orange-200">
                           {editing?.plOptDate ?? '—'}
                         </span>
                       </div>
                       <div className="flex items-center gap-2.5">
-                        <span className="w-16 shrink-0 text-[12px] text-gray-500">สถานะ SV</span>
+                        <span className="w-16 shrink-0 text-[12px] text-gray-500 dark:text-slate-400">สถานะ SV</span>
                         <div className="min-w-0 flex-1 rounded-md border border-yellow-200 bg-yellow-100 px-3 py-1.5 text-[12.5px] font-semibold text-yellow-800">
                           ยืนยันข้อมูลเบอร์รถ ตามที่ PL ระบุและสามารถผลิตได้ตามวันที่ต้องการ
                         </div>
-                        <span className="shrink-0 text-[12px] text-gray-500">เบอร์รถ</span>
+                        <span className="shrink-0 text-[12px] text-gray-500 dark:text-slate-400">เบอร์รถ</span>
                         <span className="mono w-16 shrink-0 rounded-md border border-yellow-200 bg-yellow-100 px-2 py-1.5 text-center text-[12.5px] text-yellow-800">
                           —
                         </span>
-                        <span className="shrink-0 text-[12px] text-gray-500">วันที่</span>
+                        <span className="shrink-0 text-[12px] text-gray-500 dark:text-slate-400">วันที่</span>
                         <span className="mono w-16 shrink-0 rounded-md border border-yellow-200 bg-yellow-100 px-2 py-1.5 text-center text-[12.5px] text-yellow-800">
                           —
                         </span>
@@ -482,19 +482,19 @@ export function Delivery() {
                   </div>
 
                   <div className="grid grid-cols-1 gap-3.5">
-                    <div className="rounded-xl border border-[#eef1f6] bg-slate-50 p-3.5">
-                      <div className="mb-2 text-xs font-bold text-slate-600">เงื่อนไขการใช้งาน อปต.</div>
+                    <div className="rounded-xl border border-[#eef1f6] dark:border-slate-800 bg-slate-50 dark:bg-slate-800/60 p-3.5">
+                      <div className="mb-2 text-xs font-bold text-slate-600 dark:text-slate-300">เงื่อนไขการใช้งาน อปต.</div>
                       <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
                         <RadioL name="dl-opt" label="รวม อปต." />
                         <RadioL name="dl-opt" label="ไม่รวม อปต. / ใช้ อปต. หน้างาน" />
-                        <span className="text-[11.5px] text-gray-400">
+                        <span className="text-[11.5px] text-gray-400 dark:text-slate-500">
                           (กรณีเช่าแบบ ไม่รวม อปต. ลค. จะต้องทำประกันภัยเครื่องจักรที่เช่า และ ฝ่าย HR + PL
                           ต้องทำการสัมภาษณ์ตาม CheckList ก่อนจัดส่งเครื่องจักร)
                         </span>
                       </div>
                     </div>
-                    <div className="rounded-xl border border-[#eef1f6] bg-slate-50 p-3.5">
-                      <div className="mb-2 text-xs font-bold text-slate-600">เงื่อนไขการใช้น้ำมัน</div>
+                    <div className="rounded-xl border border-[#eef1f6] dark:border-slate-800 bg-slate-50 dark:bg-slate-800/60 p-3.5">
+                      <div className="mb-2 text-xs font-bold text-slate-600 dark:text-slate-300">เงื่อนไขการใช้น้ำมัน</div>
                       <div className="mb-1.5 flex gap-5">
                         <RadioL name="dl-fuel" label="รวมน้ำมันเชื้อเพลิง" />
                         <RadioL name="dl-fuel" label="ไม่รวมน้ำมันเชื้อเพลิง" />
@@ -512,7 +512,7 @@ export function Delivery() {
                     />
                     <Field label="วันที่" value={today} mono />
                   </div>
-                  <div className="mt-2 text-[11.5px] text-gray-400">
+                  <div className="mt-2 text-[11.5px] text-gray-400 dark:text-slate-500">
                     กติกาสำรวจหน้างาน: งานวัน และ เครื่องจักรประเภท TB, CC สาเหตุ: สำรวจหน้างาน ทางเข้า-ออก
                     พื้นที่รถ TT ใช้ขนส่ง และรถเครนประกอบบูม
                   </div>
@@ -525,11 +525,11 @@ export function Delivery() {
                       options={['เลือก...', 'ใช้เครื่องจักรเข้าช่วง']}
                       className="max-w-[360px]"
                     />
-                    <CheckGroup title="เกี่ยวกับเอกสารเครื่องจักร" items={MACHINE_DOC_CHECKS} cols={3} titleClass="text-cyan-700" />
-                    <CheckGroup title="เกี่ยวกับมาตรฐานอุปกรณ์" items={EQUIPMENT_STD_CHECKS} cols={1} titleClass="text-cyan-700" />
+                    <CheckGroup title="เกี่ยวกับเอกสารเครื่องจักร" items={MACHINE_DOC_CHECKS} cols={3} titleClass="text-cyan-700 dark:text-cyan-300" />
+                    <CheckGroup title="เกี่ยวกับมาตรฐานอุปกรณ์" items={EQUIPMENT_STD_CHECKS} cols={1} titleClass="text-cyan-700 dark:text-cyan-300" />
 
-                    <div className="rounded-xl border border-[#eef1f6] bg-slate-50 p-3.5">
-                      <div className="mb-2 text-xs font-bold text-cyan-700">เกี่ยวกับอุปกรณ์ร้องขอเพิ่ม</div>
+                    <div className="rounded-xl border border-[#eef1f6] dark:border-slate-800 bg-slate-50 dark:bg-slate-800/60 p-3.5">
+                      <div className="mb-2 text-xs font-bold text-cyan-700 dark:text-cyan-300">เกี่ยวกับอุปกรณ์ร้องขอเพิ่ม</div>
                       <div className="grid grid-cols-2 gap-x-5">
                         {EXTRA_EQUIPMENT.map((item) => (
                           <ExtraEquipRow key={item.label} {...item} />
@@ -537,15 +537,15 @@ export function Delivery() {
                       </div>
                     </div>
 
-                    <CheckGroup title="เกี่ยวกับ อปต." items={DELIVERY_OPT_CHECKS} titleClass="text-cyan-700" />
+                    <CheckGroup title="เกี่ยวกับ อปต." items={DELIVERY_OPT_CHECKS} titleClass="text-cyan-700 dark:text-cyan-300" />
 
-                    <div className="rounded-xl border border-[#eef1f6] bg-slate-50 p-3.5">
-                      <div className="mb-2 text-xs font-bold text-cyan-700">เกี่ยวกับใบงาน</div>
+                    <div className="rounded-xl border border-[#eef1f6] dark:border-slate-800 bg-slate-50 dark:bg-slate-800/60 p-3.5">
+                      <div className="mb-2 text-xs font-bold text-cyan-700 dark:text-cyan-300">เกี่ยวกับใบงาน</div>
                       <div className="grid grid-cols-2 gap-x-3.5">
                         <div className="col-span-2 flex items-center gap-2 py-0.5">
                           <Check label="ใบเสนอราคาเลขที่" />
                           <input className={`${INPUT_CLS} mono w-52 py-1.5`} defaultValue="B-QUO26000747" />
-                          <span className="min-w-0 text-[11px] text-gray-400">
+                          <span className="min-w-0 text-[11px] text-gray-400 dark:text-slate-500">
                             (ดึงข้อมูลมาจากแผนขาย/คีย์เพิ่มได้/ใช้เลขที่ใบเสนอราคาอ้างอิงในการตรวจ WO
                             แต่ไม่ได้รับหรือเห็นใบเสนอราคา)
                           </span>
@@ -556,8 +556,8 @@ export function Delivery() {
                       </div>
                     </div>
 
-                    <div className="rounded-xl border border-[#eef1f6] bg-slate-50 p-3.5">
-                      <div className="mb-2 text-xs font-bold text-cyan-700">เกี่ยวกับช่าง</div>
+                    <div className="rounded-xl border border-[#eef1f6] dark:border-slate-800 bg-slate-50 dark:bg-slate-800/60 p-3.5">
+                      <div className="mb-2 text-xs font-bold text-cyan-700 dark:text-cyan-300">เกี่ยวกับช่าง</div>
                       <div className="grid grid-cols-2 gap-x-3.5">
                         <div className="col-span-2 flex items-center gap-2 py-0.5">
                           <Check label="แจ้งช่างประกอบบูม/จิ๊บ วันที่" />
@@ -580,7 +580,7 @@ export function Delivery() {
 
                 <DlSection no={9} title="หมายเหตุอื่นๆ">
                   <label className="flex flex-col gap-1.5">
-                    <span className="text-[11.5px] font-semibold text-gray-500">Remark</span>
+                    <span className="text-[11.5px] font-semibold text-gray-500 dark:text-slate-400">Remark</span>
                     <textarea rows={3} className={`${INPUT_CLS} w-full resize-y`} />
                   </label>
                 </DlSection>
@@ -588,15 +588,15 @@ export function Delivery() {
             </div>
 
             {/* ===== Form action bar ===== */}
-            <div className="flex shrink-0 items-center gap-2.5 border-t border-gray-200 bg-white px-5 py-3.5">
-              <div className="text-xs text-gray-400">
+            <div className="flex shrink-0 items-center gap-2.5 border-t border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-5 py-3.5">
+              <div className="text-xs text-gray-400 dark:text-slate-500">
                 {editing
                   ? `กำลังแก้ไขใบจัดส่งเลขที่ ${editing.delivery}`
                   : 'กรอกข้อมูลส่วนที่ 1 ให้ครบก่อนส่งอนุมัติ'}
               </div>
               <button
                 onClick={() => setView('list')}
-                className="ml-auto rounded-lg border border-gray-200 bg-white px-5 py-2.5 text-[13px] font-semibold text-slate-600 transition hover:bg-slate-100"
+                className="ml-auto rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-5 py-2.5 text-[13px] font-semibold text-slate-600 dark:text-slate-300 transition hover:bg-slate-100 dark:hover:bg-slate-700"
               >
                 กลับ
               </button>

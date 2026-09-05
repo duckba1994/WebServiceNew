@@ -3,7 +3,7 @@ import React from 'react';
 // คอนโทรลฟอร์มมาตรฐานของหน้าใบงาน (ใช้ร่วมกันทุกหน้า WinForms → Web)
 
 export const INPUT_CLS =
-  'rounded-lg border border-gray-200 bg-slate-50 px-3 py-2 text-[13px] text-gray-800 outline-none transition focus:border-accent focus:bg-white';
+  'rounded-lg border border-gray-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 px-3 py-2 text-[13px] text-gray-800 dark:text-slate-100 outline-none transition focus:border-accent focus:bg-white dark:focus:bg-slate-900';
 
 export function Field({
   label,
@@ -24,13 +24,13 @@ export function Field({
 }) {
   return (
     <label className={`flex flex-col gap-1.5 ${className}`}>
-      <span className="text-[11.5px] font-semibold text-gray-500">{label}</span>
+      <span className="text-[11.5px] font-semibold text-gray-500 dark:text-slate-400">{label}</span>
       <input
         defaultValue={value}
         placeholder={placeholder}
         disabled={disabled}
         className={`${INPUT_CLS} w-full ${mono ? 'mono' : ''} ${right ? 'text-right' : ''} ${
-          disabled ? 'cursor-not-allowed bg-gray-100 text-gray-400' : ''
+          disabled ? 'cursor-not-allowed bg-gray-100 dark:bg-slate-800 text-gray-400 dark:text-slate-500' : ''
         }`}
       />
     </label>
@@ -54,11 +54,11 @@ export function SelectField({
   const items = value && !options.includes(value) ? [value, ...options] : options;
   return (
     <label className={`flex flex-col gap-1.5 ${className}`}>
-      <span className="text-[11.5px] font-semibold text-gray-500">{label}</span>
+      <span className="text-[11.5px] font-semibold text-gray-500 dark:text-slate-400">{label}</span>
       <select
         defaultValue={value}
         disabled={disabled}
-        className={`${INPUT_CLS} w-full ${disabled ? 'cursor-not-allowed bg-gray-100 text-gray-500' : ''}`}
+        className={`${INPUT_CLS} w-full ${disabled ? 'cursor-not-allowed bg-gray-100 dark:bg-slate-800 text-gray-500 dark:text-slate-400' : ''}`}
       >
         {items.map((o) => (
           <option key={o}>{o}</option>
@@ -71,7 +71,7 @@ export function SelectField({
 export function Check({ label, disabled }: { label: string; disabled?: boolean }) {
   return (
     <label
-      className={`flex items-center gap-2 py-1 text-[12.5px] text-slate-700 ${
+      className={`flex items-center gap-2 py-1 text-[12.5px] text-slate-700 dark:text-slate-200 ${
         disabled ? 'cursor-not-allowed opacity-70' : 'cursor-pointer'
       }`}
     >
@@ -88,7 +88,7 @@ export function Check({ label, disabled }: { label: string; disabled?: boolean }
 export function RadioL({ name, label, disabled }: { name: string; label: string; disabled?: boolean }) {
   return (
     <label
-      className={`flex items-center gap-2 text-[13px] text-slate-700 ${
+      className={`flex items-center gap-2 text-[13px] text-slate-700 dark:text-slate-200 ${
         disabled ? 'cursor-not-allowed opacity-70' : 'cursor-pointer'
       }`}
     >
@@ -118,14 +118,14 @@ export function SectionCard({
   children: React.ReactNode;
 }) {
   return (
-    <section id={id} className="rounded-2xl border border-gray-200 bg-white p-5">
+    <section id={id} className="rounded-2xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-5">
       <div className="mb-4 flex items-center gap-2.5">
         <span
           className={`flex h-6 w-6 items-center justify-center rounded-md text-xs font-bold ${badgeClass}`}
         >
           {no}
         </span>
-        <h3 className="text-[15px] font-bold text-gray-800">{title}</h3>
+        <h3 className="text-[15px] font-bold text-gray-800 dark:text-slate-100">{title}</h3>
       </div>
       {children}
     </section>
@@ -137,7 +137,7 @@ export function CheckGroup({
   title,
   items,
   cols = 2,
-  titleClass = 'text-slate-600',
+  titleClass = 'text-slate-600 dark:text-slate-300',
   disabled,
 }: {
   title: string;
@@ -147,7 +147,7 @@ export function CheckGroup({
   disabled?: boolean;
 }) {
   return (
-    <div className="rounded-xl border border-[#eef1f6] bg-slate-50 p-3.5">
+    <div className="rounded-xl border border-[#eef1f6] dark:border-slate-800 bg-slate-50 dark:bg-slate-800/60 p-3.5">
       <div className={`mb-2 text-xs font-bold ${titleClass}`}>{title}</div>
       <div className={`grid gap-x-3.5 ${cols === 3 ? 'grid-cols-3' : cols === 1 ? 'grid-cols-1' : 'grid-cols-2'}`}>
         {items.map((c) => (

@@ -245,7 +245,7 @@ export function RequestGrid({
 
   const renderCell = (row: RequestListItem, col: RequestColumn) => {
     const text = cellText(row, col);
-    const blank = <span className="text-slate-300">—</span>;
+    const blank = <span className="text-slate-300 dark:text-slate-600">—</span>;
     switch (col.kind) {
       case 'status':
         return <Pill meta={jobStatusMeta(row)} dot />;
@@ -256,45 +256,45 @@ export function RequestGrid({
         // รหัสโมดูล = แผนกปลายทาง (IT / AF / PL / GA …) — คอลัมน์ที่สำคัญที่สุด
         // ของตารางที่รวมทุกแผนกไว้ด้วยกัน
         return (
-          <span className="mono rounded-md border border-gray-200 bg-slate-50 px-2 py-0.5 text-[11.5px] font-bold text-slate-700">
+          <span className="mono rounded-md border border-gray-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 px-2 py-0.5 text-[11.5px] font-bold text-slate-700 dark:text-slate-200">
             {row.module}
           </span>
         );
       case 'turn':
         return row.isMyTurn ? (
-          <span className="inline-flex items-center gap-1 rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-[11px] font-bold text-amber-700">
+          <span className="inline-flex items-center gap-1 rounded-full border border-amber-300 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/40 px-2 py-0.5 text-[11px] font-bold text-amber-700 dark:text-amber-300">
             <IconBell size={12} />
             คิวเรา
           </span>
         ) : (
-          <span className="text-[11.5px] text-slate-400">รอแผนกอื่น</span>
+          <span className="text-[11.5px] text-slate-400 dark:text-slate-500">รอแผนกอื่น</span>
         );
       case 'ourTurn':
         // ใบที่ workflow วนกลับมาหาผู้แจ้ง (Survey / Received-Service /
         // Request-Close-Job) — งานเสร็จหมดแล้วรอแค่เรากดปิด ถ้าไม่ชี้ให้เห็นจะค้างเงียบ
         return isRequesterSide(row) ? (
-          <span className="inline-flex items-center gap-1 rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-[11px] font-bold text-amber-700">
+          <span className="inline-flex items-center gap-1 rounded-full border border-amber-300 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/40 px-2 py-0.5 text-[11px] font-bold text-amber-700 dark:text-amber-300">
             <IconBell size={12} />
             รอเรา
           </span>
         ) : (
-          <span className="text-[11.5px] text-slate-400">—</span>
+          <span className="text-[11.5px] text-slate-400 dark:text-slate-500">—</span>
         );
       case 'step':
-        return text ? <span className="mono text-slate-600">{text}</span> : blank;
+        return text ? <span className="mono text-slate-600 dark:text-slate-300">{text}</span> : blank;
       case 'mono':
         return text ? <span className="mono font-semibold text-accent">{text}</span> : blank;
       case 'date':
-        return text ? <span className="text-slate-600">{text}</span> : blank;
+        return text ? <span className="text-slate-600 dark:text-slate-300">{text}</span> : blank;
       default:
-        return text ? <span className={col.id === 'detail' ? 'text-gray-800' : ''}>{text}</span> : blank;
+        return text ? <span className={col.id === 'detail' ? 'text-gray-800 dark:text-slate-100' : ''}>{text}</span> : blank;
     }
   };
 
   return (
-    <div className="flex h-full flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
+    <div className="flex h-full flex-col overflow-hidden rounded-2xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-sm">
       {/* ===== สรุปตามสถานะ (มาจาก summary ของ API — นับจากชุดที่กรองแล้ว) ===== */}
-      <div className="flex shrink-0 flex-wrap items-center gap-2.5 border-b border-gray-200 bg-white px-5 py-3">
+      <div className="flex shrink-0 flex-wrap items-center gap-2.5 border-b border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-5 py-3">
         {summaryCards ? (
           summaryCards.map((c) => (
             <SummaryCard
@@ -309,12 +309,12 @@ export function RequestGrid({
           ))
         ) : (
           <>
-            <SummaryCard label="ทั้งหมด" value={data.length} color="#475569" bg="#f1f5f9" />
+            <SummaryCard label="ทั้งหมด" value={data.length} color="var(--ph-other-fg)" bg="var(--ph-other-bg)" />
             {myTurnCount > 0 && (
-              <SummaryCard label="ถึงคิวแผนกเรา" value={myTurnCount} color="#b45309" bg="#fffbeb" />
+              <SummaryCard label="ถึงคิวแผนกเรา" value={myTurnCount} color="var(--ph-progress-fg)" bg="var(--ph-progress-bg)" />
             )}
             {(summary ?? []).map((s) => (
-              <SummaryCard key={s.jobStatus} label={s.jobStatusName} value={s.count} color="#0f172a" bg="#f8fafc" />
+              <SummaryCard key={s.jobStatus} label={s.jobStatusName} value={s.count} color="var(--ph-other-fg)" bg="var(--ph-other-bg)" />
             ))}
           </>
         )}
@@ -323,7 +323,7 @@ export function RequestGrid({
             onClick={onReload}
             disabled={loading}
             title="โหลดข้อมูลใหม่"
-            className="ml-auto flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-[12.5px] font-semibold text-slate-600 transition hover:bg-slate-50 disabled:opacity-50"
+            className="ml-auto flex items-center gap-1.5 rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-1.5 text-[12.5px] font-semibold text-slate-600 dark:text-slate-300 transition hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-50"
           >
             <IconRefresh size={14} className={loading ? 'animate-spin' : ''} />
             รีเฟรช
@@ -332,12 +332,12 @@ export function RequestGrid({
       </div>
 
       {/* ===== Filter / preset bar ===== */}
-      <div className="flex shrink-0 flex-wrap items-center gap-3.5 border-b border-gray-200 bg-slate-50 px-5 py-2">
+      <div className="flex shrink-0 flex-wrap items-center gap-3.5 border-b border-gray-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 px-5 py-2">
         {toolbar}
 
         <div className="flex items-center gap-2">
-          <span className="text-[11.5px] font-semibold text-gray-500">คอลัมน์</span>
-          <div className="flex gap-0.5 rounded-lg border border-gray-200 bg-[#eef1f6] p-1">
+          <span className="text-[11.5px] font-semibold text-gray-500 dark:text-slate-400">คอลัมน์</span>
+          <div className="flex gap-0.5 rounded-lg border border-gray-200 dark:border-slate-700 bg-[#eef1f6] dark:bg-slate-800 p-1">
             {(Object.keys(REQ_COLUMN_PRESETS) as ReqPresetKey[]).map((key) => (
               <button
                 key={key}
@@ -346,7 +346,7 @@ export function RequestGrid({
                   setPage(1);
                 }}
                 className={`rounded-md px-3 py-1.5 text-[12.5px] font-semibold transition ${
-                  preset === key ? 'bg-[#0b1220] text-white shadow-sm' : 'text-slate-600 hover:text-gray-900'
+                  preset === key ? 'bg-[#0b1220] text-white shadow-sm' : 'text-slate-600 dark:text-slate-300 hover:text-gray-900 dark:hover:text-white'
                 }`}
               >
                 {REQ_COLUMN_PRESETS[key].label}
@@ -355,8 +355,8 @@ export function RequestGrid({
           </div>
         </div>
 
-        <div className="flex w-[300px] max-w-[36vw] items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-1.5 transition focus-within:border-accent">
-          <IconSearch size={16} className="shrink-0 text-gray-400" />
+        <div className="flex w-[300px] max-w-[36vw] items-center gap-2 rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-1.5 transition focus-within:border-accent">
+          <IconSearch size={16} className="shrink-0 text-gray-400 dark:text-slate-500" />
           <input
             type="text"
             value={search}
@@ -365,24 +365,24 @@ export function RequestGrid({
               setPage(1);
             }}
             placeholder={searchPlaceholder}
-            className="min-w-0 flex-1 bg-transparent text-[13px] outline-none placeholder:text-gray-400"
+            className="min-w-0 flex-1 bg-transparent text-[13px] outline-none placeholder:text-gray-400 dark:placeholder:text-slate-500"
           />
         </div>
       </div>
 
       {/* ===== Table meta bar ===== */}
-      <div className="flex shrink-0 flex-wrap items-center gap-3 border-b border-gray-200 bg-slate-50 px-5 py-1.5 text-xs">
-        <span className="text-slate-500">
-          ตาราง <b className="text-gray-900">{rows.length}</b> รายการ
+      <div className="flex shrink-0 flex-wrap items-center gap-3 border-b border-gray-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 px-5 py-1.5 text-xs">
+        <span className="text-slate-500 dark:text-slate-400">
+          ตาราง <b className="text-gray-900 dark:text-slate-100">{rows.length}</b> รายการ
           {totalCount !== undefined && totalCount !== rows.length && (
-            <> จากทั้งหมด <b className="text-gray-900">{totalCount}</b></>
+            <> จากทั้งหมด <b className="text-gray-900 dark:text-slate-100">{totalCount}</b></>
           )}
         </span>
 
         <button
           onClick={clearTableFilters}
           disabled={activeFilterCount === 0 && !sort}
-          className="flex items-center gap-1.5 rounded-md border border-gray-200 bg-white px-2.5 py-1 font-medium text-slate-600 transition hover:border-gray-300 hover:text-gray-900 disabled:cursor-not-allowed disabled:opacity-40"
+          className="flex items-center gap-1.5 rounded-md border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-2.5 py-1 font-medium text-slate-600 dark:text-slate-300 transition hover:border-gray-300 dark:hover:border-slate-600 hover:text-gray-900 dark:hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
         >
           <IconFilterOff size={13} />
           ล้างตัวกรองตาราง
@@ -393,7 +393,7 @@ export function RequestGrid({
           )}
         </button>
 
-        <label className="ml-auto flex items-center gap-1.5 text-slate-500">
+        <label className="ml-auto flex items-center gap-1.5 text-slate-500 dark:text-slate-400">
           แสดง
           <select
             value={String(pageSize)}
@@ -401,7 +401,7 @@ export function RequestGrid({
               setPageSize(e.target.value === 'all' ? 'all' : Number(e.target.value));
               setPage(1);
             }}
-            className="cursor-pointer rounded-md border border-gray-200 bg-white px-2 py-1 text-[12px] font-semibold text-gray-700 outline-none transition focus:border-accent"
+            className="cursor-pointer rounded-md border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-2 py-1 text-[12px] font-semibold text-gray-700 dark:text-slate-200 outline-none transition focus:border-accent"
           >
             {PAGE_SIZES.map((s) => (
               <option key={s} value={String(s)}>
@@ -415,13 +415,13 @@ export function RequestGrid({
 
       {/* ===== โหลดไม่สำเร็จ — ต้องบอกผู้ใช้ ไม่ใช่โชว์ตารางว่าง ===== */}
       {error && (
-        <div className="flex shrink-0 items-center gap-2 border-b border-red-200 bg-red-50 px-5 py-2.5 text-[12.5px] font-semibold text-red-700">
+        <div className="flex shrink-0 items-center gap-2 border-b border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-950/40 px-5 py-2.5 text-[12.5px] font-semibold text-red-700 dark:text-red-300">
           <IconAlertTriangle size={16} className="shrink-0" />
           {error}
           {onReload && (
             <button
               onClick={onReload}
-              className="ml-auto rounded border border-red-300 bg-white px-2.5 py-1 text-[11.5px] font-semibold text-red-700 transition hover:bg-red-100"
+              className="ml-auto rounded border border-red-300 dark:border-red-800 bg-white dark:bg-slate-900 px-2.5 py-1 text-[11.5px] font-semibold text-red-700 dark:text-red-300 transition hover:bg-red-100"
             >
               ลองใหม่
             </button>
@@ -434,8 +434,8 @@ export function RequestGrid({
         <div
           className={`flex shrink-0 items-center gap-2 border-b px-5 py-2.5 text-[12.5px] font-semibold ${
             notice.kind === 'success'
-              ? 'border-emerald-200 bg-emerald-50 text-emerald-800'
-              : 'border-red-200 bg-red-50 text-red-700'
+              ? 'border-emerald-200 dark:border-emerald-900 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800'
+              : 'border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-300'
           }`}
         >
           {notice.kind === 'success' ? (
@@ -458,7 +458,7 @@ export function RequestGrid({
 
       {/* ===== Data grid ===== */}
       <div className="relative min-h-0 flex-1">
-        <div className="absolute inset-0 overflow-auto bg-white">
+        <div className="absolute inset-0 overflow-auto bg-white dark:bg-slate-900">
           <table className="w-full min-w-max border-separate border-spacing-0">
             <thead>
               <tr>
@@ -548,7 +548,7 @@ export function RequestGrid({
             <tbody>
               {loading && displayRows.length === 0 && (
                 <tr>
-                  <td colSpan={columns.length + 1} className="h-24 border-b border-[#eef1f6] text-center text-[13px] text-slate-400">
+                  <td colSpan={columns.length + 1} className="h-24 border-b border-[#eef1f6] dark:border-slate-800 text-center text-[13px] text-slate-400 dark:text-slate-500">
                     <span className="inline-flex items-center gap-2">
                       <IconLoader2 size={16} className="animate-spin text-accent" />
                       กำลังโหลดข้อมูล...
@@ -558,7 +558,7 @@ export function RequestGrid({
               )}
               {!loading && displayRows.length === 0 && (
                 <tr>
-                  <td colSpan={columns.length + 1} className="h-24 border-b border-[#eef1f6] text-center text-[13px] text-slate-400">
+                  <td colSpan={columns.length + 1} className="h-24 border-b border-[#eef1f6] dark:border-slate-800 text-center text-[13px] text-slate-400 dark:text-slate-500">
                     {emptyText}
                   </td>
                 </tr>
@@ -566,7 +566,7 @@ export function RequestGrid({
               {displayRows.map((row) => (
                 <tr
                   key={requestKey(row)}
-                  className={`group transition-colors hover:bg-slate-50 ${row.isMyTurn ? 'bg-amber-50/40' : 'bg-white'}`}
+                  className={`group transition-colors hover:bg-slate-50 dark:hover:bg-slate-800 ${row.isMyTurn ? 'bg-amber-50/40' : 'bg-white dark:bg-slate-900'}`}
                 >
                   {columns.map((col) => {
                     const sticky = REQ_STICKY_IDS.includes(col.id);
@@ -574,9 +574,9 @@ export function RequestGrid({
                     return (
                       <td
                         key={col.id}
-                        className={`h-[46px] truncate border-b border-[#eef1f6] px-2 text-[13px] text-slate-700 ${
+                        className={`h-[46px] truncate border-b border-[#eef1f6] dark:border-slate-800 px-2 text-[13px] text-slate-700 dark:text-slate-200 ${
                           sticky
-                            ? `sticky z-10 ${row.isMyTurn ? 'bg-amber-50' : 'bg-white'} group-hover:bg-slate-50`
+                            ? `sticky z-10 ${row.isMyTurn ? 'bg-amber-50 dark:bg-amber-950/40' : 'bg-white dark:bg-slate-900'} group-hover:bg-slate-50 dark:group-hover:bg-slate-800`
                             : ''
                         } ${col.id === lastStickyId ? 'shadow-[inset_-6px_0_6px_-6px_rgba(0,0,0,0.12)]' : ''}`}
                         title={cellText(row, col)}
@@ -593,8 +593,8 @@ export function RequestGrid({
                     );
                   })}
                   <td
-                    className={`sticky right-0 z-10 h-[46px] border-b border-[#eef1f6] px-2 shadow-[inset_6px_0_6px_-6px_rgba(0,0,0,0.12)] group-hover:bg-slate-50 ${
-                      row.isMyTurn ? 'bg-amber-50' : 'bg-white'
+                    className={`sticky right-0 z-10 h-[46px] border-b border-[#eef1f6] dark:border-slate-800 px-2 shadow-[inset_6px_0_6px_-6px_rgba(0,0,0,0.12)] group-hover:bg-slate-50 dark:group-hover:bg-slate-800 ${
+                      row.isMyTurn ? 'bg-amber-50 dark:bg-amber-950/40' : 'bg-white dark:bg-slate-900'
                     }`}
                     style={{ width: 64, minWidth: 64, maxWidth: 64 }}
                   >
@@ -607,8 +607,8 @@ export function RequestGrid({
                         title={hasAction(row) ? `เปิดใบ ${row.docNo} เพื่ออ่านและดำเนินการ` : 'ดูรายละเอียด'}
                         className={`inline-flex h-6 w-6 items-center justify-center rounded-md border transition ${
                           hasAction(row)
-                            ? 'border-accent bg-[#eef4fb] text-accent hover:bg-[#dce9f8]'
-                            : 'border-gray-200 bg-white text-slate-500 opacity-60 hover:border-accent hover:bg-[#eef4fb] hover:text-accent group-hover:opacity-100'
+                            ? 'border-accent bg-[#eef4fb] dark:bg-slate-800 text-accent hover:bg-[#dce9f8]'
+                            : 'border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-500 dark:text-slate-400 opacity-60 hover:border-accent hover:bg-[#eef4fb] hover:text-accent group-hover:opacity-100'
                         }`}
                       >
                         <IconEye size={14} />
@@ -624,40 +624,40 @@ export function RequestGrid({
 
       {/* ===== Pagination ===== */}
       {rows.length > 0 && (
-        <div className="flex shrink-0 flex-wrap items-center gap-2 border-t border-gray-200 bg-white px-5 py-2">
-          <span className="text-xs text-slate-500">
-            แสดง <b className="text-gray-900">{firstIndex}</b>–<b className="text-gray-900">{lastIndex}</b> จาก{' '}
-            <b className="text-gray-900">{rows.length}</b> รายการ
+        <div className="flex shrink-0 flex-wrap items-center gap-2 border-t border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-5 py-2">
+          <span className="text-xs text-slate-500 dark:text-slate-400">
+            แสดง <b className="text-gray-900 dark:text-slate-100">{firstIndex}</b>–<b className="text-gray-900 dark:text-slate-100">{lastIndex}</b> จาก{' '}
+            <b className="text-gray-900 dark:text-slate-100">{rows.length}</b> รายการ
           </span>
           {totalPages > 1 && (
             <div className="ml-auto flex items-center gap-1">
-              <button onClick={() => setPage(1)} disabled={safePage === 1} title="หน้าแรก" className="flex h-8 w-8 items-center justify-center rounded-lg border border-gray-200 bg-white text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40">
+              <button onClick={() => setPage(1)} disabled={safePage === 1} title="หน้าแรก" className="flex h-8 w-8 items-center justify-center rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 transition hover:bg-slate-50 dark:hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-40">
                 <IconChevronsLeft size={16} />
               </button>
-              <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={safePage === 1} title="ก่อนหน้า" className="flex h-8 items-center gap-1 rounded-lg border border-gray-200 bg-white px-2.5 text-[12.5px] font-semibold text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40">
+              <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={safePage === 1} title="ก่อนหน้า" className="flex h-8 items-center gap-1 rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-2.5 text-[12.5px] font-semibold text-slate-600 dark:text-slate-300 transition hover:bg-slate-50 dark:hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-40">
                 <IconChevronLeft size={15} />
                 ก่อนหน้า
               </button>
               {pageItems.map((p, i) =>
                 p === 'gap' ? (
-                  <span key={`gap${i}`} className="px-1 text-xs text-slate-400">…</span>
+                  <span key={`gap${i}`} className="px-1 text-xs text-slate-400 dark:text-slate-500">…</span>
                 ) : (
                   <button
                     key={p}
                     onClick={() => setPage(p)}
                     className={`mono flex h-8 min-w-[32px] items-center justify-center rounded-lg border px-2 text-[12.5px] font-semibold transition ${
-                      p === safePage ? 'border-accent bg-accent text-white' : 'border-gray-200 bg-white text-slate-600 hover:bg-slate-50'
+                      p === safePage ? 'border-accent bg-accent text-white' : 'border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800'
                     }`}
                   >
                     {p}
                   </button>
                 )
               )}
-              <button onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={safePage === totalPages} title="ถัดไป" className="flex h-8 items-center gap-1 rounded-lg border border-gray-200 bg-white px-2.5 text-[12.5px] font-semibold text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40">
+              <button onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={safePage === totalPages} title="ถัดไป" className="flex h-8 items-center gap-1 rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-2.5 text-[12.5px] font-semibold text-slate-600 dark:text-slate-300 transition hover:bg-slate-50 dark:hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-40">
                 ถัดไป
                 <IconChevronRight size={15} />
               </button>
-              <button onClick={() => setPage(totalPages)} disabled={safePage === totalPages} title="หน้าสุดท้าย" className="flex h-8 w-8 items-center justify-center rounded-lg border border-gray-200 bg-white text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40">
+              <button onClick={() => setPage(totalPages)} disabled={safePage === totalPages} title="หน้าสุดท้าย" className="flex h-8 w-8 items-center justify-center rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 transition hover:bg-slate-50 dark:hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-40">
                 <IconChevronsRight size={16} />
               </button>
             </div>
@@ -721,12 +721,12 @@ function SummaryCard({
       >
         {value}
       </span>
-      <span className={`text-[11.5px] font-medium ${active ? 'text-gray-900' : 'text-slate-500'}`}>{label}</span>
+      <span className={`text-[11.5px] font-medium ${active ? 'text-gray-900 dark:text-slate-100' : 'text-slate-500 dark:text-slate-400'}`}>{label}</span>
     </>
   );
 
   if (!onClick) {
-    return <div className="flex items-center gap-2 rounded-xl border border-gray-200 px-3 py-1.5">{body}</div>;
+    return <div className="flex items-center gap-2 rounded-xl border border-gray-200 dark:border-slate-700 px-3 py-1.5">{body}</div>;
   }
   return (
     <button
@@ -734,7 +734,7 @@ function SummaryCard({
       onClick={onClick}
       title={`ดูเฉพาะ ${label}`}
       className={`flex items-center gap-2 rounded-xl border px-3 py-1.5 transition ${
-        active ? 'border-accent bg-[#eef4fb] shadow-sm' : 'border-gray-200 bg-white hover:border-gray-300 hover:bg-slate-50'
+        active ? 'border-accent bg-[#eef4fb] dark:bg-slate-800 shadow-sm' : 'border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 hover:border-gray-300 dark:hover:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-800'
       }`}
     >
       {body}

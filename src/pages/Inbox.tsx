@@ -74,8 +74,8 @@ export function Inbox() {
         key: 'all',
         label: 'ทั้งหมด',
         value: grandTotal,
-        color: '#475569',
-        bg: '#f1f5f9',
+        color: 'var(--ph-other-fg)',
+        bg: 'var(--ph-other-bg)',
         active: phase === null,
         onClick: () => setPhase(null),
       },
@@ -135,8 +135,8 @@ export function Inbox() {
               title="แสดงเฉพาะใบที่ขั้นตอนปัจจุบันเป็นของแผนกเรา"
               className={`flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-[12.5px] font-semibold transition ${
                 onlyMyTurn
-                  ? 'border-amber-400 bg-amber-50 text-amber-700'
-                  : 'border-gray-200 bg-white text-slate-600 hover:bg-slate-50'
+                  ? 'border-amber-400 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300'
+                  : 'border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800'
               }`}
             >
               <IconBell size={14} />

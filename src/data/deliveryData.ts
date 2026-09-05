@@ -5,9 +5,9 @@ export const DELIVERY_STATUS_META: Record<
   DeliveryDocStatus,
   { label: string; color: string; bg: string; border: string }
 > = {
-  confirmed: { label: 'ผจก.ฝ่ายจัดส่ง ยืนยันการจัดส่ง', color: '#047857', bg: '#ecfdf5', border: '#a7f3d0' },
-  waiting: { label: 'รอ ผจก.ฝ่ายอนุมัติการจัดส่ง', color: '#b45309', bg: '#fffbeb', border: '#fde68a' },
-  rejected: { label: 'ผจก.ฝ่ายไม่อนุมัติการจัดส่ง', color: '#be185d', bg: '#fdf2f8', border: '#fbcfe8' },
+  confirmed: { label: 'ผจก.ฝ่ายจัดส่ง ยืนยันการจัดส่ง', color: 'var(--tint-green-fg)', bg: 'var(--tint-green-bg)', border: 'var(--tint-green-bd)' },
+  waiting: { label: 'รอ ผจก.ฝ่ายอนุมัติการจัดส่ง', color: 'var(--tint-amber-fg)', bg: 'var(--tint-amber-bg)', border: 'var(--tint-amber-bd)' },
+  rejected: { label: 'ผจก.ฝ่ายไม่อนุมัติการจัดส่ง', color: 'var(--tint-pink-fg)', bg: 'var(--tint-pink-bg)', border: 'var(--tint-pink-bd)' },
 };
 
 // ── นิยามคอลัมน์ ─────────────────────────────────────────────

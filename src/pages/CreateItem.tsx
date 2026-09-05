@@ -70,8 +70,8 @@ const PL_UPLOADER: ImageUploader = { check: checkPlAttachment, upload: uploadPlA
 const DEPT_MASTER_DEPTS = ['GA', 'IM', 'AF', 'SV', 'SQA', 'PS'];
 
 const INPUT_CLS =
-  'rounded-lg border border-gray-200 bg-slate-50 px-3 py-2 text-[13px] text-gray-800 outline-none transition focus:bg-white';
-const INVALID_CLS = '!border-red-400 !bg-red-50';
+  'rounded-lg border border-gray-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 px-3 py-2 text-[13px] text-gray-800 dark:text-slate-100 outline-none transition focus:bg-white dark:focus:bg-slate-900';
+const INVALID_CLS = '!border-red-400 !bg-red-50 dark:bg-red-950/40';
 
 const PRIORITIES: RequestPriority[] = ['low', 'normal', 'high', 'urgent'];
 
@@ -93,13 +93,13 @@ function FormRow({
 }) {
   return (
     <div className={`flex flex-col gap-1.5 ${span2 ? 'col-span-2' : ''}`} data-invalid={error ? 'true' : undefined}>
-      <span className="flex items-center gap-1.5 text-[11.5px] font-semibold text-gray-500">
+      <span className="flex items-center gap-1.5 text-[11.5px] font-semibold text-gray-500 dark:text-slate-400">
         {label}
-        {required && <span className="text-red-500">*</span>}
-        {hint && <span className="text-[10.5px] font-normal text-gray-400">{hint}</span>}
+        {required && <span className="text-red-500 dark:text-red-400">*</span>}
+        {hint && <span className="text-[10.5px] font-normal text-gray-400 dark:text-slate-500">{hint}</span>}
       </span>
       {children}
-      {error && <span className="text-[11px] font-medium text-red-500">{error}</span>}
+      {error && <span className="text-[11px] font-medium text-red-500 dark:text-red-400">{error}</span>}
     </div>
   );
 }
@@ -116,7 +116,7 @@ function SectionCard({
   children: React.ReactNode;
 }) {
   return (
-    <section className="rounded-2xl border border-gray-200 bg-white p-5">
+    <section className="rounded-2xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-5">
       <div className="mb-4 flex items-center gap-2.5">
         <span
           className="flex h-6 w-6 items-center justify-center rounded-md text-xs font-bold text-white"
@@ -124,7 +124,7 @@ function SectionCard({
         >
           {no}
         </span>
-        <h3 className="text-[15px] font-bold text-gray-800">{title}</h3>
+        <h3 className="text-[15px] font-bold text-gray-800 dark:text-slate-100">{title}</h3>
       </div>
       <div className="grid grid-cols-2 gap-x-4 gap-y-3.5">{children}</div>
     </section>
@@ -163,28 +163,28 @@ function DeptPicker({
   const hasOwnForm = !!selected && !!DEPT_FORMS[selected.departmentShort];
 
   return (
-    <div className="flex h-full flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
-      <div className="shrink-0 border-b border-gray-200 px-6 py-5">
-        <h2 className="text-lg font-bold text-gray-900">เลือกแผนกที่ต้องการแจ้งเรื่อง</h2>
-        <p className="mt-1 text-[13px] text-slate-500">
+    <div className="flex h-full flex-col overflow-hidden rounded-2xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-sm">
+      <div className="shrink-0 border-b border-gray-200 dark:border-slate-700 px-6 py-5">
+        <h2 className="text-lg font-bold text-gray-900 dark:text-slate-100">เลือกแผนกที่ต้องการแจ้งเรื่อง</h2>
+        <p className="mt-1 text-[13px] text-slate-500 dark:text-slate-400">
           แต่ละแผนกใช้แบบฟอร์มและข้อมูลประกอบต่างกัน — เลือกแผนกปลายทางก่อนเพื่อแสดงฟอร์มที่ถูกต้อง
         </p>
       </div>
 
-      <div className="min-h-0 flex-1 overflow-y-auto bg-[#f4f6fa] p-6">
-        <div className="mx-auto w-full max-w-xl rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+      <div className="min-h-0 flex-1 overflow-y-auto bg-[#f4f6fa] dark:bg-slate-950 p-6">
+        <div className="mx-auto w-full max-w-xl rounded-2xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-6 shadow-sm">
           <FormRow
             label="แผนกปลายทาง"
             hint="(พิมพ์เพื่อค้นหา — เลือกได้เฉพาะแผนกในระบบ)"
             required
           >
             {error ? (
-              <div className="flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2.5 text-[12.5px] font-semibold text-red-700">
+              <div className="flex items-center gap-2 rounded-lg border border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-950/40 px-3 py-2.5 text-[12.5px] font-semibold text-red-700 dark:text-red-300">
                 <IconAlertTriangle size={15} className="shrink-0" />
                 {error}
                 <button
                   onClick={reload}
-                  className="ml-auto rounded border border-red-300 bg-white px-2 py-0.5 text-[11.5px] font-semibold text-red-700 transition hover:bg-red-100"
+                  className="ml-auto rounded border border-red-300 dark:border-red-800 bg-white dark:bg-slate-900 px-2 py-0.5 text-[11.5px] font-semibold text-red-700 dark:text-red-300 transition hover:bg-red-100"
                 >
                   ลองใหม่
                 </button>
@@ -204,21 +204,21 @@ function DeptPicker({
           </FormRow>
 
           {loading && (
-            <div className="mt-3 flex items-center gap-2 text-[12.5px] text-slate-500">
+            <div className="mt-3 flex items-center gap-2 text-[12.5px] text-slate-500 dark:text-slate-400">
               <IconLoader2 size={14} className="animate-spin text-accent" />
               กำลังโหลดรายชื่อแผนก...
             </div>
           )}
 
           {!loading && !error && (
-            <div className="mt-2 text-[11.5px] text-gray-400">
+            <div className="mt-2 text-[11.5px] text-gray-400 dark:text-slate-500">
               มีแผนกในระบบ {departments.length} แผนก
             </div>
           )}
 
           {/* พรีวิวแผนกที่เลือก */}
           {selected && cfg && meta && (
-            <div className="mt-5 rounded-xl border border-gray-200 bg-slate-50 p-4">
+            <div className="mt-5 rounded-xl border border-gray-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 p-4">
               <div className="flex items-center gap-2.5">
                 <div
                   className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl"
@@ -234,19 +234,19 @@ function DeptPicker({
                     >
                       {selected.departmentShort || selected.departid}
                     </span>
-                    <span className="truncate text-[14px] font-bold text-gray-900">
+                    <span className="truncate text-[14px] font-bold text-gray-900 dark:text-slate-100">
                       {selected.departmentName}
                     </span>
                   </div>
-                  <div className="mt-0.5 truncate text-[11.5px] text-slate-500">{cfg.tagline}</div>
+                  <div className="mt-0.5 truncate text-[11.5px] text-slate-500 dark:text-slate-400">{cfg.tagline}</div>
                 </div>
               </div>
-              <p className="mt-3 text-[12px] leading-relaxed text-slate-500">
-                <span className="font-semibold text-slate-600">ตัวอย่างเรื่อง: </span>
+              <p className="mt-3 text-[12px] leading-relaxed text-slate-500 dark:text-slate-400">
+                <span className="font-semibold text-slate-600 dark:text-slate-300">ตัวอย่างเรื่อง: </span>
                 {cfg.examples}
               </p>
               {!hasOwnForm && (
-                <p className="mt-2 text-[11.5px] text-amber-700">
+                <p className="mt-2 text-[11.5px] text-amber-700 dark:text-amber-300">
                   แผนกนี้ยังไม่มีแบบฟอร์มเฉพาะ — จะใช้แบบฟอร์มมาตรฐาน
                 </p>
               )}
@@ -549,7 +549,7 @@ function RequestForm({
   // ข้อความบอกเมื่อโหลดตัวเลือกไม่สำเร็จ (ไม่มีรายการสำรองในโค้ด — ดู CLAUDE.md)
   const masterError = (m: { error: string | null; reload: () => void }) =>
     m.error ? (
-      <span className="text-[11.5px] font-semibold text-red-600">
+      <span className="text-[11.5px] font-semibold text-red-600 dark:text-red-400">
         {m.error}
         <button type="button" onClick={m.reload} className="ml-1.5 underline hover:no-underline">
           ลองใหม่
@@ -569,8 +569,8 @@ function RequestForm({
         const v = f.values[fd.key] ?? '';
         if (v) {
           return (
-            <div className="flex items-center gap-2 rounded-lg border border-gray-200 bg-gray-100 px-3 py-2 text-[13px] font-semibold text-gray-700">
-              <IconLock size={14} className="shrink-0 text-gray-400" />
+            <div className="flex items-center gap-2 rounded-lg border border-gray-200 dark:border-slate-700 bg-gray-100 dark:bg-slate-800 px-3 py-2 text-[13px] font-semibold text-gray-700 dark:text-slate-200">
+              <IconLock size={14} className="shrink-0 text-gray-400 dark:text-slate-500" />
               <span className="truncate">{v}</span>
             </div>
           );
@@ -587,7 +587,7 @@ function RequestForm({
           );
         }
         return (
-          <div className="flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-[12.5px] font-semibold text-amber-700">
+          <div className="flex items-center gap-2 rounded-lg border border-amber-200 dark:border-amber-900 bg-amber-50 dark:bg-amber-950/40 px-3 py-2 text-[12.5px] font-semibold text-amber-700 dark:text-amber-300">
             <IconAlertTriangle size={14} className="shrink-0" />
             ระบบดึงข้อมูลนี้ไม่ได้ — กรุณาติดต่อผู้ดูแลระบบ
           </div>
@@ -643,7 +643,7 @@ function RequestForm({
             {fd.maxLen && (
               <span
                 className={`mono self-end text-[11px] ${
-                  v.length >= fd.maxLen ? 'font-semibold text-amber-600' : 'text-gray-400'
+                  v.length >= fd.maxLen ? 'font-semibold text-amber-600 dark:text-amber-400' : 'text-gray-400 dark:text-slate-500'
                 }`}
               >
                 {v.length}/{fd.maxLen}
@@ -660,7 +660,7 @@ function RequestForm({
         return (
           <>
             {m?.loading ? (
-              <span className="text-[12.5px] text-gray-400">กำลังโหลดตัวเลือก…</span>
+              <span className="text-[12.5px] text-gray-400 dark:text-slate-500">กำลังโหลดตัวเลือก…</span>
             ) : (
               <div className={`flex flex-wrap gap-2 ${bad ? 'rounded-lg p-0.5 ring-1 ring-red-300' : ''}`}>
                 {opts.map((o) => {
@@ -672,14 +672,14 @@ function RequestForm({
                       onClick={() => setValue(fd.key, o.value, fd.resets)}
                       style={on ? { borderColor: accentColor, backgroundColor: accentColor } : undefined}
                       className={`flex items-baseline gap-1.5 rounded-lg border px-3.5 py-2 transition ${
-                        on ? 'text-white' : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50'
+                        on ? 'text-white' : 'border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-gray-600 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-800'
                       }`}
                     >
                       {/* ป้ายที่มีข้อความรอง = โค้ดส่วนงาน (HV/FL) → mono ให้อ่านเป็นรหัส
                           ป้ายข้อความไทยล้วน (ลูกค้าภายนอก/ภายใน) ใช้ฟอนต์ปกติ */}
                       <span className={`text-[13.5px] font-bold ${o.sub ? 'mono' : ''}`}>{o.label}</span>
                       {o.sub && (
-                        <span className={`text-[12px] ${on ? 'text-white/80' : 'text-slate-400'}`}>{o.sub}</span>
+                        <span className={`text-[12px] ${on ? 'text-white/80' : 'text-slate-400 dark:text-slate-500'}`}>{o.sub}</span>
                       )}
                     </button>
                   );
@@ -697,7 +697,7 @@ function RequestForm({
         return (
           <div
             className={`min-h-[38px] whitespace-pre-wrap break-words rounded-lg border px-3 py-2 text-[13px] ${
-              v ? 'border-gray-200 bg-gray-100 font-semibold text-gray-700' : 'border-dashed border-gray-200 bg-white text-gray-400'
+              v ? 'border-gray-200 dark:border-slate-700 bg-gray-100 dark:bg-slate-800 font-semibold text-gray-700 dark:text-slate-200' : 'border-dashed border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-gray-400 dark:text-slate-500'
             }`}
           >
             {v || 'ยังไม่ได้เลือกเอกสาร'}
@@ -712,7 +712,7 @@ function RequestForm({
         return (
           <>
             {m?.loading ? (
-              <span className="text-[12.5px] text-gray-400">กำลังโหลดตัวเลือก…</span>
+              <span className="text-[12.5px] text-gray-400 dark:text-slate-500">กำลังโหลดตัวเลือก…</span>
             ) : (
               <div className={`flex flex-wrap gap-2 ${bad ? 'rounded-lg p-0.5 ring-1 ring-red-300' : ''}`}>
                 {opts.map((o) => {
@@ -724,12 +724,12 @@ function RequestForm({
                       onClick={() => setValue(fd.key, toggleChecked(f.values[fd.key], o.value), fd.resets)}
                       style={on ? { borderColor: accentColor, backgroundColor: accentColor } : undefined}
                       className={`flex items-center gap-2 rounded-lg border px-3.5 py-2 text-[13px] font-semibold transition ${
-                        on ? 'text-white' : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50'
+                        on ? 'text-white' : 'border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-gray-600 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-800'
                       }`}
                     >
                       <span
                         className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border ${
-                          on ? 'border-white/70 bg-white/20' : 'border-gray-300 bg-white'
+                          on ? 'border-white/70 bg-white/20' : 'border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-900'
                         }`}
                       >
                         {on && <IconCheck size={12} stroke={3} />}
@@ -892,7 +892,7 @@ function RequestForm({
                   onClick={() => setTop('priority', p)}
                   style={on ? { backgroundColor: pm.bg, color: pm.color, borderColor: pm.color } : undefined}
                   className={`rounded-lg border px-3.5 py-1.5 text-[12.5px] font-semibold transition ${
-                    on ? 'shadow-sm' : 'border-gray-200 bg-white text-slate-500 hover:bg-slate-50'
+                    on ? 'shadow-sm' : 'border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'
                   }`}
                 >
                   {pm.label}
@@ -916,7 +916,7 @@ function RequestForm({
           />
           <span
             className={`mono self-end text-[11px] ${
-              f.detail.length >= DETAIL_MAX_LEN ? 'font-semibold text-amber-600' : 'text-gray-400'
+              f.detail.length >= DETAIL_MAX_LEN ? 'font-semibold text-amber-600 dark:text-amber-400' : 'text-gray-400 dark:text-slate-500'
             }`}
           >
             {f.detail.length}/{DETAIL_MAX_LEN}
@@ -962,19 +962,19 @@ function RequestForm({
 
   if (saved) {
     return (
-      <div className="flex h-full items-center justify-center rounded-2xl border border-gray-200 bg-white p-8 shadow-sm">
+      <div className="flex h-full items-center justify-center rounded-2xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-8 shadow-sm">
         <div className="flex max-w-md flex-col items-center text-center">
-          <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600">
+          <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400">
             <IconCheck size={34} stroke={2.2} />
           </div>
-          <h2 className="mt-4 text-lg font-bold text-gray-900">ส่งใบแจ้งเรื่องเรียบร้อย</h2>
-          <p className="mt-1.5 text-[13px] text-slate-500">
+          <h2 className="mt-4 text-lg font-bold text-gray-900 dark:text-slate-100">ส่งใบแจ้งเรื่องเรียบร้อย</h2>
+          <p className="mt-1.5 text-[13px] text-slate-500 dark:text-slate-400">
             {/* แผนกที่ไม่มีช่อง "เรื่อง": IT ใช้ต้นข้อความรายละเอียด, PL ใช้ "เรื่องที่แจ้ง" */}
             เรื่อง "{summaryTitle(f)}" ถูกส่งไปยัง {dep.departmentName} แล้ว
             ติดตามสถานะได้ที่เมนู "เรื่องที่แจ้งออกไป"
           </p>
           {docNo && (
-            <p className="mono mt-2 rounded-lg border border-gray-200 bg-slate-50 px-3 py-1 text-[12.5px] font-bold text-gray-800">
+            <p className="mono mt-2 rounded-lg border border-gray-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 px-3 py-1 text-[12.5px] font-bold text-gray-800 dark:text-slate-100">
               เลขที่ใบ {docNo}
             </p>
           )}
@@ -983,31 +983,31 @@ function RequestForm({
               ใบสร้างสำเร็จแล้วเสมอเมื่อมาถึงจอนี้ — รูปพลาดเป็นเรื่องแยก
               ต้องบอกให้ชัดว่ารูปไหนไม่ขึ้นและเพราะอะไร แล้วชี้ทางแก้ต่อ */}
           {uploading && (
-            <p className="mt-2 flex items-center gap-1.5 text-[12px] font-semibold text-slate-500">
+            <p className="mt-2 flex items-center gap-1.5 text-[12px] font-semibold text-slate-500 dark:text-slate-400">
               <IconLoader2 size={14} className="shrink-0 animate-spin" />
               กำลังแนบรูป {uploading.done + 1}/{uploading.total}...
             </p>
           )}
           {!uploading && f.images.length > 0 && uploadFailed.length === 0 && (
-            <p className="mt-2 flex items-center gap-1.5 text-[12px] font-semibold text-emerald-700">
+            <p className="mt-2 flex items-center gap-1.5 text-[12px] font-semibold text-emerald-700 dark:text-emerald-300">
               <IconCheck size={14} className="shrink-0" />
               แนบรูป {Math.min(f.images.length, IMAGE_SLOTS)} รูปเรียบร้อย
             </p>
           )}
           {!uploading && uploadFailed.length > 0 && (
-            <div className="mt-2 w-full rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-left">
-              <p className="flex items-center gap-1.5 text-[12px] font-bold text-amber-800">
+            <div className="mt-2 w-full rounded-lg border border-amber-200 dark:border-amber-900 bg-amber-50 dark:bg-amber-950/40 px-3 py-2 text-left">
+              <p className="flex items-center gap-1.5 text-[12px] font-bold text-amber-800 dark:text-amber-200">
                 <IconAlertTriangle size={14} className="shrink-0" />
                 แนบรูปไม่สำเร็จ {uploadFailed.length} รูป — ใบถูกส่งแล้ว
               </p>
               <ul className="mt-1 flex flex-col gap-0.5">
                 {uploadFailed.map((x, i) => (
-                  <li key={i} className="text-[11.5px] text-amber-800">
+                  <li key={i} className="text-[11.5px] text-amber-800 dark:text-amber-200">
                     • {x.name} — {x.reason}
                   </li>
                 ))}
               </ul>
-              <p className="mt-1.5 text-[11.5px] text-amber-700">
+              <p className="mt-1.5 text-[11.5px] text-amber-700 dark:text-amber-300">
                 แนบใหม่ได้ที่เมนู "เรื่องที่แจ้งออกไป" → เปิดใบ → ปุ่มแก้ไขข้อมูล
                 (ทำได้จนกว่าแผนก {dep.departmentShort} จะกดเริ่มดำเนินการ)
               </p>
@@ -1016,7 +1016,7 @@ function RequestForm({
           <div className="mt-5 flex gap-2.5">
             <button
               onClick={onBack}
-              className="rounded-lg border border-gray-200 bg-white px-5 py-2.5 text-[13px] font-semibold text-slate-600 transition hover:bg-slate-100"
+              className="rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-5 py-2.5 text-[13px] font-semibold text-slate-600 dark:text-slate-300 transition hover:bg-slate-100 dark:hover:bg-slate-700"
             >
               กลับหน้าเลือกแผนก
             </button>
@@ -1042,12 +1042,12 @@ function RequestForm({
   }
 
   return (
-    <div className="flex h-full flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
+    <div className="flex h-full flex-col overflow-hidden rounded-2xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-sm">
       {/* หัวฟอร์ม: แผนกที่เลือก + ปุ่มเปลี่ยนแผนก */}
-      <div className="flex shrink-0 flex-wrap items-center gap-3 border-b border-gray-200 bg-white px-5 py-3">
+      <div className="flex shrink-0 flex-wrap items-center gap-3 border-b border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-5 py-3">
         <button
           onClick={onBack}
-          className="flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-2 text-[12.5px] font-semibold text-slate-600 transition hover:bg-slate-100"
+          className="flex items-center gap-1.5 rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-[12.5px] font-semibold text-slate-600 dark:text-slate-300 transition hover:bg-slate-100 dark:hover:bg-slate-700"
         >
           <IconArrowLeft size={15} />
           เปลี่ยนแผนก
@@ -1061,22 +1061,22 @@ function RequestForm({
             <IconBuildingCommunity size={19} />
           </div>
           <div className="min-w-0">
-            <div className="text-[14.5px] font-bold text-gray-900">
+            <div className="text-[14.5px] font-bold text-gray-900 dark:text-slate-100">
               แจ้งเรื่องไปยัง {dep.departmentName}
             </div>
-            <div className="text-[11.5px] text-slate-500">
+            <div className="text-[11.5px] text-slate-500 dark:text-slate-400">
               <span className="mono">{dep.departmentShort || dep.departid}</span> · {cfg.tagline}
             </div>
           </div>
         </div>
         <div className="ml-auto flex items-center gap-2">
-          <div className="flex flex-col rounded-lg border border-gray-200 bg-gray-50 px-3 py-1">
-            <span className="text-[9.5px] tracking-wide text-gray-400">เลขที่ใบรับเรื่อง</span>
-            <span className="mono text-xs font-semibold text-gray-800">AUTO</span>
+          <div className="flex flex-col rounded-lg border border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-800/60 px-3 py-1">
+            <span className="text-[9.5px] tracking-wide text-gray-400 dark:text-slate-500">เลขที่ใบรับเรื่อง</span>
+            <span className="mono text-xs font-semibold text-gray-800 dark:text-slate-100">AUTO</span>
           </div>
-          <div className="flex flex-col rounded-lg border border-gray-200 bg-gray-50 px-3 py-1">
-            <span className="text-[9.5px] tracking-wide text-gray-400">วันที่แจ้ง</span>
-            <span className="mono text-xs font-semibold text-gray-800">
+          <div className="flex flex-col rounded-lg border border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-800/60 px-3 py-1">
+            <span className="text-[9.5px] tracking-wide text-gray-400 dark:text-slate-500">วันที่แจ้ง</span>
+            <span className="mono text-xs font-semibold text-gray-800 dark:text-slate-100">
               {new Date().toLocaleDateString('en-GB')}
             </span>
           </div>
@@ -1084,9 +1084,9 @@ function RequestForm({
       </div>
 
       {/* เนื้อฟอร์ม */}
-      <div className="min-h-0 flex-1 space-y-5 overflow-y-auto bg-[#f4f6fa] px-5 py-5">
+      <div className="min-h-0 flex-1 space-y-5 overflow-y-auto bg-[#f4f6fa] dark:bg-slate-950 px-5 py-5">
         {errorCount > 0 && (
-          <div className="flex items-center gap-2 rounded-xl border border-red-200 bg-red-50 px-4 py-2.5 text-[12.5px] font-semibold text-red-700">
+          <div className="flex items-center gap-2 rounded-xl border border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-950/40 px-4 py-2.5 text-[12.5px] font-semibold text-red-700 dark:text-red-300">
             <IconAlertTriangle size={16} className="shrink-0" />
             กรุณากรอกข้อมูลที่จำเป็นให้ครบ ({errorCount} รายการ)
           </div>
@@ -1094,7 +1094,7 @@ function RequestForm({
 
         {/* บันทึกไม่ผ่าน (API ตอบ error) — ข้อมูลในฟอร์มยังอยู่ครบ กดส่งซ้ำได้ */}
         {sendError && (
-          <div className="flex items-center gap-2 rounded-xl border border-red-200 bg-red-50 px-4 py-2.5 text-[12.5px] font-semibold text-red-700">
+          <div className="flex items-center gap-2 rounded-xl border border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-950/40 px-4 py-2.5 text-[12.5px] font-semibold text-red-700 dark:text-red-300">
             <IconAlertTriangle size={16} className="shrink-0" />
             {sendError}
           </div>
@@ -1113,42 +1113,42 @@ function RequestForm({
             className="backdrop-fade-in absolute inset-0 bg-slate-900/50"
             onClick={sending ? undefined : () => setConfirmCr(false)}
           />
-          <div className="modal-pop relative w-[min(460px,96vw)] overflow-hidden rounded-2xl bg-white shadow-2xl">
+          <div className="modal-pop relative w-[min(460px,96vw)] overflow-hidden rounded-2xl bg-white dark:bg-slate-900 shadow-2xl">
             <div className="flex items-start gap-3 px-5 pb-3 pt-5">
-              <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-amber-50 text-amber-600">
+              <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400">
                 <IconAlertTriangle size={19} />
               </span>
               <div className="min-w-0">
-                <h3 className="text-[15px] font-bold text-gray-900">ยืนยันการบันทึก</h3>
-                <p className="mt-0.5 text-[12.5px] text-slate-500">
+                <h3 className="text-[15px] font-bold text-gray-900 dark:text-slate-100">ยืนยันการบันทึก</h3>
+                <p className="mt-0.5 text-[12.5px] text-slate-500 dark:text-slate-400">
                   เลขที่ใบออกตามส่วนงานและประเภทที่แจ้ง — บันทึกแล้วแก้ไม่ได้
                 </p>
               </div>
             </div>
             <div className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 px-5 pb-4 text-[13px]">
-              <span className="text-slate-500">ส่วนงาน</span>
-              <span className="mono font-bold text-gray-900">{f.values.section || '—'}</span>
-              <span className="text-slate-500">ประเภทที่แจ้ง</span>
-              <span className="font-semibold text-gray-900">{f.values.requestType || '—'}</span>
-              <span className="text-slate-500">หัวข้อเรื่อง</span>
-              <span className="font-semibold text-gray-900">{f.values.requestSubType || '—'}</span>
+              <span className="text-slate-500 dark:text-slate-400">ส่วนงาน</span>
+              <span className="mono font-bold text-gray-900 dark:text-slate-100">{f.values.section || '—'}</span>
+              <span className="text-slate-500 dark:text-slate-400">ประเภทที่แจ้ง</span>
+              <span className="font-semibold text-gray-900 dark:text-slate-100">{f.values.requestType || '—'}</span>
+              <span className="text-slate-500 dark:text-slate-400">หัวข้อเรื่อง</span>
+              <span className="font-semibold text-gray-900 dark:text-slate-100">{f.values.requestSubType || '—'}</span>
               {f.values.requestSubOther && (
                 <>
-                  <span className="text-slate-500">ระบุเพิ่มเติม</span>
-                  <span className="text-gray-800">{f.values.requestSubOther}</span>
+                  <span className="text-slate-500 dark:text-slate-400">ระบุเพิ่มเติม</span>
+                  <span className="text-gray-800 dark:text-slate-100">{f.values.requestSubOther}</span>
                 </>
               )}
-              <span className="text-slate-500">วันที่ต้องการ</span>
-              <span className="font-semibold text-gray-900">
+              <span className="text-slate-500 dark:text-slate-400">วันที่ต้องการ</span>
+              <span className="font-semibold text-gray-900 dark:text-slate-100">
                 {thaiDateLabel(f.values.requireDate ?? '') || '—'}
               </span>
             </div>
-            <div className="flex items-center justify-end gap-2 border-t border-gray-100 bg-slate-50 px-5 py-3">
+            <div className="flex items-center justify-end gap-2 border-t border-gray-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/60 px-5 py-3">
               <button
                 type="button"
                 disabled={sending}
                 onClick={() => setConfirmCr(false)}
-                className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-[13px] font-semibold text-slate-700 transition hover:bg-slate-100 disabled:opacity-50"
+                className="rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-4 py-2 text-[13px] font-semibold text-slate-700 dark:text-slate-200 transition hover:bg-slate-100 dark:hover:bg-slate-700 disabled:opacity-50"
               >
                 กลับไปแก้
               </button>
@@ -1171,9 +1171,9 @@ function RequestForm({
       )}
 
       {/* ปุ่มท้ายฟอร์ม */}
-      <div className="flex shrink-0 items-center gap-2.5 border-t border-gray-200 bg-white px-5 py-3.5">
+      <div className="flex shrink-0 items-center gap-2.5 border-t border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-5 py-3.5">
         {errorCount > 0 && (
-          <span className="flex items-center gap-1.5 text-[12.5px] font-semibold text-red-600">
+          <span className="flex items-center gap-1.5 text-[12.5px] font-semibold text-red-600 dark:text-red-400">
             <IconAlertTriangle size={15} />
             ยังกรอกไม่ครบ {errorCount} รายการ
           </span>
@@ -1181,7 +1181,7 @@ function RequestForm({
         <button
           onClick={onBack}
           disabled={sending}
-          className="ml-auto rounded-lg border border-gray-200 bg-white px-5 py-2.5 text-[13px] font-semibold text-slate-600 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-60"
+          className="ml-auto rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-5 py-2.5 text-[13px] font-semibold text-slate-600 dark:text-slate-300 transition hover:bg-slate-100 dark:hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-60"
         >
           ยกเลิก
         </button>

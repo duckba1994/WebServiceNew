@@ -17,14 +17,14 @@ export const ACTION_BTN_CLASS: Record<string, string> = {
   primary: 'border-accent bg-accent text-white hover:bg-[#17539f]',
   success: 'border-emerald-600 bg-emerald-600 text-white hover:bg-emerald-700',
   danger: 'border-rose-600 bg-rose-600 text-white hover:bg-rose-700',
-  neutral: 'border-gray-300 bg-white text-slate-700 hover:bg-slate-50',
+  neutral: 'border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800',
 };
 
 export const actionBtnClass = (style: string): string =>
   ACTION_BTN_CLASS[style] ?? ACTION_BTN_CLASS.neutral;
 
 const INPUT_CLS =
-  'w-full rounded-lg border border-gray-200 px-3 py-2 text-[13px] outline-none transition focus:border-accent';
+  'w-full rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-[13px] text-gray-800 dark:text-slate-100 outline-none transition focus:border-accent';
 
 // ฟอร์มในกล่องนี้มีแต่ช่องค่าเดี่ยว — ฟิลด์แบบกลุ่ม (เช่น surveyRatings) วาดในแท็บของมันเอง
 const scalar = (v: ActionFieldValue | undefined): string | number | undefined =>
@@ -67,7 +67,7 @@ function ScoreInput({
             className={`rounded-lg border px-2.5 py-1.5 text-[12px] font-semibold transition ${
               num === lv.score
                 ? 'border-accent bg-accent text-white'
-                : 'border-gray-200 bg-white text-slate-600 hover:bg-slate-50'
+                : 'border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800'
             }`}
           >
             {lv.label}
@@ -83,9 +83,9 @@ function ScoreInput({
           onChange={(e) => onChange(Number(e.target.value))}
           className={`${INPUT_CLS} w-24`}
         />
-        <span className="text-[12px] text-slate-500">
+        <span className="text-[12px] text-slate-500 dark:text-slate-400">
           / {max} คะแนน
-          {valid && <b className="ml-1.5 text-gray-800">({pct}%)</b>}
+          {valid && <b className="ml-1.5 text-gray-800 dark:text-slate-100">({pct}%)</b>}
         </span>
       </div>
     </div>
@@ -105,12 +105,12 @@ function FieldInput({
   invalid: boolean;
   onChange: (v: string | number) => void;
 }) {
-  const cls = `${INPUT_CLS} ${invalid ? 'border-rose-300 bg-rose-50/40' : ''}`;
+  const cls = `${INPUT_CLS} ${invalid ? 'border-rose-300 dark:border-rose-800 bg-rose-50/40' : ''}`;
   return (
     <div className={spec.wide || spec.type === 'score' ? 'col-span-2' : ''}>
-      <label className="mb-1 block text-[11.5px] font-semibold text-gray-500">
+      <label className="mb-1 block text-[11.5px] font-semibold text-gray-500 dark:text-slate-400">
         {spec.label}
-        {required && <span className="text-rose-600"> *</span>}
+        {required && <span className="text-rose-600 dark:text-rose-400"> *</span>}
       </label>
 
       {spec.type === 'score' ? (
@@ -146,7 +146,7 @@ function FieldInput({
         />
       )}
 
-      {spec.hint && <p className="mt-1 text-[11px] text-slate-400">{spec.hint}</p>}
+      {spec.hint && <p className="mt-1 text-[11px] text-slate-400 dark:text-slate-500">{spec.hint}</p>}
     </div>
   );
 }
@@ -195,20 +195,20 @@ export function RequestActionDialog({
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="backdrop-fade-in absolute inset-0 bg-slate-900/50" onClick={pending ? undefined : onCancel} />
       <div
-        className={`modal-pop relative flex max-h-[92vh] flex-col overflow-hidden rounded-2xl bg-white shadow-2xl ${
+        className={`modal-pop relative flex max-h-[92vh] flex-col overflow-hidden rounded-2xl bg-white dark:bg-slate-900 shadow-2xl ${
           wide ? 'w-[min(640px,96vw)]' : 'w-[min(460px,96vw)]'
         }`}
       >
         <div className="flex shrink-0 items-start gap-3 px-5 pb-3 pt-5">
-          <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-amber-50 text-amber-600">
+          <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400">
             <IconAlertTriangle size={19} />
           </span>
           <div className="min-w-0">
-            <h3 className="text-[15px] font-bold text-gray-900">ยืนยัน{action.label}</h3>
-            <p className="mt-0.5 text-[12.5px] text-slate-500">
-              เลขที่ใบแจ้งเรื่อง <span className="mono font-semibold text-gray-700">{item.docNo}</span>
+            <h3 className="text-[15px] font-bold text-gray-900 dark:text-slate-100">ยืนยัน{action.label}</h3>
+            <p className="mt-0.5 text-[12.5px] text-slate-500 dark:text-slate-400">
+              เลขที่ใบแจ้งเรื่อง <span className="mono font-semibold text-gray-700 dark:text-slate-200">{item.docNo}</span>
               {' · '}
-              <span className="mono font-semibold text-gray-700">{item.module}</span>
+              <span className="mono font-semibold text-gray-700 dark:text-slate-200">{item.module}</span>
               {item.requestBy ? ` · ${item.requestBy}` : ''}
             </p>
           </div>
@@ -219,10 +219,10 @@ export function RequestActionDialog({
               ไม่มีหัวข้อ อ่านแล้วไม่รู้ว่าเป็นรายละเอียดของใบหรือคำอธิบายของปุ่ม */}
           {item.detail && (
             <div className="mb-4">
-              <span className="mb-1 block text-[11.5px] font-semibold text-gray-500">
+              <span className="mb-1 block text-[11.5px] font-semibold text-gray-500 dark:text-slate-400">
                 รายละเอียด
               </span>
-              <div className="max-h-24 overflow-y-auto whitespace-pre-wrap rounded-lg border border-gray-200 bg-slate-50 px-3 py-2 text-[12.5px] text-slate-600">
+              <div className="max-h-24 overflow-y-auto whitespace-pre-wrap rounded-lg border border-gray-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 px-3 py-2 text-[12.5px] text-slate-600 dark:text-slate-300">
                 {item.detail}
               </div>
             </div>
@@ -244,22 +244,22 @@ export function RequestActionDialog({
           )}
 
           {optionalGroups.map((g) => (
-            <div key={g.title} className="mb-3 rounded-lg border border-gray-200">
+            <div key={g.title} className="mb-3 rounded-lg border border-gray-200 dark:border-slate-700">
               <button
                 type="button"
                 onClick={() => setShowOptional((v) => !v)}
-                className="flex w-full items-center gap-2 px-3 py-2 text-left transition hover:bg-slate-50"
+                className="flex w-full items-center gap-2 px-3 py-2 text-left transition hover:bg-slate-50 dark:hover:bg-slate-800"
               >
                 <IconChevronDown
                   size={15}
-                  className={`shrink-0 text-slate-400 transition ${showOptional ? '' : '-rotate-90'}`}
+                  className={`shrink-0 text-slate-400 dark:text-slate-500 transition ${showOptional ? '' : '-rotate-90'}`}
                 />
-                <span className="text-[12.5px] font-semibold text-gray-700">{g.title}</span>
-                <span className="text-[11px] text-slate-400">(ไม่บังคับ)</span>
+                <span className="text-[12.5px] font-semibold text-gray-700 dark:text-slate-200">{g.title}</span>
+                <span className="text-[11px] text-slate-400 dark:text-slate-500">(ไม่บังคับ)</span>
               </button>
               {showOptional && (
-                <div className="border-t border-gray-100 px-3 py-3">
-                  {g.hint && <p className="mb-2.5 text-[11.5px] text-slate-500">{g.hint}</p>}
+                <div className="border-t border-gray-100 dark:border-slate-800 px-3 py-3">
+                  {g.hint && <p className="mb-2.5 text-[11.5px] text-slate-500 dark:text-slate-400">{g.hint}</p>}
                   <div className="grid grid-cols-2 gap-x-4 gap-y-3">
                     {g.fields.map((name) => (
                       <FieldInput
@@ -281,21 +281,21 @@ export function RequestActionDialog({
               (API v2.2 §10 "รับค่าไว้แต่ละไว้") ถ้าโชว์ช่องให้กรอกทั้งที่ค่าหาย จะหลอกผู้ใช้ */}
           {action.requireNote && (
             <div>
-              <label className="mb-1 block text-[11.5px] font-semibold text-gray-500">
-                เหตุผล<span className="text-rose-600"> *</span>
+              <label className="mb-1 block text-[11.5px] font-semibold text-gray-500 dark:text-slate-400">
+                เหตุผล<span className="text-rose-600 dark:text-rose-400"> *</span>
               </label>
               <textarea
                 value={note}
                 onChange={(e) => setNote(e.target.value)}
                 rows={3}
                 placeholder="ระบุเหตุผล..."
-                className={`${INPUT_CLS} resize-none ${noteMissing && touched ? 'border-rose-300 bg-rose-50/40' : ''}`}
+                className={`${INPUT_CLS} resize-none ${noteMissing && touched ? 'border-rose-300 dark:border-rose-800 bg-rose-50/40' : ''}`}
               />
             </div>
           )}
 
           {touched && blocked && (
-            <p className="mt-2 text-[11.5px] font-semibold text-rose-600">
+            <p className="mt-2 text-[11.5px] font-semibold text-rose-600 dark:text-rose-400">
               {noteMissing
                 ? 'ต้องระบุเหตุผลก่อนยืนยัน'
                 : `ยังกรอกไม่ครบ: ${missing.map((m) => fieldSpec(m).label).join(', ')}`}
@@ -303,12 +303,12 @@ export function RequestActionDialog({
           )}
         </div>
 
-        <div className="flex shrink-0 items-center justify-end gap-2 border-t border-gray-100 bg-slate-50 px-5 py-3">
+        <div className="flex shrink-0 items-center justify-end gap-2 border-t border-gray-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/60 px-5 py-3">
           <button
             type="button"
             onClick={onCancel}
             disabled={pending}
-            className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-[13px] font-semibold text-slate-700 transition hover:bg-slate-100 disabled:opacity-50"
+            className="rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-4 py-2 text-[13px] font-semibold text-slate-700 dark:text-slate-200 transition hover:bg-slate-100 dark:hover:bg-slate-700 disabled:opacity-50"
           >
             ยกเลิก
           </button>

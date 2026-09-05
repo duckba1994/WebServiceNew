@@ -23,7 +23,7 @@ export function PriorityPicker({ value, onChange, accentColor = '#1a5fb4' }: Pri
             onClick={() => onChange(p)}
             style={selected ? { borderColor: accentColor, color: accentColor } : undefined}
             className={`rounded-xl border px-3 py-2 text-sm font-medium transition ${
-              selected ? 'border-2 bg-gray-50' : 'border-gray-200 text-gray-600 hover:bg-gray-50'
+              selected ? 'border-2 bg-gray-50 dark:bg-slate-800/60' : 'border-gray-200 dark:border-slate-700 text-gray-600 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-800'
             }`}
           >
             {PRIORITY_STYLE[p].label}

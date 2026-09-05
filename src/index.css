@@ -10,6 +10,108 @@ html, body {
   -webkit-font-smoothing: antialiased;
   background-color: #f8fafc;
 }
+html.dark, html.dark body { background-color: #0f172a; }
+
+/* ══════════ สีตาม "จังหวะงาน" และสถานะ (ใช้ผ่าน style={{}} ไม่ใช่คลาส) ══════════
+   สีพวกนี้ส่งมาจาก data/*.ts เข้า inline style ตรง ๆ (PHASE_META, jobStatusMeta,
+   status meta ของใบจอง/แผนขาย) — Tailwind แตะไม่ได้เลยเพราะไม่ใช่คลาส
+   จึงต้องผ่านตัวแปร CSS แล้วสลับค่าทั้งชุดตอน .dark
+   → data ยังคงส่ง "ชื่อสี" เหมือนเดิม ไม่ต้องรู้ว่าตอนนี้ธีมไหน */
+:root {
+  --ph-approve-fg:  #7c3aed;  --ph-approve-bg:  #f5f3ff;  --ph-approve-bd:  #ddd6fe;
+  --ph-accept-fg:   #1d4ed8;  --ph-accept-bg:   #eff6ff;  --ph-accept-bd:   #bfdbfe;
+  --ph-progress-fg: #b45309;  --ph-progress-bg: #fffbeb;  --ph-progress-bd: #fde68a;
+  --ph-review-fg:   #0e7490;  --ph-review-bg:   #ecfeff;  --ph-review-bd:   #a5f3fc;
+  --ph-close-fg:    #0f766e;  --ph-close-bg:    #f0fdfa;  --ph-close-bd:    #99f6e4;
+  --ph-closed-fg:   #047857;  --ph-closed-bg:   #ecfdf5;  --ph-closed-bd:   #a7f3d0;
+  --ph-cancel-fg:   #9f1239;  --ph-cancel-bg:   #fff1f2;  --ph-cancel-bd:   #fecdd3;
+  --ph-other-fg:    #475569;  --ph-other-bg:    #f1f5f9;  --ph-other-bd:    #e2e8f0;
+}
+/* ชุดสีป้ายสถานะกลาง (ใบจอง / แผนขาย / ใบส่งของ / สถานะทรัพยากร)
+   data ของแต่ละหน้าเลือก "ตระกูลสี" ไม่ใช่ค่าสี — ค่าจริงสลับเองตอนโหมดมืด */
+:root {
+  --tint-blue-fg:   #1d4ed8;  --tint-blue-bg:   #eff6ff;  --tint-blue-bd:   #bfdbfe;
+  --tint-indigo-fg: #4338ca;  --tint-indigo-bg: #eef2ff;  --tint-indigo-bd: #c7d2fe;
+  --tint-purple-fg: #6d28d9;  --tint-purple-bg: #f5f3ff;  --tint-purple-bd: #ddd6fe;
+  --tint-amber-fg:  #b45309;  --tint-amber-bg:  #fffbeb;  --tint-amber-bd:  #fde68a;
+  --tint-orange-fg: #ea580c;  --tint-orange-bg: #fff7ed;  --tint-orange-bd: #fed7aa;
+  --tint-green-fg:  #047857;  --tint-green-bg:  #ecfdf5;  --tint-green-bd:  #a7f3d0;
+  --tint-red-fg:    #dc2626;  --tint-red-bg:    #fef2f2;  --tint-red-bd:    #fecaca;
+  --tint-rose-fg:   #be123c;  --tint-rose-bg:   #fff1f2;  --tint-rose-bd:   #fecdd3;
+  --tint-teal-fg:   #0f766e;  --tint-teal-bg:   #f0fdfa;  --tint-teal-bd:   #99f6e4;
+  --tint-cyan-fg:   #0e7490;  --tint-cyan-bg:   #ecfeff;  --tint-cyan-bd:   #a5f3fc;
+  --tint-slate-fg:  #64748b;  --tint-slate-bg:  #f1f5f9;  --tint-slate-bd:  #e2e8f0;
+  /* 5 ตระกูลนี้ตั้งใจให้ตรงกับสีของโปรแกรม WinForms เดิม (LightSalmon / Chocolate /
+     Pink / Gold / SkyBlue) — ผู้ใช้จำสีขั้นตอนใบจองจากของเดิม ห้ามเปลี่ยนค่าฝั่งสว่าง */
+  --tint-salmon-fg: #ea7c47;  --tint-salmon-bg: #fff4ed;  --tint-salmon-bd: #fed7aa;
+  --tint-choco-fg:  #b4530e;  --tint-choco-bg:  #fdf3ec;  --tint-choco-bd:  #f0c9a8;
+  --tint-pink-fg:   #db2777;  --tint-pink-bg:   #fdf2f8;  --tint-pink-bd:   #fbcfe8;
+  --tint-gold-fg:   #ca8a04;  --tint-gold-bg:   #fefce8;  --tint-gold-bd:   #fde68a;
+  --tint-sky-fg:    #0ea5e9;  --tint-sky-bg:    #f0f9ff;  --tint-sky-bd:    #bae6fd;
+}
+html.dark {
+  --tint-blue-fg:   #93c5fd;  --tint-blue-bg:   #172554;  --tint-blue-bd:   #1e40af;
+  --tint-indigo-fg: #a5b4fc;  --tint-indigo-bg: #1e1b4b;  --tint-indigo-bd: #3730a3;
+  --tint-purple-fg: #c4b5fd;  --tint-purple-bg: #2e1065;  --tint-purple-bd: #5b21b6;
+  --tint-amber-fg:  #fcd34d;  --tint-amber-bg:  #3b2506;  --tint-amber-bd:  #92400e;
+  --tint-orange-fg: #fdba74;  --tint-orange-bg: #431407;  --tint-orange-bd: #9a3412;
+  --tint-green-fg:  #6ee7b7;  --tint-green-bg:  #022c22;  --tint-green-bd:  #065f46;
+  --tint-red-fg:    #fca5a5;  --tint-red-bg:    #450a0a;  --tint-red-bd:    #991b1b;
+  --tint-rose-fg:   #fda4af;  --tint-rose-bg:   #4c0519;  --tint-rose-bd:   #9f1239;
+  --tint-teal-fg:   #5eead4;  --tint-teal-bg:   #042f2e;  --tint-teal-bd:   #115e59;
+  --tint-cyan-fg:   #67e8f9;  --tint-cyan-bg:   #083344;  --tint-cyan-bd:   #155e75;
+  --tint-slate-fg:  #cbd5e1;  --tint-slate-bg:  #1e293b;  --tint-slate-bd:  #334155;
+  --tint-salmon-fg: #fdba74;  --tint-salmon-bg: #431407;  --tint-salmon-bd: #9a3412;
+  --tint-choco-fg:  #fbbf24;  --tint-choco-bg:  #3b2506;  --tint-choco-bd:  #92400e;
+  --tint-pink-fg:   #f9a8d4;  --tint-pink-bg:   #500724;  --tint-pink-bd:   #9d174d;
+  --tint-gold-fg:   #fde047;  --tint-gold-bg:   #422006;  --tint-gold-bd:   #a16207;
+  --tint-sky-fg:    #7dd3fc;  --tint-sky-bg:    #082f49;  --tint-sky-bd:    #075985;
+}
+
+/* สีประจำแผนก + ระดับความเร่งด่วน (ใช้ในหน้าสร้างใบแจ้งเรื่อง) */
+:root {
+  --dept-hr-fg:  #2d7d46;  --dept-hr-bg:  #ecfdf3;  --dept-hr-bd:  #bbf7d0;
+  --dept-pl-fg:  #5b3fa6;  --dept-pl-bg:  #f5f3ff;  --dept-pl-bd:  #ddd6fe;
+  --dept-sv-fg:  #b45309;  --dept-sv-bg:  #fffbeb;  --dept-sv-bd:  #fde68a;
+  --dept-it-fg:  #1a5fb4;  --dept-it-bg:  #eff6ff;  --dept-it-bd:  #bfdbfe;
+  --dept-pu-fg:  #0f766e;  --dept-pu-bg:  #f0fdfa;  --dept-pu-bd:  #99f6e4;
+  --dept-ga-fg:  #0e7490;  --dept-ga-bg:  #ecfeff;  --dept-ga-bd:  #a5f3fc;
+  --dept-im-fg:  #4338ca;  --dept-im-bg:  #eef2ff;  --dept-im-bd:  #c7d2fe;
+  --dept-af-fg:  #9b3068;  --dept-af-bg:  #fdf2f8;  --dept-af-bd:  #fbcfe8;
+  --dept-sqa-fg: #be123c;  --dept-sqa-bg: #fff1f2;  --dept-sqa-bd: #fecdd3;
+  --dept-ps-fg:  #7e22ce;  --dept-ps-bg:  #faf5ff;  --dept-ps-bd:  #e9d5ff;
+  --pri-low-fg:    #475569;  --pri-low-bg:    #f1f5f9;  --pri-low-bd:    #e2e8f0;
+  --pri-normal-fg: #0369a1;  --pri-normal-bg: #f0f9ff;  --pri-normal-bd: #bae6fd;
+  --pri-high-fg:   #c2410c;  --pri-high-bg:   #fff7ed;  --pri-high-bd:   #fed7aa;
+  --pri-urgent-fg: #b91c1c;  --pri-urgent-bg: #fef2f2;  --pri-urgent-bd: #fecaca;
+}
+html.dark {
+  --dept-hr-fg:  #6ee7b7;  --dept-hr-bg:  #022c22;  --dept-hr-bd:  #065f46;
+  --dept-pl-fg:  #c4b5fd;  --dept-pl-bg:  #2e1065;  --dept-pl-bd:  #5b21b6;
+  --dept-sv-fg:  #fcd34d;  --dept-sv-bg:  #3b2506;  --dept-sv-bd:  #92400e;
+  --dept-it-fg:  #93c5fd;  --dept-it-bg:  #172554;  --dept-it-bd:  #1e40af;
+  --dept-pu-fg:  #5eead4;  --dept-pu-bg:  #042f2e;  --dept-pu-bd:  #115e59;
+  --dept-ga-fg:  #67e8f9;  --dept-ga-bg:  #083344;  --dept-ga-bd:  #155e75;
+  --dept-im-fg:  #a5b4fc;  --dept-im-bg:  #1e1b4b;  --dept-im-bd:  #3730a3;
+  --dept-af-fg:  #f9a8d4;  --dept-af-bg:  #500724;  --dept-af-bd:  #9d174d;
+  --dept-sqa-fg: #fda4af;  --dept-sqa-bg: #4c0519;  --dept-sqa-bd: #9f1239;
+  --dept-ps-fg:  #d8b4fe;  --dept-ps-bg:  #3b0764;  --dept-ps-bd:  #6b21a8;
+  --pri-low-fg:    #cbd5e1;  --pri-low-bg:    #1e293b;  --pri-low-bd:    #334155;
+  --pri-normal-fg: #7dd3fc;  --pri-normal-bg: #082f49;  --pri-normal-bd: #075985;
+  --pri-high-fg:   #fdba74;  --pri-high-bg:   #431407;  --pri-high-bd:   #9a3412;
+  --pri-urgent-fg: #fca5a5;  --pri-urgent-bg: #450a0a;  --pri-urgent-bd: #991b1b;
+}
+html.dark {
+  /* โหมดมืด: ตัวอักษรสว่างขึ้น พื้นเป็นสีเดียวกันแบบเข้มลึก ขอบเข้มกว่าพื้นเล็กน้อย */
+  --ph-approve-fg:  #c4b5fd;  --ph-approve-bg:  #2e1065;  --ph-approve-bd:  #5b21b6;
+  --ph-accept-fg:   #93c5fd;  --ph-accept-bg:   #172554;  --ph-accept-bd:   #1e40af;
+  --ph-progress-fg: #fcd34d;  --ph-progress-bg: #3b2506;  --ph-progress-bd: #92400e;
+  --ph-review-fg:   #67e8f9;  --ph-review-bg:   #083344;  --ph-review-bd:   #155e75;
+  --ph-close-fg:    #5eead4;  --ph-close-bg:    #042f2e;  --ph-close-bd:    #115e59;
+  --ph-closed-fg:   #6ee7b7;  --ph-closed-bg:   #022c22;  --ph-closed-bd:   #065f46;
+  --ph-cancel-fg:   #fda4af;  --ph-cancel-bg:   #4c0519;  --ph-cancel-bd:   #9f1239;
+  --ph-other-fg:    #cbd5e1;  --ph-other-bg:    #1e293b;  --ph-other-bd:    #334155;
+}
 * { font-family: 'IBM Plex Sans Thai', 'Tahoma', 'Leelawadee UI', sans-serif; }
 
 /* animation ตัวอย่างสำหรับ form slide-in */

@@ -31,27 +31,27 @@ export function Login() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-slate-50 px-4">
+    <div className="flex min-h-screen items-center justify-center bg-slate-50 dark:bg-slate-950 px-4">
       <form
         onSubmit={handleSubmit}
-        className="w-full max-w-sm rounded-2xl border border-gray-200 bg-white p-8 shadow-lg"
+        className="w-full max-w-sm rounded-2xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-8 shadow-lg"
       >
-        <h1 className="mb-1 text-2xl font-semibold text-gray-800">ระบบใบรับเรื่อง</h1>
-        <p className="mb-6 text-sm text-gray-400">เข้าสู่ระบบเพื่อใช้งาน</p>
+        <h1 className="mb-1 text-2xl font-semibold text-gray-800 dark:text-slate-100">ระบบใบรับเรื่อง</h1>
+        <p className="mb-6 text-sm text-gray-400 dark:text-slate-500">เข้าสู่ระบบเพื่อใช้งาน</p>
 
         {expired && !error && (
-          <div className="mb-4 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-700">
+          <div className="mb-4 rounded-lg bg-amber-50 dark:bg-amber-950/40 px-3 py-2 text-sm text-amber-700 dark:text-amber-300">
             เซสชันหมดอายุ กรุณาเข้าสู่ระบบใหม่
           </div>
         )}
 
         {error && (
-          <div className="mb-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">
+          <div className="mb-4 rounded-lg bg-red-50 dark:bg-red-950/40 px-3 py-2 text-sm text-red-600 dark:text-red-400">
             {error}
           </div>
         )}
 
-        <label className="mb-1 block text-sm font-medium text-gray-700">ชื่อผู้ใช้</label>
+        <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-slate-200">ชื่อผู้ใช้</label>
         <input
           type="text"
           name="username"
@@ -61,10 +61,10 @@ export function Login() {
           required
           autoComplete="username"
           autoFocus
-          className="mb-4 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          className="mb-4 w-full rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-sm text-gray-800 dark:text-slate-100 outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
         />
 
-        <label className="mb-1 block text-sm font-medium text-gray-700">รหัสผ่าน</label>
+        <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-slate-200">รหัสผ่าน</label>
         <input
           type="password"
           name="password"
@@ -73,7 +73,7 @@ export function Login() {
           onChange={(e) => setPassword(e.target.value)}
           required
           autoComplete="current-password"
-          className="mb-6 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          className="mb-6 w-full rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-sm text-gray-800 dark:text-slate-100 outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
         />
 
         <button

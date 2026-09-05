@@ -24,7 +24,7 @@ export function DynamicList({ label, placeholder, value, onChange, accentColor =
 
   return (
     <div>
-      {label && <label className="block text-sm font-medium text-gray-700 mb-1">{label}</label>}
+      {label && <label className="block text-sm font-medium text-gray-700 dark:text-slate-200 mb-1">{label}</label>}
       <div className="flex gap-2">
         <input
           value={draft}
@@ -32,7 +32,7 @@ export function DynamicList({ label, placeholder, value, onChange, accentColor =
           onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), add())}
           placeholder={placeholder}
           style={{ '--tw-ring-color': accentColor } as React.CSSProperties}
-          className="flex-1 rounded-lg border border-gray-200 px-3 py-2 text-sm focus:ring-2 focus:border-transparent outline-none"
+          className="flex-1 rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-sm text-gray-800 dark:text-slate-100 focus:ring-2 focus:border-transparent outline-none"
         />
         <button
           type="button"
@@ -46,9 +46,9 @@ export function DynamicList({ label, placeholder, value, onChange, accentColor =
       {value.length > 0 && (
         <ul className="mt-2 space-y-1">
           {value.map((item, i) => (
-            <li key={i} className="flex items-center justify-between rounded-lg border border-gray-200 px-3 py-1.5 text-sm">
+            <li key={i} className="flex items-center justify-between rounded-lg border border-gray-200 dark:border-slate-700 px-3 py-1.5 text-sm">
               <span>{item}</span>
-              <button type="button" onClick={() => remove(i)} className="text-gray-400 hover:text-red-500">
+              <button type="button" onClick={() => remove(i)} className="text-gray-400 dark:text-slate-500 hover:text-red-500">
                 <IconTrash size={16} />
               </button>
             </li>

@@ -98,8 +98,8 @@ function Pill({ meta, dot }: { meta: Meta; dot?: boolean }) {
 function DetailRow({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="flex flex-col gap-1">
-      <span className="text-[11.5px] font-semibold text-gray-500">{label}</span>
-      <span className="text-[13px] text-gray-800">{children}</span>
+      <span className="text-[11.5px] font-semibold text-gray-500 dark:text-slate-400">{label}</span>
+      <span className="text-[13px] text-gray-800 dark:text-slate-100">{children}</span>
     </div>
   );
 }
@@ -119,10 +119,10 @@ function InfoCard({
   children: React.ReactNode;
 }) {
   return (
-    <section className="overflow-hidden rounded-xl border border-gray-200">
-      <div className="flex items-center gap-2 border-b border-gray-200 bg-slate-50 px-4 py-2">
-        <Icon size={15} className="text-slate-400" />
-        <h5 className="text-[12.5px] font-bold text-gray-700">{title}</h5>
+    <section className="overflow-hidden rounded-xl border border-gray-200 dark:border-slate-700">
+      <div className="flex items-center gap-2 border-b border-gray-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 px-4 py-2">
+        <Icon size={15} className="text-slate-400 dark:text-slate-500" />
+        <h5 className="text-[12.5px] font-bold text-gray-700 dark:text-slate-200">{title}</h5>
       </div>
       <div className="grid grid-cols-2 gap-x-5 gap-y-4 px-4 py-4">{children}</div>
     </section>
@@ -649,14 +649,14 @@ export function RequestDetailModal({
   return (
     <div className="fixed inset-0 z-40 flex items-center justify-center p-4">
       <div className="backdrop-fade-in absolute inset-0 bg-slate-900/50" onClick={onClose} />
-      <div className="modal-pop relative flex max-h-[92vh] w-[min(760px,96vw)] flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
+      <div className="modal-pop relative flex max-h-[92vh] w-[min(760px,96vw)] flex-col overflow-hidden rounded-2xl bg-white dark:bg-slate-900 shadow-2xl">
         {/* หัว: เลขที่ใบ + โมดูล + สถานะย่อ + ปุ่มปิด */}
-        <div className="flex shrink-0 items-center gap-3.5 border-b border-gray-200 bg-white px-5 py-4">
+        <div className="flex shrink-0 items-center gap-3.5 border-b border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-5 py-4">
           <div className="min-w-0">
-            <div className="mono text-xs text-slate-400">เลขที่ใบแจ้ง</div>
+            <div className="mono text-xs text-slate-400 dark:text-slate-500">เลขที่ใบแจ้ง</div>
             <div className="flex items-center gap-2">
-              <span className="mono truncate text-base font-bold text-gray-900">{item.docNo}</span>
-              <span className="mono rounded-md border border-gray-200 bg-slate-50 px-2 py-0.5 text-[11px] font-bold text-slate-700">
+              <span className="mono truncate text-base font-bold text-gray-900 dark:text-slate-100">{item.docNo}</span>
+              <span className="mono rounded-md border border-gray-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 px-2 py-0.5 text-[11px] font-bold text-slate-700 dark:text-slate-200">
                 {item.module}
               </span>
             </div>
@@ -669,19 +669,19 @@ export function RequestDetailModal({
             <Pill meta={status} dot />
             <button
               onClick={onClose}
-              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-gray-200 bg-white transition hover:bg-slate-100"
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 transition hover:bg-slate-100 dark:hover:bg-slate-700"
               aria-label="ปิด"
             >
-              <IconX size={18} className="text-slate-700" />
+              <IconX size={18} className="text-slate-700 dark:text-slate-200" />
             </button>
           </div>
         </div>
 
         {/* ===== stepper คลิกได้ (แทนแถบ pill เดิม) ===== */}
-        <div className="shrink-0 border-b border-gray-100 bg-slate-50 px-5 py-4">
+        <div className="shrink-0 border-b border-gray-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/60 px-5 py-4">
           <div className="mb-1 flex items-center gap-2">
             {detailLoading && (
-              <span className="inline-flex items-center gap-1 text-[11px] text-slate-400">
+              <span className="inline-flex items-center gap-1 text-[11px] text-slate-400 dark:text-slate-500">
                 <IconLoader2 size={12} className="animate-spin" />
                 กำลังโหลด...
               </span>
@@ -689,7 +689,7 @@ export function RequestDetailModal({
             {/* โหลดใบเต็มไม่สำเร็จ = availableActions ที่คำนวณให้ "คนที่เปิดดู" ไม่มา
                 → ปุ่มจะหายไปเงียบ ๆ ทั้งที่ผู้ใช้มีสิทธิ์ ต้องบอกให้เห็น ไม่ใช่กลืน error */}
             {!detailLoading && detailError && (
-              <span className="inline-flex items-center gap-1 rounded-md border border-amber-200 bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-800">
+              <span className="inline-flex items-center gap-1 rounded-md border border-amber-200 dark:border-amber-900 bg-amber-50 dark:bg-amber-950/40 px-2 py-0.5 text-[11px] font-semibold text-amber-800 dark:text-amber-200">
                 <IconAlertTriangle size={12} className="shrink-0" />
                 โหลดรายละเอียดใบไม่สำเร็จ ({detailError}) — ปุ่มดำเนินการอาจไม่ขึ้น
                 <button
@@ -749,12 +749,12 @@ export function RequestDetailModal({
                       onClick={() => setSelected(i)}
                       className={`mt-2 text-center text-[11px] leading-tight transition ${
                         isSel
-                          ? 'font-bold text-gray-900 underline decoration-2 underline-offset-4'
+                          ? 'font-bold text-gray-900 dark:text-slate-100 underline decoration-2 underline-offset-4'
                           : done
-                          ? 'text-gray-600 hover:text-gray-900'
+                          ? 'text-gray-600 dark:text-slate-300 hover:text-gray-900 dark:hover:text-white'
                           : current
                           ? 'font-semibold text-[#1a5fb4]'
-                          : 'text-slate-400 hover:text-slate-600'
+                          : 'text-slate-400 dark:text-slate-500 hover:text-slate-600'
                       }`}
                     >
                       {t.label}
@@ -771,8 +771,8 @@ export function RequestDetailModal({
           <div
             className={`flex shrink-0 items-center gap-2 border-b px-5 py-2.5 text-[12.5px] font-semibold ${
               bannerNotice.kind === 'success'
-                ? 'border-emerald-200 bg-emerald-50 text-emerald-800'
-                : 'border-red-200 bg-red-50 text-red-700'
+                ? 'border-emerald-200 dark:border-emerald-900 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800'
+                : 'border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-300'
             }`}
           >
             {bannerNotice.kind === 'success' ? (
@@ -791,9 +791,9 @@ export function RequestDetailModal({
 
         <div className="min-h-0 flex-1 overflow-y-auto">
           {/* ===== แผงของ tab ที่เลือก ===== */}
-          <div className="border-b border-gray-100 px-5 py-5">
+          <div className="border-b border-gray-100 dark:border-slate-800 px-5 py-5">
             <div className="mb-3 flex items-center gap-2">
-              <h4 className="text-[13px] font-bold text-gray-800">{activeTab.label}</h4>
+              <h4 className="text-[13px] font-bold text-gray-800 dark:text-slate-100">{activeTab.label}</h4>
               {activeTab.key !== 'general' && (
                 <Pill meta={STATE_CHIP[activeState]} dot={activeState === 'current'} />
               )}
@@ -944,7 +944,7 @@ export function RequestDetailModal({
             {/* ปุ่มในแท็บ General (อนุมัติ/ไม่อนุมัติ/ยกเลิก…) — ผ่านกล่องยืนยันเหมือน action อื่น
                 รับทุก action ที่ไม่มีแท็บอื่นแสดงให้ ไม่ว่าแผนกนั้นตั้งชื่อ code ว่าอะไร */}
             {activeTab.key === 'general' && !editing && onPickAction && generalActions.length > 0 && (
-              <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-gray-100 pt-4">
+              <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-gray-100 dark:border-slate-800 pt-4">
                 {generalActions.map((a) => (
                   <button
                     key={a.code}
@@ -964,7 +964,7 @@ export function RequestDetailModal({
             {/* ปุ่มดำเนินการของขั้นนี้ — โชว์เฉพาะ tab ที่เป็นคิวปัจจุบัน + ตรง actionCodes
                 ปุ่มมาจาก availableActions ที่ API ส่งมา (กดแล้วเปิดกล่องยืนยัน+ฟอร์ม) */}
             {activeState === 'current' && activeActions.length > 0 && (
-              <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-gray-100 pt-4">
+              <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-gray-100 dark:border-slate-800 pt-4">
                 {activeActions.map((a) => {
                   const needs = a.requiredFields ?? [];
                   return (
@@ -994,7 +994,7 @@ export function RequestDetailModal({
             {activeState === 'current' &&
               (activeTab.actionCodes?.length ?? 1) > 0 &&
               activeActions.length === 0 && (
-                <p className="mt-3 text-[12px] text-slate-400">— ขั้นนี้ยังไม่ใช่คิวของคุณ หรือยังไม่มีสิทธิ์ดำเนินการ</p>
+                <p className="mt-3 text-[12px] text-slate-400 dark:text-slate-500">— ขั้นนี้ยังไม่ใช่คิวของคุณ หรือยังไม่มีสิทธิ์ดำเนินการ</p>
               )}
           </div>
 
@@ -1017,7 +1017,7 @@ function StepPanel({
   resolution: RequestListItem['resolution'];
 }) {
   if (state === 'upcoming') {
-    return <p className="text-[12.5px] text-slate-400">ยังไม่ถึงขั้นนี้ — จะบันทึกข้อมูลเมื่อดำเนินการถึง</p>;
+    return <p className="text-[12.5px] text-slate-400 dark:text-slate-500">ยังไม่ถึงขั้นนี้ — จะบันทึกข้อมูลเมื่อดำเนินการถึง</p>;
   }
 
   const who = log?.actionByName;
@@ -1050,7 +1050,7 @@ function StepPanel({
 
       {!who && !when && (
         <div className="col-span-2">
-          <p className="text-[12.5px] text-slate-400">
+          <p className="text-[12.5px] text-slate-400 dark:text-slate-500">
             {state === 'current'
               ? 'ยังไม่ได้บันทึกข้อมูลขั้นนี้ — กดปุ่มด้านล่างเพื่อดำเนินการ'
               : 'ระบบยังไม่ส่งรายละเอียดของขั้นนี้มา'}
@@ -1066,8 +1066,8 @@ function StepPanel({
 //   saveService (บันทึกรายละเอียด, ไม่เลื่อน step กดกี่ครั้งก็ได้) / service (ดำเนินการเสร็จ → Survey)
 // ฟิลด์: repairStatus(ดำเนินการ) · exVendor(ส่งบริษัท, บังคับ) · exContact(เบอร์) · exPrNo · exPlanDate
 const SVC_INPUT =
-  'w-full rounded-lg border border-gray-200 px-3 py-2 text-[13px] outline-none transition focus:border-accent disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-500';
-const SVC_LABEL = 'mb-1 block text-[11.5px] font-semibold text-gray-500';
+  'w-full rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-[13px] text-gray-800 dark:text-slate-100 outline-none transition focus:border-accent disabled:cursor-not-allowed disabled:bg-slate-50 dark:disabled:bg-slate-900 disabled:text-slate-500';
+const SVC_LABEL = 'mb-1 block text-[11.5px] font-semibold text-gray-500 dark:text-slate-400';
 
 function ServicePanel({
   state,
@@ -1108,7 +1108,7 @@ function ServicePanel({
   }, [resolution]);
 
   if (state === 'upcoming') {
-    return <p className="text-[12.5px] text-slate-400">ยังไม่ถึงขั้นนี้ — จะกรอกได้เมื่อรับเรื่องแล้ว</p>;
+    return <p className="text-[12.5px] text-slate-400 dark:text-slate-500">ยังไม่ถึงขั้นนี้ — จะกรอกได้เมื่อรับเรื่องแล้ว</p>;
   }
 
   // step 3 (มี saveService/service ให้กด) = แก้ไขได้ · พอ service ถูกยิงจากแท็บปิดงานรับเรื่อง
@@ -1171,14 +1171,14 @@ function ServicePanel({
       <div />
       <div className="col-span-2">
         <label className={SVC_LABEL}>
-          ส่งบริษัท<span className="text-rose-600"> *</span>
+          ส่งบริษัท<span className="text-rose-600 dark:text-rose-400"> *</span>
         </label>
         <textarea
           rows={2}
           value={vendor}
           disabled={pending}
           onChange={(e) => setVendor(e.target.value)}
-          className={`${SVC_INPUT} resize-none ${touched && vendorMissing ? 'border-rose-300 bg-rose-50/40' : ''}`}
+          className={`${SVC_INPUT} resize-none ${touched && vendorMissing ? 'border-rose-300 dark:border-rose-800 bg-rose-50/40' : ''}`}
         />
       </div>
       <div>
@@ -1201,10 +1201,10 @@ function ServicePanel({
       </div>
 
       {touched && vendorMissing && (
-        <p className="col-span-2 text-[11.5px] font-semibold text-rose-600">ต้องกรอก “ส่งบริษัท” ก่อนบันทึก/ดำเนินการเสร็จ</p>
+        <p className="col-span-2 text-[11.5px] font-semibold text-rose-600 dark:text-rose-400">ต้องกรอก “ส่งบริษัท” ก่อนบันทึก/ดำเนินการเสร็จ</p>
       )}
 
-      <div className="col-span-2 flex flex-wrap items-center gap-2 border-t border-gray-100 pt-4">
+      <div className="col-span-2 flex flex-wrap items-center gap-2 border-t border-gray-100 dark:border-slate-800 pt-4">
         {svc.map((a) => (
           <button
             key={a.code}
@@ -1218,7 +1218,7 @@ function ServicePanel({
             {a.label}
           </button>
         ))}
-        <span className="text-[11.5px] text-slate-400">บันทึกได้เรื่อย ๆ · กด “ดำเนินการเสร็จ” แล้วไปปิดงานรับเรื่องที่แท็บถัดไป</span>
+        <span className="text-[11.5px] text-slate-400 dark:text-slate-500">บันทึกได้เรื่อย ๆ · กด “ดำเนินการเสร็จ” แล้วไปปิดงานรับเรื่องที่แท็บถัดไป</span>
       </div>
     </div>
   );
@@ -1263,7 +1263,7 @@ function SelectField({
         value={value}
         disabled={disabled || loading}
         onChange={(e) => onChange(e.target.value)}
-        className={`${SVC_INPUT} cursor-pointer ${invalid ? 'border-rose-300 bg-rose-50/40' : ''}`}
+        className={`${SVC_INPUT} cursor-pointer ${invalid ? 'border-rose-300 dark:border-rose-800 bg-rose-50/40' : ''}`}
       >
         <option value="">{loading ? '— กำลังโหลด… —' : '— เลือก —'}</option>
         {opts.map((o) => (
@@ -1273,7 +1273,7 @@ function SelectField({
         ))}
       </select>
       {error ? (
-        <p className="mt-1 text-[11px] font-semibold text-rose-600">
+        <p className="mt-1 text-[11px] font-semibold text-rose-600 dark:text-rose-400">
           {error}
           {onRetry && (
             <button type="button" onClick={onRetry} className="ml-1.5 underline hover:no-underline">
@@ -1282,7 +1282,7 @@ function SelectField({
           )}
         </p>
       ) : (
-        hint && !loading && <p className="mt-1 text-[11px] text-slate-400">{hint}</p>
+        hint && !loading && <p className="mt-1 text-[11px] text-slate-400 dark:text-slate-500">{hint}</p>
       )}
     </div>
   );
@@ -1309,7 +1309,7 @@ function ClosePanel({
   const [touched, setTouched] = useState(false);
 
   if (state === 'upcoming') {
-    return <p className="text-[12.5px] text-slate-400">ยังไม่ถึงขั้นนี้ — จะปิดงานได้เมื่อดำเนินการแล้ว</p>;
+    return <p className="text-[12.5px] text-slate-400 dark:text-slate-500">ยังไม่ถึงขั้นนี้ — จะปิดงานได้เมื่อดำเนินการแล้ว</p>;
   }
 
   // ขั้นที่ทำแล้ว — โชว์สรุปที่บันทึกไว้ อ่านอย่างเดียว
@@ -1396,7 +1396,7 @@ function ClosePanel({
           value={detail}
           disabled={pending}
           onChange={(e) => setDetail(e.target.value)}
-          className={`${SVC_INPUT} resize-none ${touched && missing.detail ? 'border-rose-300 bg-rose-50/40' : ''}`}
+          className={`${SVC_INPUT} resize-none ${touched && missing.detail ? 'border-rose-300 dark:border-rose-800 bg-rose-50/40' : ''}`}
         />
       </div>
       <div className="col-span-2">
@@ -1405,10 +1405,10 @@ function ClosePanel({
       </div>
 
       {touched && blocked && (
-        <p className="col-span-2 text-[11.5px] font-semibold text-rose-600">กรอกแนวทางแก้ไข / สาเหตุหลัก / สาเหตุรอง / รายละเอียดให้ครบก่อนปิดงาน</p>
+        <p className="col-span-2 text-[11.5px] font-semibold text-rose-600 dark:text-rose-400">กรอกแนวทางแก้ไข / สาเหตุหลัก / สาเหตุรอง / รายละเอียดให้ครบก่อนปิดงาน</p>
       )}
 
-      <div className="col-span-2 flex items-center gap-2 border-t border-gray-100 pt-4">
+      <div className="col-span-2 flex items-center gap-2 border-t border-gray-100 dark:border-slate-800 pt-4">
         <button
           type="button"
           disabled={pending || !onSubmit}
@@ -1460,12 +1460,12 @@ function SurveyTable({
     <div className="overflow-x-auto">
       <table className="w-full min-w-[520px] border-separate border-spacing-0 text-[12px]">
         <thead>
-          <tr className="text-slate-600">
-            <th className="border-b border-gray-200 px-2 py-2 text-left font-semibold">หัวข้อ</th>
+          <tr className="text-slate-600 dark:text-slate-300">
+            <th className="border-b border-gray-200 dark:border-slate-700 px-2 py-2 text-left font-semibold">หัวข้อ</th>
             {SURVEY_LEVELS.map((lv) => (
-              <th key={lv.v} className="border-b border-gray-200 px-1 py-2 text-center font-semibold">
+              <th key={lv.v} className="border-b border-gray-200 dark:border-slate-700 px-1 py-2 text-center font-semibold">
                 {lv.t}
-                <div className="mono text-[10.5px] text-slate-400">({lv.v})</div>
+                <div className="mono text-[10.5px] text-slate-400 dark:text-slate-500">({lv.v})</div>
               </th>
             ))}
           </tr>
@@ -1473,17 +1473,17 @@ function SurveyTable({
         <tbody>
           {SURVEY_QUESTIONS.map((q, i) => (
             <tr key={q.key}>
-              <td className="border-b border-gray-100 px-2 py-2 text-gray-800">
-                <span className="mono mr-1.5 text-slate-400">{i + 1}</span>
+              <td className="border-b border-gray-100 dark:border-slate-800 px-2 py-2 text-gray-800 dark:text-slate-100">
+                <span className="mono mr-1.5 text-slate-400 dark:text-slate-500">{i + 1}</span>
                 {q.text}
               </td>
               {SURVEY_LEVELS.map((lv) => (
-                <td key={lv.v} className="border-b border-gray-100 px-1 py-2 text-center">
+                <td key={lv.v} className="border-b border-gray-100 dark:border-slate-800 px-1 py-2 text-center">
                   {readOnly ? (
                     <span
                       title={scores[i] === lv.v ? lv.t : undefined}
                       className={`inline-block h-3.5 w-3.5 rounded-full border ${
-                        scores[i] === lv.v ? 'border-accent bg-accent' : 'border-gray-200 bg-slate-50'
+                        scores[i] === lv.v ? 'border-accent bg-accent' : 'border-gray-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60'
                       }`}
                     />
                   ) : (
@@ -1524,7 +1524,7 @@ function SurveyPanel({
   const [touched, setTouched] = useState(false);
 
   if (state === 'upcoming') {
-    return <p className="text-[12.5px] text-slate-400">ยังไม่ถึงขั้นนี้ — จะประเมินได้เมื่อปิดงานรับเรื่องแล้ว</p>;
+    return <p className="text-[12.5px] text-slate-400 dark:text-slate-500">ยังไม่ถึงขั้นนี้ — จะประเมินได้เมื่อปิดงานรับเรื่องแล้ว</p>;
   }
   // ประเมินแล้ว → โชว์ข้อมูลที่บันทึก + ผู้ประเมิน/เวลา (อ่านอย่างเดียว)
   if (state === 'done') {
@@ -1594,18 +1594,18 @@ function SurveyPanel({
     <div>
       <SurveyTable scores={scores} disabled={pending} onPick={setScore} />
 
-      <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-1 rounded-lg border border-gray-200 bg-slate-50 px-3.5 py-2.5 text-[12.5px]">
-        <span className="text-slate-500">คะแนนเต็ม <b className="mono text-gray-800">{SURVEY_MAX}</b></span>
-        <span className="text-slate-500">คะแนนที่ได้ <b className="mono text-gray-800">{total}</b></span>
-        <span className="text-slate-500">คิดเป็น <b className="mono text-gray-800">{pct}%</b></span>
-        {!answered && <span className="text-rose-600">— ยังตอบไม่ครบทุกข้อ</span>}
+      <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-1 rounded-lg border border-gray-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 px-3.5 py-2.5 text-[12.5px]">
+        <span className="text-slate-500 dark:text-slate-400">คะแนนเต็ม <b className="mono text-gray-800 dark:text-slate-100">{SURVEY_MAX}</b></span>
+        <span className="text-slate-500 dark:text-slate-400">คะแนนที่ได้ <b className="mono text-gray-800 dark:text-slate-100">{total}</b></span>
+        <span className="text-slate-500 dark:text-slate-400">คิดเป็น <b className="mono text-gray-800 dark:text-slate-100">{pct}%</b></span>
+        {!answered && <span className="text-rose-600 dark:text-rose-400">— ยังตอบไม่ครบทุกข้อ</span>}
       </div>
 
       <div className="mt-4">
         <label className={SVC_LABEL}>
           ข้อเสนอแนะอื่น ๆ
           {answered && total < 20 && (
-            <span className="text-rose-600"> * (คะแนนต่ำกว่า 20 ต้องระบุอย่างน้อย 20 ตัวอักษร — ตอนนี้ {remark.trim().length})</span>
+            <span className="text-rose-600 dark:text-rose-400"> * (คะแนนต่ำกว่า 20 ต้องระบุอย่างน้อย 20 ตัวอักษร — ตอนนี้ {remark.trim().length})</span>
           )}
         </label>
         <textarea
@@ -1613,17 +1613,17 @@ function SurveyPanel({
           value={remark}
           disabled={pending}
           onChange={(e) => setRemark(e.target.value)}
-          className={`${SVC_INPUT} resize-none ${touched && needRemark ? 'border-rose-300 bg-rose-50/40' : ''}`}
+          className={`${SVC_INPUT} resize-none ${touched && needRemark ? 'border-rose-300 dark:border-rose-800 bg-rose-50/40' : ''}`}
         />
       </div>
 
       {touched && blocked && (
-        <p className="mt-2 text-[11.5px] font-semibold text-rose-600">
+        <p className="mt-2 text-[11.5px] font-semibold text-rose-600 dark:text-rose-400">
           {!answered ? 'กรุณาให้คะแนนครบทั้ง 5 ข้อ' : 'คะแนนต่ำกว่า 20 ต้องระบุข้อเสนอแนะอย่างน้อย 20 ตัวอักษร'}
         </p>
       )}
 
-      <div className="mt-4 flex items-center gap-2 border-t border-gray-100 pt-4">
+      <div className="mt-4 flex items-center gap-2 border-t border-gray-100 dark:border-slate-800 pt-4">
         <button
           type="button"
           disabled={pending || !onSubmit}
@@ -1675,7 +1675,7 @@ function KpiPanel({
   const [touched, setTouched] = useState(false);
 
   if (state === 'upcoming') {
-    return <p className="text-[12.5px] text-slate-400">ยังไม่ถึงขั้นนี้ — จะปิดงานได้เมื่อผ่านขั้นก่อนหน้า</p>;
+    return <p className="text-[12.5px] text-slate-400 dark:text-slate-500">ยังไม่ถึงขั้นนี้ — จะปิดงานได้เมื่อผ่านขั้นก่อนหน้า</p>;
   }
 
   // ปิดงานแล้ว = ตารางเดิมแบบอ่านอย่างเดียว ติ๊กช่องที่บันทึกไว้ (ไม่สรุปเป็นข้อความ)
@@ -1710,7 +1710,7 @@ function KpiPanel({
   return (
     <div>
       {done && (
-        <div className="mb-4 grid grid-cols-2 gap-x-5 gap-y-4 border-b border-gray-100 pb-4">
+        <div className="mb-4 grid grid-cols-2 gap-x-5 gap-y-4 border-b border-gray-100 dark:border-slate-800 pb-4">
           <DetailRow label="ผู้ปิดงาน">{closedBy || '—'}</DetailRow>
           <DetailRow label="วันที่ปิดงาน">{closedAt ? fmtDateTime(closedAt) : '—'}</DetailRow>
           {/* ตัวเลข KPI มาจาก backend เท่านั้น — แผนกที่ไม่มีเกณฑ์จะไม่ส่งมา ก็ไม่ต้องโชว์ */}
@@ -1731,10 +1731,10 @@ function KpiPanel({
       <div className="overflow-x-auto">
         <table className="w-full min-w-[560px] border-separate border-spacing-0 text-[12px]">
           <thead>
-            <tr className="text-slate-600">
-              <th className="border-b border-gray-200 px-2 py-2 text-left font-semibold">กรณี / รายละเอียด</th>
+            <tr className="text-slate-600 dark:text-slate-300">
+              <th className="border-b border-gray-200 dark:border-slate-700 px-2 py-2 text-left font-semibold">กรณี / รายละเอียด</th>
               {KPI_RESULTS.map((res) => (
-                <th key={res} className="w-20 border-b border-gray-200 px-1 py-2 text-center font-semibold">
+                <th key={res} className="w-20 border-b border-gray-200 dark:border-slate-700 px-1 py-2 text-center font-semibold">
                   {res}
                 </th>
               ))}
@@ -1743,13 +1743,13 @@ function KpiPanel({
           <tbody>
             {KPI_CASES.map((desc, row) => (
               <tr key={row} className={done && selRow === row ? 'bg-emerald-50/60' : undefined}>
-                <td className="border-b border-gray-100 px-2 py-2 align-top text-gray-800">
-                  <span className="mono mr-1.5 text-slate-400">{row + 1}</span>
+                <td className="border-b border-gray-100 dark:border-slate-800 px-2 py-2 align-top text-gray-800 dark:text-slate-100">
+                  <span className="mono mr-1.5 text-slate-400 dark:text-slate-500">{row + 1}</span>
                   {/* เกณฑ์ที่ backend คืนมา (caseName) ชนะลิสต์ในโค้ดเสมอ — เกณฑ์อาจถูกแก้ทีหลัง */}
                   {done && selRow === row && rs?.caseName ? rs.caseName : desc}
                 </td>
                 {KPI_RESULTS.map((res, col) => (
-                  <td key={col} className="border-b border-gray-100 px-1 py-2 text-center align-top">
+                  <td key={col} className="border-b border-gray-100 dark:border-slate-800 px-1 py-2 text-center align-top">
                     <input
                       type="radio"
                       name="kpi-matrix"
@@ -1769,7 +1769,7 @@ function KpiPanel({
 
       {/* ปิดแล้วแต่ backend ยังไม่คืน caseNo/kpi → ตารางจะว่างทั้งตาราง บอกไปตรง ๆ ดีกว่าปล่อยงง */}
       {done && (selRow < 0 || selCol < 0) && (
-        <p className="mt-2 text-[11.5px] text-slate-400">
+        <p className="mt-2 text-[11.5px] text-slate-400 dark:text-slate-500">
           ไม่มีผล KPI ที่บันทึกไว้
           {rs?.kpi && selCol < 0 && (
             <>
@@ -1784,12 +1784,12 @@ function KpiPanel({
       )}
 
       {!done && touched && blocked && (
-        <p className="mt-2 text-[11.5px] font-semibold text-rose-600">เลือกผล KPI 1 ช่องก่อนปิดงาน</p>
+        <p className="mt-2 text-[11.5px] font-semibold text-rose-600 dark:text-rose-400">เลือกผล KPI 1 ช่องก่อนปิดงาน</p>
       )}
 
-      <div className="mt-4 flex items-center gap-2 border-t border-gray-100 pt-4">
+      <div className="mt-4 flex items-center gap-2 border-t border-gray-100 dark:border-slate-800 pt-4">
         {done ? (
-          <span className="text-[12px] font-semibold text-emerald-700">ปิดใบเรียบร้อย</span>
+          <span className="text-[12px] font-semibold text-emerald-700 dark:text-emerald-300">ปิดใบเรียบร้อย</span>
         ) : (
           <button
             type="button"
@@ -1893,8 +1893,8 @@ function GeneralPanel({
   // ทุกบล็อกใช้ col-span-2 เพราะทั้งการ์ดและแผงเดิมเป็น grid 2 คอลัมน์เหมือนกัน
   const detailBlock = (
     <div className="col-span-2">
-      <span className="mb-1 block text-[11.5px] font-semibold text-gray-500">รายละเอียด</span>
-      <div className="rounded-lg border border-gray-200 bg-slate-50 px-3.5 py-3 text-[13px] leading-relaxed text-gray-800">
+      <span className="mb-1 block text-[11.5px] font-semibold text-gray-500 dark:text-slate-400">รายละเอียด</span>
+      <div className="rounded-lg border border-gray-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 px-3.5 py-3 text-[13px] leading-relaxed text-gray-800 dark:text-slate-100">
         <span className="whitespace-pre-wrap">{full.detail || '— (ผู้แจ้งไม่ได้กรอกรายละเอียด)'}</span>
       </div>
     </div>
@@ -1907,7 +1907,7 @@ function GeneralPanel({
   const attachmentsBlock = hasAttachments ? (
     <div className="col-span-2">
       {imgs.length === 0 ? (
-        <span className="text-[13px] text-slate-400">— ไม่มีรูปแนบ</span>
+        <span className="text-[13px] text-slate-400 dark:text-slate-500">— ไม่มีรูปแนบ</span>
       ) : (
         <div className="flex flex-wrap gap-2">
           {imgs.map((f) => (
@@ -1916,7 +1916,7 @@ function GeneralPanel({
         </div>
       )}
       {canAttachFiles === false && attachBlockedReason && (
-        <p className="mt-1.5 text-[11.5px] text-slate-400">{attachBlockedReason}</p>
+        <p className="mt-1.5 text-[11.5px] text-slate-400 dark:text-slate-500">{attachBlockedReason}</p>
       )}
     </div>
   ) : null;
@@ -1925,18 +1925,18 @@ function GeneralPanel({
   // workflow ที่อนุมัติหลายรอบ (เช่น PS) จะขึ้นครบทุกคน
   const approverList =
     approveLogs.length === 0 ? (
-      <span className="text-[13px] text-slate-400">— ยังไม่มีการอนุมัติ</span>
+      <span className="text-[13px] text-slate-400 dark:text-slate-500">— ยังไม่มีการอนุมัติ</span>
     ) : (
       <div className="flex flex-col gap-1.5">
         {approveLogs.map((l, i) => (
           <div
             key={i}
-            className="flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-[12.5px]"
+            className="flex items-center gap-2 rounded-lg border border-emerald-200 dark:border-emerald-900 bg-emerald-50 dark:bg-emerald-950/40 px-3 py-1.5 text-[12.5px]"
           >
-            <IconCircleCheck size={15} className="shrink-0 text-emerald-600" />
-            <span className="font-semibold text-gray-800">{l.actionByName || '—'}</span>
-            {l.actionByDepartment && <span className="text-slate-500">· {l.actionByDepartment}</span>}
-            {l.actionDate && <span className="mono ml-auto text-slate-500">{fmtDateTime(l.actionDate)}</span>}
+            <IconCircleCheck size={15} className="shrink-0 text-emerald-600 dark:text-emerald-400" />
+            <span className="font-semibold text-gray-800 dark:text-slate-100">{l.actionByName || '—'}</span>
+            {l.actionByDepartment && <span className="text-slate-500 dark:text-slate-400">· {l.actionByDepartment}</span>}
+            {l.actionDate && <span className="mono ml-auto text-slate-500 dark:text-slate-400">{fmtDateTime(l.actionDate)}</span>}
           </div>
         ))}
       </div>
@@ -1944,7 +1944,7 @@ function GeneralPanel({
 
   // แก้ไม่ได้ = บอกเหตุผลไปเลย ดีกว่าปล่อยให้หาปุ่มที่ไม่มี
   const hintBlock = editHint ? (
-    <p className="col-span-2 text-[12px] text-slate-400">— {editHint}</p>
+    <p className="col-span-2 text-[12px] text-slate-400 dark:text-slate-500">— {editHint}</p>
   ) : null;
 
   // ── แบ่งเป็นการ์ดตามหัวข้อเดียวกับหน้าสร้างใบ ทุกโมดูล ────────
@@ -2030,8 +2030,8 @@ function GeneralPanel({
 
         {isPl && (
           <div className="col-span-2">
-            <span className="mb-1 block text-[11.5px] font-semibold text-gray-500">เหตุผลการขอ</span>
-            <div className="rounded-lg border border-gray-200 bg-slate-50 px-3.5 py-3 text-[13px] leading-relaxed text-gray-800">
+            <span className="mb-1 block text-[11.5px] font-semibold text-gray-500 dark:text-slate-400">เหตุผลการขอ</span>
+            <div className="rounded-lg border border-gray-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 px-3.5 py-3 text-[13px] leading-relaxed text-gray-800 dark:text-slate-100">
               <span className="whitespace-pre-wrap">{full.remark || '— (ไม่ได้ระบุ)'}</span>
             </div>
           </div>
@@ -2079,7 +2079,7 @@ function PlLinesTable({
 }) {
   if (loading)
     return (
-      <span className="flex items-center gap-1.5 text-[13px] text-slate-400">
+      <span className="flex items-center gap-1.5 text-[13px] text-slate-400 dark:text-slate-500">
         <IconLoader2 size={14} className="animate-spin" />
         กำลังโหลดรายการ…
       </span>
@@ -2087,20 +2087,20 @@ function PlLinesTable({
 
   if (error)
     return (
-      <span className="flex items-center gap-1.5 text-[12.5px] font-semibold text-amber-700">
+      <span className="flex items-center gap-1.5 text-[12.5px] font-semibold text-amber-700 dark:text-amber-300">
         <IconAlertTriangle size={14} className="shrink-0" />
         {error}
       </span>
     );
 
   if (!lines || lines.length === 0)
-    return <span className="text-[13px] text-slate-400">— ใบนี้ไม่มีรายการที่ขอ</span>;
+    return <span className="text-[13px] text-slate-400 dark:text-slate-500">— ใบนี้ไม่มีรายการที่ขอ</span>;
 
   return (
-    <div className="overflow-hidden rounded-xl border border-gray-200">
+    <div className="overflow-hidden rounded-xl border border-gray-200 dark:border-slate-700">
       <table className="w-full border-collapse">
         <thead>
-          <tr className="bg-[#0b1220] text-[11.5px] font-semibold text-slate-300">
+          <tr className="bg-[#0b1220] text-[11.5px] font-semibold text-slate-300 dark:text-slate-600">
             <th className="w-10 px-2 py-2 text-center">#</th>
             <th className="px-2 py-2 text-left">รายการ</th>
             <th className="w-20 px-2 py-2 text-center">จำนวน</th>
@@ -2113,18 +2113,18 @@ function PlLinesTable({
           {lines.map((li, i) => (
             <tr
               key={li.recNo}
-              className={`border-b border-[#eef1f6] text-[12.5px] last:border-b-0 ${
-                li.cancel ? 'bg-slate-50 text-slate-400 line-through' : 'bg-white text-gray-800'
+              className={`border-b border-[#eef1f6] dark:border-slate-800 text-[12.5px] last:border-b-0 ${
+                li.cancel ? 'bg-slate-50 dark:bg-slate-800/60 text-slate-400 dark:text-slate-500 line-through' : 'bg-white dark:bg-slate-900 text-gray-800 dark:text-slate-100'
               }`}
               title={li.cancel ? `ยกเลิกโดย ${li.cancelBy || '—'}` : undefined}
             >
-              <td className="mono px-2 py-2 text-center text-slate-400">{i + 1}</td>
+              <td className="mono px-2 py-2 text-center text-slate-400 dark:text-slate-500">{i + 1}</td>
               <td className="px-2 py-2">{li.item}</td>
               <td className="mono px-2 py-2 text-center">{li.qty}</td>
               {showReceived && (
                 <td className="mono px-2 py-2 text-center">
                   {/* รับครบแล้วเน้นเขียว ยังไม่ครบเป็นสีส้ม — เห็นได้ทันทีว่าค้างแถวไหน */}
-                  <span className={li.received >= li.qty ? 'font-semibold text-emerald-700' : 'text-amber-700'}>
+                  <span className={li.received >= li.qty ? 'font-semibold text-emerald-700 dark:text-emerald-300' : 'text-amber-700 dark:text-amber-300'}>
                     {li.received}
                   </span>
                 </td>
@@ -2187,7 +2187,7 @@ function PlAttachmentPanel({
 
   if (loading)
     return (
-      <span className="flex items-center gap-1.5 text-[13px] text-slate-400">
+      <span className="flex items-center gap-1.5 text-[13px] text-slate-400 dark:text-slate-500">
         <IconLoader2 size={14} className="animate-spin" />
         กำลังโหลด…
       </span>
@@ -2195,7 +2195,7 @@ function PlAttachmentPanel({
 
   if (!doc)
     return (
-      <p className="flex items-center gap-1.5 text-[12.5px] font-semibold text-amber-700">
+      <p className="flex items-center gap-1.5 text-[12.5px] font-semibold text-amber-700 dark:text-amber-300">
         <IconAlertTriangle size={14} className="shrink-0" />
         โหลดข้อมูลเอกสารแนบของใบนี้ไม่สำเร็จ
       </p>
@@ -2206,8 +2206,8 @@ function PlAttachmentPanel({
   return (
     <div className="flex flex-col gap-4">
       <div>
-        <span className="mb-1.5 block text-[11.5px] font-semibold text-gray-500">ส่งแนบมาด้วย</span>
-        <div className="flex flex-col gap-1.5 rounded-xl border border-gray-200 bg-white p-3">
+        <span className="mb-1.5 block text-[11.5px] font-semibold text-gray-500 dark:text-slate-400">ส่งแนบมาด้วย</span>
+        <div className="flex flex-col gap-1.5 rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-3">
           {PL_ATTACH_CHECKS.map((c) => {
             const docKey = c.docKey;
             // ช่องข้อความโผล่เฉพาะหัวข้อที่ติ๊ก และเมื่อโผล่แล้วต้องกรอก
@@ -2217,7 +2217,7 @@ function PlAttachmentPanel({
               <div key={c.key} className="flex flex-col gap-1">
                 <div className="flex flex-wrap items-center gap-2">
                   <label
-                    className={`flex min-w-[230px] items-center gap-2 text-[12.5px] text-gray-800 ${
+                    className={`flex min-w-[230px] items-center gap-2 text-[12.5px] text-gray-800 dark:text-slate-100 ${
                       editable ? 'cursor-pointer' : ''
                     }`}
                   >
@@ -2248,15 +2248,15 @@ function PlAttachmentPanel({
                           setDocErrors((x) => ({ ...x, [docKey]: undefined }));
                         }}
                         className={`${LINE_INPUT_CLS} max-w-[260px] flex-1 ${
-                          err ? 'border-red-300' : ''
+                          err ? 'border-red-300 dark:border-red-800' : ''
                         }`}
                       />
-                      <span className="text-[11.5px] font-bold text-red-500">*</span>
+                      <span className="text-[11.5px] font-bold text-red-500 dark:text-red-400">*</span>
                     </>
                   )}
                 </div>
                 {showDoc && err && (
-                  <p className="pl-6 text-[11.5px] font-semibold text-red-600">{err}</p>
+                  <p className="pl-6 text-[11.5px] font-semibold text-red-600 dark:text-red-400">{err}</p>
                 )}
               </div>
             );
@@ -2265,14 +2265,14 @@ function PlAttachmentPanel({
       </div>
 
       {!editable && (
-        <p className="flex items-center gap-1.5 text-[12px] text-slate-500">
-          <IconAlertTriangle size={13} className="shrink-0 text-slate-400" />
+        <p className="flex items-center gap-1.5 text-[12px] text-slate-500 dark:text-slate-400">
+          <IconAlertTriangle size={13} className="shrink-0 text-slate-400 dark:text-slate-500" />
           {blockedReason || 'ตอนนี้บันทึกเอกสารแนบไม่ได้'}
         </p>
       )}
 
       {editable && (
-        <div className="flex flex-wrap items-center gap-2 border-t border-gray-100 pt-4">
+        <div className="flex flex-wrap items-center gap-2 border-t border-gray-100 dark:border-slate-800 pt-4">
           <button
             type="button"
             disabled={pending}
@@ -2287,12 +2287,12 @@ function PlAttachmentPanel({
             {pending ? <IconLoader2 size={15} className="animate-spin" /> : <IconDeviceFloppy size={15} />}
             บันทึกข้อมูล
           </button>
-          <span className="text-[11.5px] text-slate-400">บันทึกได้เรื่อย ๆ ไม่เลื่อนขั้นงาน</span>
+          <span className="text-[11.5px] text-slate-400 dark:text-slate-500">บันทึกได้เรื่อย ๆ ไม่เลื่อนขั้นงาน</span>
         </div>
       )}
 
       <div>
-        <span className="mb-1.5 block text-[11.5px] font-semibold text-gray-500">รายการที่ขอ</span>
+        <span className="mb-1.5 block text-[11.5px] font-semibold text-gray-500 dark:text-slate-400">รายการที่ขอ</span>
         <PlLinesTable {...plLines} showReceived />
       </div>
     </div>
@@ -2366,7 +2366,7 @@ function PlServicePanel({
   return (
     <div className="flex flex-col gap-4">
       {state === 'upcoming' ? (
-        <p className="text-[12.5px] text-slate-400">— ยังไม่ถึงขั้นดำเนินการ</p>
+        <p className="text-[12.5px] text-slate-400 dark:text-slate-500">— ยังไม่ถึงขั้นดำเนินการ</p>
       ) : editable ? (
         <>
           {/* ชื่อฟิลด์ตามสเปก PL: actionDetail = ผลการดำเนินงาน
@@ -2386,7 +2386,7 @@ function PlServicePanel({
             </div>
             <div>
               <label className={SVC_LABEL}>
-                ผลการดำเนินงาน<span className="text-rose-600"> *</span>
+                ผลการดำเนินงาน<span className="text-rose-600 dark:text-rose-400"> *</span>
               </label>
               <textarea
                 rows={4}
@@ -2394,19 +2394,19 @@ function PlServicePanel({
                 disabled={pending}
                 onChange={(e) => setActionDetail(e.target.value)}
                 className={`${SVC_INPUT} resize-y leading-relaxed ${
-                  touched && actionDetailMissing ? 'border-rose-300 bg-rose-50/40' : ''
+                  touched && actionDetailMissing ? 'border-rose-300 dark:border-rose-800 bg-rose-50/40' : ''
                 }`}
               />
             </div>
           </div>
 
           {touched && actionDetailMissing && (
-            <p className="text-[11.5px] font-semibold text-rose-600">
+            <p className="text-[11.5px] font-semibold text-rose-600 dark:text-rose-400">
               ต้องกรอก “ผลการดำเนินงาน” ก่อนกดดำเนินการ
             </p>
           )}
 
-          <div className="flex flex-wrap items-center gap-2 border-t border-gray-100 pt-4">
+          <div className="flex flex-wrap items-center gap-2 border-t border-gray-100 dark:border-slate-800 pt-4">
             {svc.map((a) => (
               <button
                 key={a.code}
@@ -2420,7 +2420,7 @@ function PlServicePanel({
                 {a.label}
               </button>
             ))}
-            <span className="text-[11.5px] text-slate-400">
+            <span className="text-[11.5px] text-slate-400 dark:text-slate-500">
               “บันทึกข้อมูล” เก็บค่าไว้เฉย ๆ · “ดำเนินการ” บันทึกแล้วเลื่อนขั้นงาน
             </span>
           </div>
@@ -2428,14 +2428,14 @@ function PlServicePanel({
       ) : (
         <div className="grid grid-cols-2 gap-x-5 gap-y-3">
           <div>
-            <span className="mb-1 block text-[11.5px] font-semibold text-gray-500">รายละเอียดการดำเนินงาน</span>
-            <div className="min-h-[76px] rounded-lg border border-gray-200 bg-slate-50 px-3.5 py-3 text-[13px] leading-relaxed text-gray-800">
+            <span className="mb-1 block text-[11.5px] font-semibold text-gray-500 dark:text-slate-400">รายละเอียดการดำเนินงาน</span>
+            <div className="min-h-[76px] rounded-lg border border-gray-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 px-3.5 py-3 text-[13px] leading-relaxed text-gray-800 dark:text-slate-100">
               <span className="whitespace-pre-wrap">{resolution?.resolutionDetail || '— (ยังไม่ได้บันทึก)'}</span>
             </div>
           </div>
           <div>
-            <span className="mb-1 block text-[11.5px] font-semibold text-gray-500">ผลการดำเนินงาน</span>
-            <div className="min-h-[76px] rounded-lg border border-gray-200 bg-slate-50 px-3.5 py-3 text-[13px] leading-relaxed text-gray-800">
+            <span className="mb-1 block text-[11.5px] font-semibold text-gray-500 dark:text-slate-400">ผลการดำเนินงาน</span>
+            <div className="min-h-[76px] rounded-lg border border-gray-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 px-3.5 py-3 text-[13px] leading-relaxed text-gray-800 dark:text-slate-100">
               <span className="whitespace-pre-wrap">
                 {resolution?.actionDetail || resolution?.solution || '— (ยังไม่ได้บันทึก)'}
               </span>
@@ -2447,7 +2447,7 @@ function PlServicePanel({
       )}
 
       <div>
-        <span className="mb-1.5 block text-[11.5px] font-semibold text-gray-500">รายการที่ขอ</span>
+        <span className="mb-1.5 block text-[11.5px] font-semibold text-gray-500 dark:text-slate-400">รายการที่ขอ</span>
         <PlLinesTable {...plLines} showReceived />
       </div>
     </div>
@@ -2476,7 +2476,7 @@ function PlClosePanel({
 
   if (state === 'upcoming')
     return (
-      <p className="text-[12.5px] text-slate-400">
+      <p className="text-[12.5px] text-slate-400 dark:text-slate-500">
         — ยังไม่ถึงขั้นปิดงาน (รอแผนก PL ดำเนินการให้เสร็จก่อน)
       </p>
     );
@@ -2484,7 +2484,7 @@ function PlClosePanel({
   return (
     <div className="flex flex-col gap-4">
       {state === 'current' && (
-        <p className="flex items-center gap-1.5 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-[12.5px] font-semibold text-amber-800">
+        <p className="flex items-center gap-1.5 rounded-lg border border-amber-200 dark:border-amber-900 bg-amber-50 dark:bg-amber-950/40 px-3 py-2 text-[12.5px] font-semibold text-amber-800 dark:text-amber-200">
           <IconBell size={14} className="shrink-0" />
           งานเสร็จแล้ว รอ "แผนกผู้แจ้ง" เป็นคนกดปิดใบนี้
         </p>
@@ -2498,15 +2498,15 @@ function PlClosePanel({
       {/* ปิดไปแล้วแต่ไม่มีทั้ง 3 แหล่ง = API ยังไม่ส่งข้อมูลขั้นปิดงานกลับมา
           บอกไปตรง ๆ ดีกว่าปล่อยขีดกลางเปล่า ๆ ให้ผู้ใช้เดาว่าจอพัง */}
       {state === 'done' && !by && !when && (
-        <p className="text-[11.5px] text-slate-400">
+        <p className="text-[11.5px] text-slate-400 dark:text-slate-500">
           — ระบบยังไม่ส่งข้อมูลผู้ปิดงาน/วันที่ปิดงานกลับมา (รอ API)
         </p>
       )}
 
       {closeLog?.note && (
         <div>
-          <span className="mb-1 block text-[11.5px] font-semibold text-gray-500">หมายเหตุปิดงาน</span>
-          <div className="rounded-lg border border-gray-200 bg-slate-50 px-3.5 py-3 text-[13px] leading-relaxed text-gray-800">
+          <span className="mb-1 block text-[11.5px] font-semibold text-gray-500 dark:text-slate-400">หมายเหตุปิดงาน</span>
+          <div className="rounded-lg border border-gray-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 px-3.5 py-3 text-[13px] leading-relaxed text-gray-800 dark:text-slate-100">
             <span className="whitespace-pre-wrap">{closeLog.note}</span>
           </div>
         </div>
@@ -2527,7 +2527,7 @@ function PlClosePanel({
 // กล่องข้อความอ่านอย่างเดียว (ผลงานที่บันทึกไว้) — ว่างก็ยังมีกรอบ ไม่ใช่ขีดกลางลอย ๆ
 function ReadBox({ text, empty }: { text?: string | null; empty?: string }) {
   return (
-    <div className="min-h-[76px] rounded-lg border border-gray-200 bg-slate-50 px-3.5 py-3 text-[13px] leading-relaxed text-gray-800">
+    <div className="min-h-[76px] rounded-lg border border-gray-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 px-3.5 py-3 text-[13px] leading-relaxed text-gray-800 dark:text-slate-100">
       <span className="whitespace-pre-wrap">{text || empty || '— (ยังไม่ได้บันทึก)'}</span>
     </div>
   );
@@ -2571,7 +2571,7 @@ function ConfirmButton({
     );
 
   return (
-    <span className="inline-flex flex-wrap items-center gap-2 rounded-lg border border-amber-300 bg-amber-50 px-2.5 py-1.5">
+    <span className="inline-flex flex-wrap items-center gap-2 rounded-lg border border-amber-300 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/40 px-2.5 py-1.5">
       <span className="text-[12px] font-semibold text-amber-900">{question}</span>
       <button
         type="button"
@@ -2587,7 +2587,7 @@ function ConfirmButton({
       <button
         type="button"
         onClick={() => setArmed(false)}
-        className="rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-[12.5px] font-semibold text-slate-700 transition hover:bg-slate-50"
+        className="rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-3 py-1.5 text-[12.5px] font-semibold text-slate-700 dark:text-slate-200 transition hover:bg-slate-50 dark:hover:bg-slate-800"
       >
         ยกเลิก
       </button>
@@ -2625,7 +2625,7 @@ function CrReceivePanel({
 
   if (state === 'upcoming')
     return (
-      <p className="text-[12.5px] text-slate-400">
+      <p className="text-[12.5px] text-slate-400 dark:text-slate-500">
         — ยังไม่ถึงขั้นนี้ (รอ Mgr ต้นสังกัดอนุมัติก่อน แผนก CR จึงจะรับเรื่องได้)
       </p>
     );
@@ -2648,7 +2648,7 @@ function CrReceivePanel({
   return (
     <div className="flex flex-col gap-4">
       {state === 'current' && editable && (
-        <p className="flex items-center gap-1.5 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-[12.5px] font-semibold text-blue-800">
+        <p className="flex items-center gap-1.5 rounded-lg border border-blue-200 bg-blue-50 dark:bg-blue-950/40 px-3 py-2 text-[12.5px] font-semibold text-blue-800">
           <IconBell size={14} className="shrink-0" />
           ใบนี้อนุมัติแล้ว — ระบุผู้ดำเนินการแล้วกดรับเรื่องเพื่อเริ่มงาน
         </p>
@@ -2657,7 +2657,7 @@ function CrReceivePanel({
       {editable ? (
         <div>
           <label className={SVC_LABEL}>
-            ผู้ดำเนินการ<span className="text-rose-600"> *</span>
+            ผู้ดำเนินการ<span className="text-rose-600 dark:text-rose-400"> *</span>
           </label>
           <input
             value={requestService}
@@ -2665,13 +2665,13 @@ function CrReceivePanel({
             disabled={pending}
             placeholder="ระบุผู้ที่จะรับเรื่องนี้ไปดำเนินการ"
             onChange={(e) => setRequestService(e.target.value)}
-            className={`${SVC_INPUT} ${touched && missing ? 'border-rose-300 bg-rose-50/40' : ''}`}
+            className={`${SVC_INPUT} ${touched && missing ? 'border-rose-300 dark:border-rose-800 bg-rose-50/40' : ''}`}
           />
-          <p className="mt-1 text-[11px] text-slate-400">
+          <p className="mt-1 text-[11px] text-slate-400 dark:text-slate-500">
             {requestService.length}/{CR_REQUEST_SERVICE_MAX} ตัวอักษร · ผู้รับเรื่องและวันที่ระบบบันทึกให้เอง
           </p>
           {touched && missing && (
-            <p className="mt-1 text-[11.5px] font-semibold text-rose-600">ต้องระบุ “ผู้ดำเนินการ” ก่อนกดรับเรื่อง</p>
+            <p className="mt-1 text-[11.5px] font-semibold text-rose-600 dark:text-rose-400">ต้องระบุ “ผู้ดำเนินการ” ก่อนกดรับเรื่อง</p>
           )}
         </div>
       ) : (
@@ -2686,7 +2686,7 @@ function CrReceivePanel({
             {resolution?.planCompleteDate ? (
               <span className="mono">{fmtDate(resolution.planCompleteDate)}</span>
             ) : editable ? (
-              <span className="text-slate-400">— ระบบคำนวณให้ตอนกดรับเรื่อง (วันที่รับเรื่อง + 3 วัน)</span>
+              <span className="text-slate-400 dark:text-slate-500">— ระบบคำนวณให้ตอนกดรับเรื่อง (วันที่รับเรื่อง + 3 วัน)</span>
             ) : (
               '—'
             )}
@@ -2695,7 +2695,7 @@ function CrReceivePanel({
       </div>
 
       {editable && (
-        <div className="flex flex-wrap items-center gap-2 border-t border-gray-100 pt-4">
+        <div className="flex flex-wrap items-center gap-2 border-t border-gray-100 dark:border-slate-800 pt-4">
           <ConfirmButton
             label={recv!.label}
             className={actionBtnClass(recv!.style)}
@@ -2752,7 +2752,7 @@ function CrServicePanel({
   const when = resolution?.servicedDate || serviceLog?.actionDate;
 
   if (state === 'upcoming')
-    return <p className="text-[12.5px] text-slate-400">— ยังไม่ถึงขั้นดำเนินการ (รอแผนก CR รับเรื่องก่อน)</p>;
+    return <p className="text-[12.5px] text-slate-400 dark:text-slate-500">— ยังไม่ถึงขั้นดำเนินการ (รอแผนก CR รับเรื่องก่อน)</p>;
 
   // ปุ่มจาก API เท่านั้น: saveService = บันทึกเฉย ๆ · service = บันทึกแล้วเลื่อนขั้น
   // ไม่มีปุ่ม = ไม่ใช่คิวเรา/ผ่านขั้นนี้ไปแล้ว → แผงกลายเป็นอ่านอย่างเดียวเอง
@@ -2764,7 +2764,7 @@ function CrServicePanel({
     return (
       <div className="flex flex-col gap-4">
         <div>
-          <span className="mb-1 block text-[11.5px] font-semibold text-gray-500">รายละเอียดการดำเนินการ</span>
+          <span className="mb-1 block text-[11.5px] font-semibold text-gray-500 dark:text-slate-400">รายละเอียดการดำเนินการ</span>
           <ReadBox text={resolution?.resolutionDetail} />
         </div>
         <div className="grid grid-cols-2 gap-x-5 gap-y-3">
@@ -2806,7 +2806,7 @@ function CrServicePanel({
 
       <div>
         <label className={SVC_LABEL}>
-          การดำเนินการ<span className="text-rose-600"> *</span>
+          การดำเนินการ<span className="text-rose-600 dark:text-rose-400"> *</span>
         </label>
         <textarea
           rows={6}
@@ -2819,19 +2819,19 @@ function CrServicePanel({
           }}
           placeholder="บันทึกสิ่งที่ทำไปแล้ว / ความคืบหน้า — บันทึกกี่ครั้งก็ได้จนกว่าจะกดดำเนินการเสร็จ"
           className={`${SVC_INPUT} resize-y leading-relaxed ${
-            touched && missing ? 'border-rose-300 bg-rose-50/40' : ''
+            touched && missing ? 'border-rose-300 dark:border-rose-800 bg-rose-50/40' : ''
           }`}
         />
-        <p className="mt-1 text-[11px] text-slate-400">
+        <p className="mt-1 text-[11px] text-slate-400 dark:text-slate-500">
           {serviceDetail.length}/{CR_SERVICE_DETAIL_MAX} ตัวอักษร · กด “บันทึก” แล้วข้อความจะยังอยู่เมื่อเปิดใบใหม่
         </p>
       </div>
 
       {touched && missing && (
-        <p className="text-[11.5px] font-semibold text-rose-600">ต้องกรอก “การดำเนินการ” ก่อนกดดำเนินการเสร็จ</p>
+        <p className="text-[11.5px] font-semibold text-rose-600 dark:text-rose-400">ต้องกรอก “การดำเนินการ” ก่อนกดดำเนินการเสร็จ</p>
       )}
 
-      <div className="flex flex-wrap items-center gap-2 border-t border-gray-100 pt-4">
+      <div className="flex flex-wrap items-center gap-2 border-t border-gray-100 dark:border-slate-800 pt-4">
         {/* บันทึกอยู่กับที่ = ย้อนได้ (บันทึกทับใหม่) จึงไม่ต้องยืนยัน */}
         {save && (
           <button
@@ -2856,7 +2856,7 @@ function CrServicePanel({
             onConfirm={() => onSubmit?.(done, fields())}
           />
         )}
-        <span className="text-[11.5px] text-slate-400">
+        <span className="text-[11.5px] text-slate-400 dark:text-slate-500">
           “{save?.label ?? 'บันทึกรายละเอียด'}” เก็บค่าไว้เฉย ๆ ไม่เลื่อนขั้น · “{done?.label ?? 'ดำเนินการเสร็จ'}”
           ส่งต่อให้ต้นสังกัดรับงาน
         </span>
@@ -2884,7 +2884,7 @@ function CrReceiveJobPanel({
   isOurTurn: boolean;
 }) {
   if (state === 'upcoming')
-    return <p className="text-[12.5px] text-slate-400">— ยังไม่ถึงขั้นรับงาน (รอแผนก CR ดำเนินการให้เสร็จก่อน)</p>;
+    return <p className="text-[12.5px] text-slate-400 dark:text-slate-500">— ยังไม่ถึงขั้นรับงาน (รอแผนก CR ดำเนินการให้เสร็จก่อน)</p>;
 
   const by = resolution?.acceptedBy || acceptLog?.actionByName;
   // ReceiveDateJob เก็บเป็น date (ตัดเวลาทิ้ง) → โชว์เฉพาะวันที่ ไม่ใส่เวลาให้เข้าใจผิด
@@ -2900,7 +2900,7 @@ function CrReceiveJobPanel({
   return (
     <div className="flex flex-col gap-4">
       {state === 'current' && (
-        <p className="flex items-center gap-1.5 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-[12.5px] font-semibold text-amber-800">
+        <p className="flex items-center gap-1.5 rounded-lg border border-amber-200 dark:border-amber-900 bg-amber-50 dark:bg-amber-950/40 px-3 py-2 text-[12.5px] font-semibold text-amber-800 dark:text-amber-200">
           <IconBell size={14} className="shrink-0" />
           {isOurTurn
             ? 'แผนก CR ดำเนินการเสร็จแล้ว — ตรวจผลงานด้านล่างแล้วกด “รับงาน”'
@@ -2910,7 +2910,7 @@ function CrReceiveJobPanel({
 
       {/* ต้องเห็นว่า CR ทำอะไรไปก่อนถึงจะกดรับงานได้อย่างมีความหมาย */}
       <div>
-        <span className="mb-1 block text-[11.5px] font-semibold text-gray-500">รายละเอียดการดำเนินการของแผนก CR</span>
+        <span className="mb-1 block text-[11.5px] font-semibold text-gray-500 dark:text-slate-400">รายละเอียดการดำเนินการของแผนก CR</span>
         <ReadBox text={resolution?.resolutionDetail} />
       </div>
 
@@ -2925,7 +2925,7 @@ function CrReceiveJobPanel({
               {serviceAt && (
                 <span
                   className={`rounded-md px-1.5 py-0.5 text-[11px] font-semibold ${
-                    late ? 'bg-rose-50 text-rose-700' : 'bg-emerald-50 text-emerald-700'
+                    late ? 'bg-rose-50 dark:bg-rose-950/40 text-rose-700' : 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300'
                   }`}
                 >
                   {late ? 'เกินกำหนด' : 'ตรงกำหนด'}
@@ -2973,7 +2973,7 @@ function CrClosePanel({
 
   if (state === 'upcoming')
     return (
-      <p className="text-[12.5px] text-slate-400">
+      <p className="text-[12.5px] text-slate-400 dark:text-slate-500">
         — ยังไม่ถึงขั้นปิดงาน (รอหน่วยงานผู้แจ้งกดรับงานก่อน)
       </p>
     );
@@ -2993,7 +2993,7 @@ function CrClosePanel({
       )}
 
       <div>
-        <span className="mb-1 block text-[11.5px] font-semibold text-gray-500">รายละเอียดการดำเนินการ</span>
+        <span className="mb-1 block text-[11.5px] font-semibold text-gray-500 dark:text-slate-400">รายละเอียดการดำเนินการ</span>
         <ReadBox text={resolution?.resolutionDetail} />
       </div>
 
@@ -3009,14 +3009,14 @@ function CrClosePanel({
             onChange={(e) => setActionDetail(e.target.value)}
             className={`${SVC_INPUT} resize-y leading-relaxed`}
           />
-          <p className="mt-1 text-[11px] text-slate-400">
+          <p className="mt-1 text-[11px] text-slate-400 dark:text-slate-500">
             {actionDetail.length}/{CR_ACTION_DETAIL_MAX} ตัวอักษร
           </p>
         </div>
       ) : (
         resolution?.actionDetail && (
           <div>
-            <span className="mb-1 block text-[11.5px] font-semibold text-gray-500">รายละเอียดการปิดงาน</span>
+            <span className="mb-1 block text-[11.5px] font-semibold text-gray-500 dark:text-slate-400">รายละเอียดการปิดงาน</span>
             <ReadBox text={resolution.actionDetail} />
           </div>
         )
@@ -3028,7 +3028,7 @@ function CrClosePanel({
       </div>
 
       {editable && (
-        <div className="flex flex-wrap items-center gap-2 border-t border-gray-100 pt-4">
+        <div className="flex flex-wrap items-center gap-2 border-t border-gray-100 dark:border-slate-800 pt-4">
           <ConfirmButton
             label={close!.label}
             className={actionBtnClass(close!.style)}
@@ -3053,10 +3053,10 @@ function AttachmentThumb({ url, fileName }: { url: string | null; fileName: stri
     return (
       <span
         title={url ? 'กำลังโหลดรูป…' : 'ไม่มีไฟล์'}
-        className="inline-flex h-24 w-24 flex-col items-center justify-center gap-1 rounded-lg border border-gray-200 bg-slate-50 px-1.5 text-center"
+        className="inline-flex h-24 w-24 flex-col items-center justify-center gap-1 rounded-lg border border-gray-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 px-1.5 text-center"
       >
-        <IconPaperclip size={15} className="text-slate-400" />
-        <span className="line-clamp-2 break-all text-[10px] text-slate-500">{fileName}</span>
+        <IconPaperclip size={15} className="text-slate-400 dark:text-slate-500" />
+        <span className="line-clamp-2 break-all text-[10px] text-slate-500 dark:text-slate-400">{fileName}</span>
       </span>
     );
   }
@@ -3066,7 +3066,7 @@ function AttachmentThumb({ url, fileName }: { url: string | null; fileName: stri
         src={src}
         alt={fileName}
         title={fileName}
-        className="h-24 w-24 rounded-lg border border-gray-200 object-cover transition hover:opacity-90"
+        className="h-24 w-24 rounded-lg border border-gray-200 dark:border-slate-700 object-cover transition hover:opacity-90"
       />
     </a>
   );
@@ -3115,7 +3115,7 @@ function SelectWithMaster({
         ))}
       </select>
       {error && (
-        <p className="mt-1 text-[11.5px] font-semibold text-red-600">
+        <p className="mt-1 text-[11.5px] font-semibold text-red-600 dark:text-red-400">
           {error}
           <button type="button" onClick={onRetry} className="ml-1.5 underline hover:no-underline">
             ลองใหม่
@@ -3239,7 +3239,7 @@ function RequestEditPanel({
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="grid grid-cols-2 gap-x-5 gap-y-3 rounded-lg border border-gray-200 bg-slate-50 px-3.5 py-3">
+      <div className="grid grid-cols-2 gap-x-5 gap-y-3 rounded-lg border border-gray-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 px-3.5 py-3">
         <DetailRow label="ผู้แจ้งเรื่อง">{item.requestBy || '—'}</DetailRow>
         <DetailRow label="หน่วยงาน">{item.departmentName || '—'}</DetailRow>
         {/* ใบ CR เก็บ "วันที่ต้องการ" ไว้ในคอลัมน์ RequestDate ซึ่งเป็นช่องที่แก้ได้ในฟอร์มนี้
@@ -3254,7 +3254,7 @@ function RequestEditPanel({
               <span className="mono font-semibold">{crDoc.doc?.section || item.type || '—'}</span>
             </DetailRow>
             <DetailRow label="ประเภทที่แจ้ง">{crDoc.doc?.requestType || '—'}</DetailRow>
-            <div className="col-span-2 text-[11px] text-slate-400">
+            <div className="col-span-2 text-[11px] text-slate-400 dark:text-slate-500">
               ส่วนงานและประเภทที่แจ้งแก้ไม่ได้ — เลขที่ใบ <span className="mono">{item.docNo}</span>{' '}
               ถูกออกจากชุดของสองค่านี้ไปแล้ว ถ้าเลือกผิดต้องเปิดใบใหม่
             </div>
@@ -3265,13 +3265,13 @@ function RequestEditPanel({
       {/* โหลดค่าดิบของใบไม่สำเร็จ = ช่องส่วนงาน/ประเภท/รายละเอียดที่แจ้ง ไม่มีค่าเดิม
           ห้ามให้บันทึก ไม่งั้นจะเขียนทับประเภทของใบด้วยค่าว่าง */}
       {isCr && crDoc.loading && (
-        <p className="flex items-center gap-1.5 text-[12px] text-slate-400">
+        <p className="flex items-center gap-1.5 text-[12px] text-slate-400 dark:text-slate-500">
           <IconLoader2 size={14} className="animate-spin" />
           กำลังโหลดข้อมูลเดิมของใบ...
         </p>
       )}
       {crDocFailed && (
-        <p className="flex items-start gap-1.5 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-[12px] font-semibold text-red-700">
+        <p className="flex items-start gap-1.5 rounded-lg border border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-950/40 px-3 py-2 text-[12px] font-semibold text-red-700 dark:text-red-300">
           <IconAlertTriangle size={14} className="mt-0.5 shrink-0" />
           <span>
             โหลดข้อมูลเดิมของใบไม่สำเร็จ{crDoc.error ? ` (${crDoc.error})` : ''} — แก้ไขไม่ได้ตอนนี้
@@ -3288,16 +3288,16 @@ function RequestEditPanel({
           // ลูกโซ่: ยังไม่เลือกฟิลด์แม่ = ช่องนี้ยังไม่มีตัวเลือกให้เลือก
           const waitingParent = !!f.dependsOn && !form[f.dependsOn];
           const fieldLock = lock || waitingParent;
-          const cls = `w-full rounded-lg border bg-white px-3 py-2 text-[13px] text-gray-800 outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/20 disabled:bg-slate-50 ${
-            err ? 'border-red-300' : 'border-gray-200'
+          const cls = `w-full rounded-lg border bg-white dark:bg-slate-900 px-3 py-2 text-[13px] text-gray-800 dark:text-slate-100 outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/20 disabled:bg-slate-50 ${
+            err ? 'border-red-300 dark:border-red-800' : 'border-gray-200 dark:border-slate-700'
           }`;
           return (
             <div key={f.key} className={f.span2 ? 'col-span-2' : ''}>
               <div className="mb-1 flex items-baseline gap-1.5">
-                <span className="text-[11.5px] font-semibold text-gray-500">{f.label}</span>
-                {f.required && <span className="text-[11.5px] font-bold text-red-500">*</span>}
+                <span className="text-[11.5px] font-semibold text-gray-500 dark:text-slate-400">{f.label}</span>
+                {f.required && <span className="text-[11.5px] font-bold text-red-500 dark:text-red-400">*</span>}
                 {f.maxLen && (
-                  <span className="mono ml-auto text-[10.5px] text-slate-400">
+                  <span className="mono ml-auto text-[10.5px] text-slate-400 dark:text-slate-500">
                     {value.length}/{f.maxLen}
                   </span>
                 )}
@@ -3342,9 +3342,9 @@ function RequestEditPanel({
                   className={cls}
                 />
               )}
-              {err && <p className="mt-1 text-[11.5px] font-semibold text-red-600">{err}</p>}
+              {err && <p className="mt-1 text-[11.5px] font-semibold text-red-600 dark:text-red-400">{err}</p>}
               {!err && waitingParent && (
-                <p className="mt-1 text-[11px] text-slate-400">
+                <p className="mt-1 text-[11px] text-slate-400 dark:text-slate-500">
                   เลือก{fields.find((p) => p.key === f.dependsOn)?.label ?? 'ช่องก่อนหน้า'}ก่อน
                 </p>
               )}
@@ -3358,13 +3358,13 @@ function RequestEditPanel({
       {isPl && (
         <div>
           <div className="mb-1.5 flex items-baseline gap-1.5">
-            <span className="text-[11.5px] font-semibold text-gray-500">รายการที่ขอ</span>
-            <span className="text-[10.5px] text-slate-400">(ไม่บังคับ — ลบแถวออก = ลบรายการนั้นทิ้ง)</span>
+            <span className="text-[11.5px] font-semibold text-gray-500 dark:text-slate-400">รายการที่ขอ</span>
+            <span className="text-[10.5px] text-slate-400 dark:text-slate-500">(ไม่บังคับ — ลบแถวออก = ลบรายการนั้นทิ้ง)</span>
           </div>
-          <div className="overflow-hidden rounded-xl border border-gray-200">
+          <div className="overflow-hidden rounded-xl border border-gray-200 dark:border-slate-700">
             <table className="w-full border-collapse">
               <thead>
-                <tr className="bg-[#0b1220] text-[11.5px] font-semibold text-slate-300">
+                <tr className="bg-[#0b1220] text-[11.5px] font-semibold text-slate-300 dark:text-slate-600">
                   <th className="w-9 px-2 py-2 text-center">#</th>
                   <th className="px-2 py-2 text-left">รายการ</th>
                   <th className="w-20 px-2 py-2 text-center">จำนวน</th>
@@ -3376,14 +3376,14 @@ function RequestEditPanel({
               <tbody>
                 {form.lines.length === 0 && (
                   <tr>
-                    <td colSpan={6} className="px-3 py-3 text-center text-[12.5px] text-slate-400">
+                    <td colSpan={6} className="px-3 py-3 text-center text-[12.5px] text-slate-400 dark:text-slate-500">
                       ยังไม่มีรายการ — กด "เพิ่มรายการ" ด้านล่าง
                     </td>
                   </tr>
                 )}
                 {form.lines.map((l, i) => (
-                  <tr key={l.recNo ?? `new-${i}`} className="border-t border-gray-100">
-                    <td className="mono px-2 py-1.5 text-center text-[12px] text-slate-400">{i + 1}</td>
+                  <tr key={l.recNo ?? `new-${i}`} className="border-t border-gray-100 dark:border-slate-800">
+                    <td className="mono px-2 py-1.5 text-center text-[12px] text-slate-400 dark:text-slate-500">{i + 1}</td>
                     <td className="px-1.5 py-1.5">
                       <input
                         type="text"
@@ -3441,7 +3441,7 @@ function RequestEditPanel({
                         disabled={lock}
                         title="ลบรายการนี้"
                         onClick={() => setLines(form.lines.filter((_, n) => n !== i))}
-                        className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-gray-200 bg-white text-slate-500 transition hover:border-red-200 hover:bg-red-50 hover:text-red-600 disabled:opacity-40"
+                        className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-500 dark:text-slate-400 transition hover:border-red-200 dark:hover:border-red-900 hover:bg-red-50 dark:hover:bg-red-950/40 hover:text-red-600 disabled:opacity-40"
                       >
                         <IconTrash size={14} />
                       </button>
@@ -3451,12 +3451,12 @@ function RequestEditPanel({
               </tbody>
             </table>
           </div>
-          {errors.lines && <p className="mt-1 text-[11.5px] font-semibold text-red-600">{errors.lines}</p>}
+          {errors.lines && <p className="mt-1 text-[11.5px] font-semibold text-red-600 dark:text-red-400">{errors.lines}</p>}
           <button
             type="button"
             disabled={lock}
             onClick={() => setLines([...form.lines, emptyEditLine()])}
-            className="mt-2 inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-[12.5px] font-semibold text-slate-600 transition hover:bg-slate-50 disabled:opacity-40"
+            className="mt-2 inline-flex items-center gap-1.5 rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-1.5 text-[12.5px] font-semibold text-slate-600 dark:text-slate-300 transition hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-40"
           >
             <IconPlus size={14} />
             เพิ่มรายการ
@@ -3477,13 +3477,13 @@ function RequestEditPanel({
         />
       )}
 
-      <p className="text-[11.5px] text-slate-400">
+      <p className="text-[11.5px] text-slate-400 dark:text-slate-500">
         {fieldsEditable
           ? 'แก้ไขได้ก่อน Mgr อนุมัติเท่านั้น — อนุมัติแล้วต้องแจ้งกับผู้รับเรื่องโดยตรง'
           : 'ตอนนี้แก้ได้เฉพาะรูปแนบ — ข้อมูลใบถูกล็อกแล้ว ต้องแจ้งกับผู้รับเรื่องโดยตรง'}
       </p>
 
-      <div className="flex items-center gap-2 border-t border-gray-100 pt-4">
+      <div className="flex items-center gap-2 border-t border-gray-100 dark:border-slate-800 pt-4">
         <button
           type="button"
           disabled={pending || (isCr && !crDoc.doc)}
@@ -3497,7 +3497,7 @@ function RequestEditPanel({
           type="button"
           disabled={pending}
           onClick={onCancel}
-          className="rounded-lg border border-gray-200 bg-white px-4 py-2 text-[13px] font-semibold text-slate-600 transition hover:bg-slate-50 disabled:opacity-50"
+          className="rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-4 py-2 text-[13px] font-semibold text-slate-600 dark:text-slate-300 transition hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-50"
         >
           ยกเลิก
         </button>
@@ -3508,7 +3508,7 @@ function RequestEditPanel({
 
 // input ในตารางรายการที่ขอ — เตี้ยกว่าฟิลด์ปกติเพื่อให้แถวไม่สูงเกินไป
 const LINE_INPUT_CLS =
-  'w-full rounded-md border border-gray-200 bg-white px-2 py-1 text-[12.5px] text-gray-800 outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/20 disabled:bg-slate-50';
+  'w-full rounded-md border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-2 py-1 text-[12.5px] text-gray-800 dark:text-slate-100 outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/20 disabled:bg-slate-50';
 
 // ── รูปแนบ 3 ช่อง (ImgPath1/2/3) ────────────────────────────────
 // เป็น "ช่อง" ไม่ใช่ลิสต์ — เลือกไฟล์ทับช่องเดิม = เขียนทับ ไม่ใช่เพิ่มรูปที่ 4
@@ -3558,12 +3558,12 @@ function AttachmentSlots({
   return (
     <div>
       <div className="mb-1.5 flex items-baseline gap-1.5">
-        <span className="text-[11.5px] font-semibold text-gray-500">รูปภาพ</span>
-        <span className="text-[10.5px] text-slate-400">
+        <span className="text-[11.5px] font-semibold text-gray-500 dark:text-slate-400">รูปภาพ</span>
+        <span className="text-[10.5px] text-slate-400 dark:text-slate-500">
           {readOnly ? '(3 ช่อง — ดูได้อย่างเดียว)' : '(3 ช่อง — เลือกไฟล์ทับช่องเดิมได้)'}
         </span>
         {staged > 0 && (
-          <span className="ml-auto rounded-md bg-amber-50 px-1.5 py-0.5 text-[10.5px] font-semibold text-amber-700">
+          <span className="ml-auto rounded-md bg-amber-50 dark:bg-amber-950/40 px-1.5 py-0.5 text-[10.5px] font-semibold text-amber-700 dark:text-amber-300">
             รอบันทึก {staged} ช่อง
           </span>
         )}
@@ -3592,12 +3592,12 @@ function AttachmentSlots({
       </div>
 
       {error && (
-        <p className="mt-1.5 flex items-center gap-1.5 text-[11.5px] font-semibold text-red-600">
+        <p className="mt-1.5 flex items-center gap-1.5 text-[11.5px] font-semibold text-red-600 dark:text-red-400">
           <IconAlertTriangle size={13} className="shrink-0" />
           {error}
         </p>
       )}
-      <p className="mt-1.5 text-[11px] text-slate-400">
+      <p className="mt-1.5 text-[11px] text-slate-400 dark:text-slate-500">
         {readOnly
           ? blockedReason || 'ตอนนี้แนบหรือลบรูปไม่ได้'
           : `รองรับ ${api.extensions.join(' ')} · ไม่เกิน 10 MB ต่อรูป · มีผลเมื่อกดบันทึก`}
@@ -3636,7 +3636,7 @@ function AttachmentSlot({
   const hasSomething = !!preview || !!file;
 
   return (
-    <div className="relative aspect-square overflow-hidden rounded-xl border border-gray-200 bg-slate-50">
+    <div className="relative aspect-square overflow-hidden rounded-xl border border-gray-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60">
       {hasSomething ? (
         shown ? (
           <img
@@ -3646,8 +3646,8 @@ function AttachmentSlot({
           />
         ) : (
           <div className="flex h-full w-full flex-col items-center justify-center gap-1 px-1.5 text-center">
-            <IconLoader2 size={16} className="animate-spin text-slate-400" />
-            <span className="line-clamp-2 break-all text-[10px] text-slate-500">{file?.fileName}</span>
+            <IconLoader2 size={16} className="animate-spin text-slate-400 dark:text-slate-500" />
+            <span className="line-clamp-2 break-all text-[10px] text-slate-500 dark:text-slate-400">{file?.fileName}</span>
           </div>
         )
       ) : (
@@ -3655,7 +3655,7 @@ function AttachmentSlot({
           type="button"
           disabled={readOnly || busy}
           onClick={() => inputRef.current?.click()}
-          className="flex h-full w-full flex-col items-center justify-center gap-1.5 text-slate-400 transition enabled:hover:bg-white enabled:hover:text-accent disabled:cursor-not-allowed disabled:opacity-50"
+          className="flex h-full w-full flex-col items-center justify-center gap-1.5 text-slate-400 dark:text-slate-500 transition enabled:hover:bg-white enabled:hover:text-accent disabled:cursor-not-allowed disabled:opacity-50"
         >
           <IconPhotoPlus size={20} />
           <span className="text-[11px] font-semibold">ช่องที่ {slot}</span>

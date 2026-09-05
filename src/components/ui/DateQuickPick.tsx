@@ -73,7 +73,7 @@ export function DateQuickPick({
               onClick={() => onChange(v)}
               style={on ? { borderColor: accentColor, color: accentColor } : undefined}
               className={`rounded-lg border px-2.5 py-1 text-[12px] font-semibold transition ${
-                on ? 'bg-white' : 'border-gray-200 bg-white text-slate-500 hover:bg-slate-50'
+                on ? 'bg-white dark:bg-slate-900' : 'border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'
               }`}
             >
               {q.label}
@@ -92,13 +92,13 @@ export function DateQuickPick({
           className={`${inputClass} mono w-auto shrink-0`}
         />
         {label && (
-          <span className="flex min-w-0 items-center gap-1 whitespace-nowrap text-[12.5px] font-semibold text-slate-600">
-            <IconCalendar size={14} className="shrink-0 text-slate-400" />
+          <span className="flex min-w-0 items-center gap-1 whitespace-nowrap text-[12.5px] font-semibold text-slate-600 dark:text-slate-300">
+            <IconCalendar size={14} className="shrink-0 text-slate-400 dark:text-slate-500" />
             {label}
           </span>
         )}
       </div>
-      {invalid && !value && <span className="text-[11.5px] font-semibold text-red-600">ยังไม่ได้เลือกวันที่</span>}
+      {invalid && !value && <span className="text-[11.5px] font-semibold text-red-600 dark:text-red-400">ยังไม่ได้เลือกวันที่</span>}
     </div>
   );
 }

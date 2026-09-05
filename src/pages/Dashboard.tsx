@@ -127,23 +127,23 @@ export function Dashboard() {
         {/* ===== แถบกำกับหน้า ===== */}
         <div className="flex flex-wrap items-center gap-3">
           <div className="min-w-0">
-            <div className="truncate text-[15px] font-bold text-gray-800">
+            <div className="truncate text-[15px] font-bold text-gray-800 dark:text-slate-100">
               สวัสดี {user?.name || user?.username || 'ผู้ใช้งาน'}
             </div>
-            <div className="truncate text-[12.5px] text-gray-500">
+            <div className="truncate text-[12.5px] text-gray-500 dark:text-slate-400">
               {user?.departmentName || user?.departid || 'ไม่ทราบแผนก'}
-              {myModule && <span className="mono ml-1.5 text-gray-400">({myModule})</span>}
+              {myModule && <span className="mono ml-1.5 text-gray-400 dark:text-slate-500">({myModule})</span>}
             </div>
           </div>
 
-          <span className="mono ml-auto rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-[12px] font-semibold text-slate-500">
+          <span className="mono ml-auto rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-1.5 text-[12px] font-semibold text-slate-500 dark:text-slate-400">
             เดือนนี้ · {rangeText(range)}
           </span>
           <button
             onClick={reload}
             disabled={loading}
             title="โหลดข้อมูลใหม่"
-            className="flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-[12.5px] font-semibold text-slate-600 transition hover:bg-slate-50 disabled:opacity-50"
+            className="flex items-center gap-1.5 rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-1.5 text-[12.5px] font-semibold text-slate-600 dark:text-slate-300 transition hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-50"
           >
             <IconRefresh size={14} className={loading ? 'animate-spin' : ''} />
             รีเฟรช
@@ -158,12 +158,12 @@ export function Dashboard() {
         </div>
 
         {error && (
-          <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-[13px] text-red-700">
+          <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-950/40 px-4 py-3 text-[13px] text-red-700 dark:text-red-300">
             <IconAlertTriangle size={16} className="shrink-0" />
             <span className="min-w-0 flex-1">{error}</span>
             <button
               onClick={reload}
-              className="rounded-lg border border-red-300 bg-white px-3 py-1.5 text-[12.5px] font-semibold text-red-700 transition hover:bg-red-50"
+              className="rounded-lg border border-red-300 dark:border-red-800 bg-white dark:bg-slate-900 px-3 py-1.5 text-[12.5px] font-semibold text-red-700 dark:text-red-300 transition hover:bg-red-50 dark:hover:bg-red-950/40"
             >
               ลองใหม่
             </button>
@@ -180,7 +180,7 @@ export function Dashboard() {
           />
         ) : (
           !modulesLoading && (
-            <div className="rounded-2xl border border-gray-200 bg-white px-5 py-4 text-[13px] text-gray-500 shadow-sm">
+            <div className="rounded-2xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-5 py-4 text-[13px] text-gray-500 dark:text-slate-400 shadow-sm">
               แผนกนี้ไม่ได้เป็นแผนกปลายทางในระบบใบรับเรื่อง จึงไม่มีคิวงานที่แจ้งเข้ามา
             </div>
           )
@@ -257,8 +257,8 @@ function TodoSection({
   const oldest = rows.find((r) => r.days !== null)?.days ?? null;
 
   return (
-    <section className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
-      <div className="flex flex-wrap items-center gap-3 border-b border-gray-200 bg-[#0b1220] px-5 py-3.5">
+    <section className="overflow-hidden rounded-2xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-sm">
+      <div className="flex flex-wrap items-center gap-3 border-b border-gray-200 dark:border-slate-700 bg-[#0b1220] px-5 py-3.5">
         <IconChecks size={20} className="text-white/70" />
         <div className="min-w-0">
           <div className="text-[13px] text-white/70">งานที่รอแผนกเราลงมือ</div>
@@ -277,14 +277,14 @@ function TodoSection({
       {loading ? (
         <div className="flex flex-col gap-2 p-5">
           {[0, 1, 2].map((i) => (
-            <div key={i} className="h-9 animate-pulse rounded-lg bg-slate-100" />
+            <div key={i} className="h-9 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" />
           ))}
         </div>
       ) : rows.length === 0 ? (
         <div className="flex flex-col items-center gap-1.5 px-5 py-9 text-center">
           <IconChecks size={26} className="text-emerald-500" />
-          <div className="text-[14px] font-semibold text-gray-700">ไม่มีใบที่รอแผนกเราลงมือ</div>
-          <div className="text-[12.5px] text-gray-500">
+          <div className="text-[14px] font-semibold text-gray-700 dark:text-slate-200">ไม่มีใบที่รอแผนกเราลงมือ</div>
+          <div className="text-[12.5px] text-gray-500 dark:text-slate-400">
             ทั้งคิวงานที่แจ้งเข้ามาและใบที่เราแจ้งออกไป ไม่มีอะไรค้างอยู่ที่เราในเดือนนี้
           </div>
         </div>
@@ -293,9 +293,9 @@ function TodoSection({
           {shown.map((r) => (
             <TodoRowView key={r.key} row={r} onOpen={() => onOpen(r)} />
           ))}
-          <div className="flex flex-wrap items-center gap-3 bg-slate-50 px-5 py-2.5 text-[12px]">
+          <div className="flex flex-wrap items-center gap-3 bg-slate-50 dark:bg-slate-800/60 px-5 py-2.5 text-[12px]">
             {rows.length > shown.length && (
-              <span className="text-slate-500">
+              <span className="text-slate-500 dark:text-slate-400">
                 และอีก <b className="mono">{rows.length - shown.length}</b> ใบ
               </span>
             )}
@@ -325,27 +325,27 @@ function TodoRowView({ row, onOpen }: { row: TodoRow; onOpen: () => void }) {
   return (
     <button
       onClick={onOpen}
-      className="flex w-full flex-wrap items-center gap-2.5 border-b border-[#eef1f6] px-5 py-2.5 text-left transition hover:bg-slate-50"
+      className="flex w-full flex-wrap items-center gap-2.5 border-b border-[#eef1f6] dark:border-slate-800 px-5 py-2.5 text-left transition hover:bg-slate-50 dark:hover:bg-slate-800"
     >
       <span
         className="shrink-0 rounded-md border px-2 py-0.5 text-[11px] font-semibold"
         title={om.hint}
         style={
           origin === 'incoming'
-            ? { background: '#eff6ff', color: '#1d4ed8', borderColor: '#bfdbfe' }
-            : { background: '#fffbeb', color: '#b45309', borderColor: '#fde68a' }
+            ? { background: 'var(--ph-accept-bg)', color: 'var(--ph-accept-fg)', borderColor: 'var(--ph-accept-bd)' }
+            : { background: 'var(--ph-progress-bg)', color: 'var(--ph-progress-fg)', borderColor: 'var(--ph-progress-bd)' }
         }
       >
         {om.label}
       </span>
       <span className="mono shrink-0 text-[12.5px] font-semibold text-accent">{item.docNo}</span>
-      <span className="mono shrink-0 rounded border border-gray-200 px-1.5 py-0.5 text-[11px] text-slate-500">
+      <span className="mono shrink-0 rounded border border-gray-200 dark:border-slate-700 px-1.5 py-0.5 text-[11px] text-slate-500 dark:text-slate-400">
         {item.module}
       </span>
-      <span className="min-w-0 flex-1 truncate text-[13px] text-slate-700">
+      <span className="min-w-0 flex-1 truncate text-[13px] text-slate-700 dark:text-slate-200">
         {item.detail || item.requestType || '—'}
       </span>
-      <span className="shrink-0 text-[12px] text-gray-400">
+      <span className="shrink-0 text-[12px] text-gray-400 dark:text-slate-500">
         {item.requestBy || '—'} · {fmtDate(item.requestDate) || '—'}
       </span>
       <span
@@ -357,14 +357,14 @@ function TodoRowView({ row, onOpen }: { row: TodoRow; onOpen: () => void }) {
       {days !== null && (
         <span
           className={`mono shrink-0 rounded-md px-2 py-0.5 text-[11.5px] font-bold ${
-            late ? 'bg-red-50 text-red-600' : 'bg-slate-100 text-slate-500'
+            late ? 'bg-red-50 dark:bg-red-950/40 text-red-600 dark:text-red-400' : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400'
           }`}
           title="นับจากครั้งล่าสุดที่ใบขยับ"
         >
           {days} วัน
         </span>
       )}
-      <IconArrowRight size={14} className="shrink-0 text-gray-300" />
+      <IconArrowRight size={14} className="shrink-0 text-gray-300 dark:text-slate-600" />
     </button>
   );
 }
@@ -390,14 +390,14 @@ function IncomingSection({
   );
 
   return (
-    <section className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+    <section className="rounded-2xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-5 shadow-sm">
       <div className="mb-3 flex flex-wrap items-center gap-2.5">
-        <IconInbox size={18} className="text-slate-400" />
-        <h2 className="text-[14.5px] font-bold text-gray-800">งานที่แจ้งเข้ามาที่แผนกเรา</h2>
-        <span className="mono rounded border border-gray-200 px-1.5 py-0.5 text-[11px] text-slate-500">
+        <IconInbox size={18} className="text-slate-400 dark:text-slate-500" />
+        <h2 className="text-[14.5px] font-bold text-gray-800 dark:text-slate-100">งานที่แจ้งเข้ามาที่แผนกเรา</h2>
+        <span className="mono rounded border border-gray-200 dark:border-slate-700 px-1.5 py-0.5 text-[11px] text-slate-500 dark:text-slate-400">
           {module}
         </span>
-        <span className="text-[12.5px] text-gray-500">
+        <span className="text-[12.5px] text-gray-500 dark:text-slate-400">
           {loading ? 'กำลังโหลด…' : `แจ้งเข้ามาในเดือนนี้ ${total} ใบ`}
         </span>
         <Link to="/inbox" className="ml-auto text-[12.5px] font-semibold text-accent hover:underline">
@@ -409,9 +409,9 @@ function IncomingSection({
         <PhaseCard
           label="ถึงคิวเราต้องลงมือ"
           value={loading ? null : myTurnCount}
-          color="#1d4ed8"
-          bg="#eff6ff"
-          border="#bfdbfe"
+          color="var(--ph-accept-fg)"
+          bg="var(--ph-accept-bg)"
+          border="var(--ph-accept-bd)"
           to="/inbox?myturn=1"
         />
         {sorted.map((p) => {
@@ -433,7 +433,7 @@ function IncomingSection({
       {/* "ปิดงานแล้ว" = ใบที่ *แจ้งเข้ามา* ในเดือนนี้แล้วปิดไปแล้ว ไม่ใช่ "ใบที่ปิดในเดือนนี้"
           — API กรองช่วงวันที่จาก RequestDate เท่านั้น ใบที่แจ้งเดือนก่อนแล้วเพิ่งปิด
           เดือนนี้จึงไม่ถูกนับ ต้องเขียนกำกับไว้ ไม่ปล่อยให้ตีความเอง */}
-      <p className="mt-2.5 text-[11.5px] text-gray-400">
+      <p className="mt-2.5 text-[11.5px] text-gray-400 dark:text-slate-500">
         ทุกตัวเลขนับจากใบที่แจ้งเข้ามาในเดือนนี้ (ตามวันที่แจ้ง ไม่ใช่วันที่ปิดงาน)
       </p>
     </section>
@@ -486,16 +486,16 @@ function OutgoingStrip({
   const open = total - pick('closed') - pick('cancelled');
 
   return (
-    <section className="flex flex-wrap items-center gap-x-6 gap-y-2 rounded-2xl border border-gray-200 bg-white px-5 py-3.5 text-[13px] shadow-sm">
-      <span className="font-bold text-gray-800">เรื่องที่แผนกเราแจ้งออกไป</span>
-      <span className="text-slate-600">
+    <section className="flex flex-wrap items-center gap-x-6 gap-y-2 rounded-2xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-5 py-3.5 text-[13px] shadow-sm">
+      <span className="font-bold text-gray-800 dark:text-slate-100">เรื่องที่แผนกเราแจ้งออกไป</span>
+      <span className="text-slate-600 dark:text-slate-300">
         เดือนนี้ <b className="mono">{loading ? '—' : total}</b> ใบ
       </span>
-      <span className="text-slate-600">
+      <span className="text-slate-600 dark:text-slate-300">
         ยังไม่ปิด <b className="mono">{loading ? '—' : open}</b> ใบ
       </span>
-      <span className="text-slate-600">
-        รอเรากดต่อ <b className="mono text-amber-600">{loading ? '—' : waitingUs}</b> ใบ
+      <span className="text-slate-600 dark:text-slate-300">
+        รอเรากดต่อ <b className="mono text-amber-600 dark:text-amber-400">{loading ? '—' : waitingUs}</b> ใบ
       </span>
       <Link to="/my" className="ml-auto font-semibold text-accent hover:underline">
         ดูทั้งหมด

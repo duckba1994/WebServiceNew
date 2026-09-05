@@ -40,16 +40,16 @@ export function Resources() {
       <div className="flex flex-col gap-5">
         {/* ===== แถบข้อมูลกำกับหน้า ===== */}
         <div className="flex flex-wrap items-center gap-3">
-          <div className="text-[13px] text-gray-500">
+          <div className="text-[13px] text-gray-500 dark:text-slate-400">
             ภาพรวมเครื่องจักรและคนขับแบบเรียลไทม์ · อัปเดต <span className="mono">{updatedAt}</span>
           </div>
-          <div className="ml-auto text-xs text-gray-400">มุมมอง: {DASHBOARD_SCOPE}</div>
+          <div className="ml-auto text-xs text-gray-400 dark:text-slate-500">มุมมอง: {DASHBOARD_SCOPE}</div>
         </div>
 
         {/* ===== สรุปสถานะเครื่องจักร ===== */}
         <section>
-          <h2 className="mb-2.5 text-sm font-bold text-gray-700">
-            เครื่องจักร <span className="font-medium text-gray-400">({TOTAL_MACHINES} คัน)</span>
+          <h2 className="mb-2.5 text-sm font-bold text-gray-700 dark:text-slate-200">
+            เครื่องจักร <span className="font-medium text-gray-400 dark:text-slate-500">({TOTAL_MACHINES} คัน)</span>
           </h2>
           <div className="grid grid-cols-2 gap-3.5 sm:grid-cols-3 xl:grid-cols-6">
             {MACHINE_SUMMARY.map(({ status, count }) => {
@@ -57,13 +57,13 @@ export function Resources() {
               return (
                 <div
                   key={status}
-                  className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm transition hover:border-gray-300 hover:shadow-md"
+                  className="rounded-2xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-4 shadow-sm transition hover:border-gray-300 dark:hover:border-slate-600 hover:shadow-md"
                 >
                   <div className="mb-1.5 flex items-center gap-2">
                     <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: meta.color }} />
-                    <span className="truncate text-xs font-medium text-gray-500">{meta.label}</span>
+                    <span className="truncate text-xs font-medium text-gray-500 dark:text-slate-400">{meta.label}</span>
                   </div>
-                  <div className="mono text-3xl font-bold leading-none text-gray-900">{count}</div>
+                  <div className="mono text-3xl font-bold leading-none text-gray-900 dark:text-slate-100">{count}</div>
                 </div>
               );
             })}
@@ -73,9 +73,9 @@ export function Resources() {
         {/* ===== ตารางความเคลื่อนไหว + สถานะคนขับ ===== */}
         <div className="grid gap-5 xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
           {/* เครื่องจักรที่มีความเคลื่อนไหว */}
-          <section className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
-            <div className="flex items-center justify-between border-b border-gray-200 px-5 py-3.5">
-              <h3 className="text-[15px] font-bold text-gray-800">เครื่องจักรที่มีความเคลื่อนไหว</h3>
+          <section className="overflow-hidden rounded-2xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-sm">
+            <div className="flex items-center justify-between border-b border-gray-200 dark:border-slate-700 px-5 py-3.5">
+              <h3 className="text-[15px] font-bold text-gray-800 dark:text-slate-100">เครื่องจักรที่มีความเคลื่อนไหว</h3>
               <button type="button" className="text-xs font-semibold text-accent hover:underline">
                 ดูทั้งหมด
               </button>
@@ -87,7 +87,7 @@ export function Resources() {
                     {['เบอร์รถ', 'ประเภท', 'สถานะ', 'งาน / ลูกค้า'].map((h) => (
                       <th
                         key={h}
-                        className="whitespace-nowrap border-b border-gray-200 bg-slate-50 px-5 py-2.5 text-left text-[11.5px] font-semibold text-gray-500"
+                        className="whitespace-nowrap border-b border-gray-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 px-5 py-2.5 text-left text-[11.5px] font-semibold text-gray-500 dark:text-slate-400"
                       >
                         {h}
                       </th>
@@ -96,18 +96,18 @@ export function Resources() {
                 </thead>
                 <tbody>
                   {MOCK_ACTIVE_MACHINES.map((m) => (
-                    <tr key={m.code} className="transition-colors hover:bg-slate-50">
-                      <td className="mono whitespace-nowrap border-b border-[#eef1f6] px-5 py-3 text-[13px] font-semibold text-gray-900">
+                    <tr key={m.code} className="transition-colors hover:bg-slate-50 dark:hover:bg-slate-800">
+                      <td className="mono whitespace-nowrap border-b border-[#eef1f6] dark:border-slate-800 px-5 py-3 text-[13px] font-semibold text-gray-900 dark:text-slate-100">
                         {m.code}
                       </td>
-                      <td className="whitespace-nowrap border-b border-[#eef1f6] px-5 py-3 text-[13px] text-slate-700">
+                      <td className="whitespace-nowrap border-b border-[#eef1f6] dark:border-slate-800 px-5 py-3 text-[13px] text-slate-700 dark:text-slate-200">
                         {m.type}
                       </td>
-                      <td className="border-b border-[#eef1f6] px-5 py-3">
+                      <td className="border-b border-[#eef1f6] dark:border-slate-800 px-5 py-3">
                         <StatusBadge status={m.status} />
                       </td>
-                      <td className="border-b border-[#eef1f6] px-5 py-3 text-[13px] text-slate-700">
-                        {m.job === '—' ? <span className="text-slate-300">—</span> : m.job}
+                      <td className="border-b border-[#eef1f6] dark:border-slate-800 px-5 py-3 text-[13px] text-slate-700 dark:text-slate-200">
+                        {m.job === '—' ? <span className="text-slate-300 dark:text-slate-600">—</span> : m.job}
                       </td>
                     </tr>
                   ))}
@@ -117,10 +117,10 @@ export function Resources() {
           </section>
 
           {/* สถานะคนขับ */}
-          <section className="flex flex-col rounded-2xl border border-gray-200 bg-white shadow-sm">
-            <div className="border-b border-gray-200 px-5 py-3.5">
-              <h3 className="text-[15px] font-bold text-gray-800">
-                สถานะคนขับ <span className="font-medium text-gray-400">({TOTAL_DRIVERS} คน)</span>
+          <section className="flex flex-col rounded-2xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-sm">
+            <div className="border-b border-gray-200 dark:border-slate-700 px-5 py-3.5">
+              <h3 className="text-[15px] font-bold text-gray-800 dark:text-slate-100">
+                สถานะคนขับ <span className="font-medium text-gray-400 dark:text-slate-500">({TOTAL_DRIVERS} คน)</span>
               </h3>
             </div>
             <div className="flex flex-col gap-1 p-5">
@@ -129,14 +129,14 @@ export function Resources() {
                 return (
                   <div key={status} className="flex items-center gap-2.5 py-1.5">
                     <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: meta.color }} />
-                    <span className="text-[13px] text-slate-700">{meta.label}</span>
-                    <span className="mono ml-auto text-base font-bold text-gray-900">{count}</span>
+                    <span className="text-[13px] text-slate-700 dark:text-slate-200">{meta.label}</span>
+                    <span className="mono ml-auto text-base font-bold text-gray-900 dark:text-slate-100">{count}</span>
                   </div>
                 );
               })}
 
               {EXPIRING_DRIVER_CERTS > 0 && (
-                <div className="mt-3 flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3.5 py-3 text-[12.5px] leading-relaxed text-amber-800">
+                <div className="mt-3 flex items-start gap-2 rounded-xl border border-amber-200 dark:border-amber-900 bg-amber-50 dark:bg-amber-950/40 px-3.5 py-3 text-[12.5px] leading-relaxed text-amber-800 dark:text-amber-200">
                   <IconAlertTriangle size={16} className="mt-0.5 shrink-0" />
                   <span>
                     ใบเซอร์คนขับ <b>{EXPIRING_DRIVER_CERTS} ใบ</b> ใกล้หมดอายุใน 30 วัน —

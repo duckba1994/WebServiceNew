@@ -1,6 +1,9 @@
 /** @type {import('tailwindcss').Config} */
 module.exports = {
   content: ['./src/**/*.{js,jsx,ts,tsx}', './public/index.html'],
+  // dark mode สลับด้วยคลาส .dark ที่ <html> (ดู hooks/useTheme.ts)
+  // ไม่ใช้ 'media' เพราะผู้ใช้ต้องเลือกเองได้ ไม่ใช่ตามเครื่องอย่างเดียว
+  darkMode: 'class',
   theme: {
     extend: {
       fontFamily: {

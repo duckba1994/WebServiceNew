@@ -15,7 +15,7 @@ import {
 //   purchase = รายการ/จำนวน/หน่วย/ราคา/ผู้ขาย/รวม (จัดซื้อ — สืบราคาหลายรายการ)
 //   simple   = รายการ/จำนวน/หน่วย/หมายเหตุ (PL — ขอของ/ขอบริการ ไม่มีราคา)
 const CELL_CLS =
-  'w-full rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-[12.5px] text-gray-800 outline-none transition focus:border-accent';
+  'w-full rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-2.5 py-1.5 text-[12.5px] text-gray-800 dark:text-slate-100 outline-none transition focus:border-accent';
 
 export function LineItemsTable({
   value,
@@ -46,11 +46,11 @@ export function LineItemsTable({
   const total = withPrice ? lineItemsTotal(value) : 0;
 
   return (
-    <div className={`overflow-hidden rounded-xl border ${invalid ? 'border-red-300' : 'border-gray-200'}`}>
+    <div className={`overflow-hidden rounded-xl border ${invalid ? 'border-red-300 dark:border-red-800' : 'border-gray-200 dark:border-slate-700'}`}>
       <div className="overflow-x-auto">
         <table className={`w-full border-collapse ${withPrice ? 'min-w-[720px]' : 'min-w-[560px]'}`}>
           <thead>
-            <tr className="bg-[#0b1220] text-[11.5px] font-semibold text-slate-300">
+            <tr className="bg-[#0b1220] text-[11.5px] font-semibold text-slate-300 dark:text-slate-600">
               <th className="w-10 px-2 py-2 text-center">#</th>
               <th className="px-2 py-2 text-left">{withPrice ? 'รายการ / อะไหล่' : 'รายการ'}</th>
               <th className="w-20 px-2 py-2 text-center">จำนวน</th>
@@ -69,8 +69,8 @@ export function LineItemsTable({
           </thead>
           <tbody>
             {value.map((li, i) => (
-              <tr key={li.id} className="border-b border-[#eef1f6] bg-white last:border-b-0">
-                <td className="mono px-2 py-1.5 text-center text-[12px] text-slate-400">{i + 1}</td>
+              <tr key={li.id} className="border-b border-[#eef1f6] dark:border-slate-800 bg-white dark:bg-slate-900 last:border-b-0">
+                <td className="mono px-2 py-1.5 text-center text-[12px] text-slate-400 dark:text-slate-500">{i + 1}</td>
                 <td className="px-2 py-1.5">
                   <input
                     value={li.name}
@@ -122,7 +122,7 @@ export function LineItemsTable({
                         className={CELL_CLS}
                       />
                     </td>
-                    <td className="mono px-2 py-1.5 text-right text-[12.5px] font-semibold text-gray-900">
+                    <td className="mono px-2 py-1.5 text-right text-[12.5px] font-semibold text-gray-900 dark:text-slate-100">
                       {formatBaht(lineTotal(li))}
                     </td>
                   </>
@@ -141,7 +141,7 @@ export function LineItemsTable({
                     type="button"
                     onClick={() => removeRow(li.id)}
                     title="ลบรายการนี้"
-                    className="inline-flex h-6 w-6 items-center justify-center rounded-md border border-gray-200 bg-white text-slate-400 transition hover:border-red-300 hover:bg-red-50 hover:text-red-600"
+                    className="inline-flex h-6 w-6 items-center justify-center rounded-md border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-400 dark:text-slate-500 transition hover:border-red-300 hover:bg-red-50 dark:hover:bg-red-950/40 hover:text-red-600"
                   >
                     <IconTrash size={13} />
                   </button>
@@ -152,29 +152,29 @@ export function LineItemsTable({
         </table>
       </div>
 
-      <div className="flex flex-wrap items-center gap-3 border-t border-gray-200 bg-slate-50 px-3 py-2">
+      <div className="flex flex-wrap items-center gap-3 border-t border-gray-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 px-3 py-2">
         <button
           type="button"
           onClick={addRow}
           style={{ color: accentColor, borderColor: accentColor }}
-          className="flex items-center gap-1.5 rounded-lg border bg-white px-3 py-1.5 text-[12.5px] font-semibold transition hover:bg-slate-50"
+          className="flex items-center gap-1.5 rounded-lg border bg-white dark:bg-slate-900 px-3 py-1.5 text-[12.5px] font-semibold transition hover:bg-slate-50 dark:hover:bg-slate-800"
         >
           <IconPlus size={14} stroke={2.2} />
           เพิ่มรายการ
         </button>
         {withPrice ? (
           <div className="ml-auto flex items-baseline gap-2">
-            <span className="text-[12px] font-semibold text-slate-500">รวมทั้งสิ้น</span>
-            <span className="mono text-[15px] font-bold text-gray-900">{formatBaht(total)}</span>
-            <span className="text-[12px] text-slate-500">บาท</span>
+            <span className="text-[12px] font-semibold text-slate-500 dark:text-slate-400">รวมทั้งสิ้น</span>
+            <span className="mono text-[15px] font-bold text-gray-900 dark:text-slate-100">{formatBaht(total)}</span>
+            <span className="text-[12px] text-slate-500 dark:text-slate-400">บาท</span>
           </div>
         ) : (
           <div className="ml-auto flex items-baseline gap-2">
-            <span className="text-[12px] font-semibold text-slate-500">จำนวนรายการ</span>
-            <span className="mono text-[15px] font-bold text-gray-900">
+            <span className="text-[12px] font-semibold text-slate-500 dark:text-slate-400">จำนวนรายการ</span>
+            <span className="mono text-[15px] font-bold text-gray-900 dark:text-slate-100">
               {value.filter((li) => li.name.trim() !== '').length}
             </span>
-            <span className="text-[12px] text-slate-500">รายการ</span>
+            <span className="text-[12px] text-slate-500 dark:text-slate-400">รายการ</span>
           </div>
         )}
       </div>

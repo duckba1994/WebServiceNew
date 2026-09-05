@@ -51,23 +51,23 @@ export function ColumnFilter({
       {/* คลิกนอกกล่องเพื่อปิด */}
       <div className="fixed inset-0 z-40" onClick={onClose} />
       <div
-        className={`absolute top-full z-50 mt-1 w-[248px] rounded-xl border border-gray-200 bg-white p-2.5 text-left shadow-xl ${
+        className={`absolute top-full z-50 mt-1 w-[248px] rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-2.5 text-left shadow-xl ${
           align === 'left' ? 'left-0' : 'right-0'
         }`}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="mb-2 flex items-center gap-1.5 rounded-lg border border-gray-200 bg-slate-50 px-2 py-1.5 focus-within:border-accent">
-          <IconSearch size={13} className="shrink-0 text-gray-400" />
+        <div className="mb-2 flex items-center gap-1.5 rounded-lg border border-gray-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 px-2 py-1.5 focus-within:border-accent">
+          <IconSearch size={13} className="shrink-0 text-gray-400 dark:text-slate-500" />
           <input
             autoFocus
             value={q}
             onChange={(e) => setQ(e.target.value)}
             placeholder="ค้นหาค่า..."
-            className="min-w-0 flex-1 bg-transparent text-[12px] text-gray-800 outline-none placeholder:text-gray-400"
+            className="min-w-0 flex-1 bg-transparent text-[12px] text-gray-800 dark:text-slate-100 outline-none placeholder:text-gray-400 dark:placeholder:text-slate-500"
           />
         </div>
 
-        <label className="flex cursor-pointer items-center gap-2 border-b border-gray-100 px-1 py-1.5 text-[12px] font-semibold text-slate-700">
+        <label className="flex cursor-pointer items-center gap-2 border-b border-gray-100 dark:border-slate-800 px-1 py-1.5 text-[12px] font-semibold text-slate-700 dark:text-slate-200">
           <input
             type="checkbox"
             checked={allShownChecked}
@@ -79,12 +79,12 @@ export function ColumnFilter({
 
         <div className="max-h-[220px] overflow-y-auto py-1">
           {shown.length === 0 ? (
-            <div className="px-1 py-3 text-center text-[12px] text-gray-400">ไม่พบค่าที่ค้นหา</div>
+            <div className="px-1 py-3 text-center text-[12px] text-gray-400 dark:text-slate-500">ไม่พบค่าที่ค้นหา</div>
           ) : (
             shown.map((o) => (
               <label
                 key={o}
-                className="flex cursor-pointer items-center gap-2 rounded px-1 py-1 text-[12px] text-slate-700 hover:bg-slate-50"
+                className="flex cursor-pointer items-center gap-2 rounded px-1 py-1 text-[12px] text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800"
               >
                 <input
                   type="checkbox"
@@ -93,26 +93,26 @@ export function ColumnFilter({
                   className="h-[14px] w-[14px] shrink-0 cursor-pointer accent-[#1a5fb4]"
                 />
                 <span className="truncate" title={o}>
-                  {o === '' ? <span className="text-gray-400">(ว่าง)</span> : o}
+                  {o === '' ? <span className="text-gray-400 dark:text-slate-500">(ว่าง)</span> : o}
                 </span>
               </label>
             ))
           )}
         </div>
 
-        <div className="mt-2 flex items-center gap-1.5 border-t border-gray-100 pt-2">
+        <div className="mt-2 flex items-center gap-1.5 border-t border-gray-100 dark:border-slate-800 pt-2">
           <button
             onClick={() => {
               onApply(undefined);
               onClose();
             }}
-            className="rounded-lg px-2 py-1.5 text-[12px] font-medium text-slate-500 transition hover:text-gray-900"
+            className="rounded-lg px-2 py-1.5 text-[12px] font-medium text-slate-500 dark:text-slate-400 transition hover:text-gray-900 dark:hover:text-white"
           >
             ล้าง
           </button>
           <button
             onClick={onClose}
-            className="ml-auto rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-[12px] font-semibold text-slate-600 transition hover:bg-slate-50"
+            className="ml-auto rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-1.5 text-[12px] font-semibold text-slate-600 dark:text-slate-300 transition hover:bg-slate-50 dark:hover:bg-slate-800"
           >
             ยกเลิก
           </button>

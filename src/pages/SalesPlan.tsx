@@ -86,11 +86,11 @@ function ToolButton({ icon, children, className = '' }: { icon: React.ReactNode;
 }
 
 const DRAWER_INPUT_CLS =
-  'rounded-lg border border-gray-200 bg-slate-50 px-3 py-2 text-[13px] text-gray-800 outline-none transition focus:border-accent focus:bg-white disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-500';
+  'rounded-lg border border-gray-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 px-3 py-2 text-[13px] text-gray-800 dark:text-slate-100 outline-none transition focus:border-accent focus:bg-white dark:focus:bg-slate-900 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-500';
 
 // ── คอนโทรลฟอร์ม "เพิ่มแผนขาย" (controlled) ─────────────────────
 // คลาสขอบแดงเมื่อข้อมูลไม่ผ่านการตรวจสอบ
-const INVALID_CLS = '!border-red-400 !bg-red-50 focus:!border-red-500';
+const INVALID_CLS = '!border-red-400 !bg-red-50 dark:bg-red-950/40 focus:!border-red-500';
 
 // ป้ายกำกับ + ช่องกรอก
 function FormRow({
@@ -110,13 +110,13 @@ function FormRow({
 }) {
   return (
     <div className={`flex flex-col gap-1.5 ${span2 ? 'col-span-2' : ''}`} data-invalid={error ? 'true' : undefined}>
-      <span className="flex items-center gap-1.5 text-[11.5px] font-semibold text-gray-500">
+      <span className="flex items-center gap-1.5 text-[11.5px] font-semibold text-gray-500 dark:text-slate-400">
         {label}
-        {required && <span className="text-red-500">*</span>}
-        {hint && <span className="font-normal text-[10.5px] text-gray-400">{hint}</span>}
+        {required && <span className="text-red-500 dark:text-red-400">*</span>}
+        {hint && <span className="font-normal text-[10.5px] text-gray-400 dark:text-slate-500">{hint}</span>}
       </span>
       {children}
-      {error && <span className="text-[11px] font-medium text-red-500">{error}</span>}
+      {error && <span className="text-[11px] font-medium text-red-500 dark:text-red-400">{error}</span>}
     </div>
   );
 }
@@ -234,7 +234,7 @@ function MoneyBox({ value, onChange, invalid }: { value: string; onChange: (v: s
 
   return (
     <div className="relative">
-      <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[12px] font-semibold text-gray-400">
+      <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[12px] font-semibold text-gray-400 dark:text-slate-500">
         ฿
       </span>
       <input
@@ -358,14 +358,14 @@ function PlanEntryForm({
     <>
     <div className="flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto px-5 py-5">
       {errorCount > 0 && (
-        <div className="flex items-center gap-2 rounded-xl border border-red-200 bg-red-50 px-4 py-2.5 text-[12.5px] font-semibold text-red-700">
+        <div className="flex items-center gap-2 rounded-xl border border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-950/40 px-4 py-2.5 text-[12.5px] font-semibold text-red-700 dark:text-red-300">
           <IconAlertTriangle size={16} className="shrink-0" />
           กรุณากรอกข้อมูลที่จำเป็นให้ครบ ({errorCount} รายการ)
         </div>
       )}
 
       {/* 1. ผู้จัดทำ & แหล่งที่มา */}
-      <DrawerSection icon={<IconUser size={16} />} iconClass="bg-blue-50 text-accent" title="ผู้จัดทำ & แหล่งที่มา">
+      <DrawerSection icon={<IconUser size={16} />} iconClass="bg-blue-50 dark:bg-blue-950/40 text-accent" title="ผู้จัดทำ & แหล่งที่มา">
         <FormRow label="ชื่อพนักงานขาย" hint="(กรณี Mgr/เจ้าหน้าที่คีย์แทนฝ่ายขาย)" required span2 error={errors.salemanId}>
           <ComboBox
             value={f.salemanId}
@@ -404,7 +404,7 @@ function PlanEntryForm({
       </DrawerSection>
 
       {/* 2. ลูกค้า */}
-      <DrawerSection icon={<IconMapPin size={16} />} iconClass="bg-blue-50 text-accent" title="ลูกค้า & สถานที่">
+      <DrawerSection icon={<IconMapPin size={16} />} iconClass="bg-blue-50 dark:bg-blue-950/40 text-accent" title="ลูกค้า & สถานที่">
         <FormRow label="ชื่อลูกค้า" hint="(ค้นหาด้วยชื่อ หรือรหัสลูกค้า)" required span2 error={errors.custAccount}>
           <SearchSelect
             value={f.custAccount}
@@ -435,7 +435,7 @@ function PlanEntryForm({
       </DrawerSection>
 
       {/* 3. เครื่องจักร */}
-      <DrawerSection icon={<IconCrane size={16} />} iconClass="bg-amber-50 text-amber-700" title="เครื่องจักรที่ต้องการ">
+      <DrawerSection icon={<IconCrane size={16} />} iconClass="bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300" title="เครื่องจักรที่ต้องการ">
         <FormRow label="ประเภทเครื่องจักรที่ต้องการ" required error={errors.machineTypeId}>
           <ComboBox
             value={f.machineTypeId}
@@ -470,8 +470,8 @@ function PlanEntryForm({
           />
         </FormRow>
         <FormRow label="การเลือกใช้เครื่องจักร" span2>
-          <div className="flex flex-wrap items-center gap-x-6 gap-y-2 rounded-lg border border-gray-200 bg-slate-50 px-3.5 py-2.5">
-            <label className="flex cursor-pointer items-center gap-2 text-[13px] text-slate-700">
+          <div className="flex flex-wrap items-center gap-x-6 gap-y-2 rounded-lg border border-gray-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 px-3.5 py-2.5">
+            <label className="flex cursor-pointer items-center gap-2 text-[13px] text-slate-700 dark:text-slate-200">
               <input
                 type="radio"
                 name="useMode"
@@ -481,7 +481,7 @@ function PlanEntryForm({
               />
               ใช้เครื่องจักรที่ระบุเท่านั้น
             </label>
-            <label className="flex cursor-pointer items-center gap-2 text-[13px] text-slate-700">
+            <label className="flex cursor-pointer items-center gap-2 text-[13px] text-slate-700 dark:text-slate-200">
               <input
                 type="radio"
                 name="useMode"
@@ -535,7 +535,7 @@ function PlanEntryForm({
               inputMode="numeric"
               invalid={!!errors.period}
             />
-            <span className="shrink-0 text-[12.5px] font-semibold text-slate-500">{unit || 'หน่วย'}</span>
+            <span className="shrink-0 text-[12.5px] font-semibold text-slate-500 dark:text-slate-400">{unit || 'หน่วย'}</span>
           </div>
         </FormRow>
         <FormRow label="วันที่ต้องการใช้งาน" required error={errors.startFromDate}>
@@ -567,7 +567,7 @@ function PlanEntryForm({
       </DrawerSection>
 
       {/* 5. มูลค่า & เอกสาร */}
-      <DrawerSection icon={<IconFileInvoice size={16} />} iconClass="bg-emerald-50 text-emerald-600" title="มูลค่า & เอกสารอ้างอิง">
+      <DrawerSection icon={<IconFileInvoice size={16} />} iconClass="bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400" title="มูลค่า & เอกสารอ้างอิง">
         <FormRow label="มูลค่าแผนขาย" hint="(บาท)" required span2 error={errors.planValue}>
           <MoneyBox value={f.planValue} onChange={(v) => set('planValue', v)} invalid={!!errors.planValue} />
         </FormRow>
@@ -587,16 +587,16 @@ function PlanEntryForm({
     </div>
 
     {/* ===== Footer ===== */}
-    <div className="flex shrink-0 items-center gap-2.5 border-t border-gray-200 bg-white px-5 py-3.5">
+    <div className="flex shrink-0 items-center gap-2.5 border-t border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-5 py-3.5">
       {errorCount > 0 && (
-        <span className="flex items-center gap-1.5 text-[12.5px] font-semibold text-red-600">
+        <span className="flex items-center gap-1.5 text-[12.5px] font-semibold text-red-600 dark:text-red-400">
           <IconAlertTriangle size={15} />
           ยังกรอกไม่ครบ {errorCount} รายการ
         </span>
       )}
       <button
         onClick={onClose}
-        className="ml-auto rounded-lg border border-gray-200 bg-white px-5 py-2.5 text-[13px] font-semibold text-slate-600 transition hover:bg-slate-100"
+        className="ml-auto rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-5 py-2.5 text-[13px] font-semibold text-slate-600 dark:text-slate-300 transition hover:bg-slate-100 dark:hover:bg-slate-700"
       >
         ยกเลิก
       </button>
@@ -624,10 +624,10 @@ function DrawerSection({
   children: React.ReactNode;
 }) {
   return (
-    <section className="rounded-2xl border border-gray-200 bg-white p-5">
+    <section className="rounded-2xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-5">
       <div className="mb-4 flex items-center gap-2.5">
         <div className={`flex h-7 w-7 items-center justify-center rounded-lg ${iconClass}`}>{icon}</div>
-        <h3 className="text-sm font-bold text-gray-800">{title}</h3>
+        <h3 className="text-sm font-bold text-gray-800 dark:text-slate-100">{title}</h3>
       </div>
       <div className="grid grid-cols-2 gap-x-4 gap-y-3">{children}</div>
     </section>
@@ -870,7 +870,7 @@ export function SalesPlan() {
   const renderCell = (line: SalesPlanLineApi, col: SalesPlanColumn) => {
     const value = line[col.key];
     const text = cellText(line, col);
-    const blank = <span className="text-slate-300">—</span>;
+    const blank = <span className="text-slate-300 dark:text-slate-600">—</span>;
 
     switch (col.kind) {
       case 'status': {
@@ -889,7 +889,7 @@ export function SalesPlan() {
       case 'plan': {
         if (!text) return blank;
         const lost = mapPlanStatus(line.planStatus) === 'lost';
-        return <span className={`mono font-semibold ${lost ? 'text-red-600' : 'text-accent'}`}>{text}</span>;
+        return <span className={`mono font-semibold ${lost ? 'text-red-600 dark:text-red-400' : 'text-accent'}`}>{text}</span>;
       }
       case 'dept': {
         if (!text) return blank;
@@ -897,7 +897,7 @@ export function SalesPlan() {
         return (
           <span
             className={`inline-block rounded-md border px-2 py-0.5 text-[11px] font-bold ${
-              teal ? 'border-cyan-200 bg-cyan-50 text-cyan-700' : 'border-indigo-200 bg-indigo-50 text-indigo-700'
+              teal ? 'border-cyan-200 bg-cyan-50 text-cyan-700 dark:text-cyan-300' : 'border-indigo-200 bg-indigo-50 text-indigo-700'
             }`}
           >
             {text}
@@ -910,7 +910,7 @@ export function SalesPlan() {
         return (
           <span
             className={`inline-block rounded-md px-2 py-0.5 text-[11.5px] font-semibold ${
-              insert ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-600'
+              insert ? 'bg-amber-100 text-amber-700 dark:text-amber-300' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300'
             }`}
           >
             {text}
@@ -921,7 +921,7 @@ export function SalesPlan() {
         const num = Number(value) || 0;
         const green = col.id === 'actualValueStd' || col.id === 'actualValueG2';
         return (
-          <span className={`mono font-semibold ${green ? (num ? 'text-emerald-700' : 'text-slate-300') : 'text-gray-900'}`}>
+          <span className={`mono font-semibold ${green ? (num ? 'text-emerald-700 dark:text-emerald-300' : 'text-slate-300 dark:text-slate-600') : 'text-gray-900 dark:text-slate-100'}`}>
             {formatMoney(num)}
           </span>
         );
@@ -931,36 +931,36 @@ export function SalesPlan() {
       case 'mono':
         return text ? <span className="mono">{text}</span> : blank;
       case 'date':
-        return text && text !== '—' ? <span className="text-slate-600">{text}</span> : blank;
+        return text && text !== '—' ? <span className="text-slate-600 dark:text-slate-300">{text}</span> : blank;
       case 'check':
         return value ? (
-          <span className="inline-flex h-5 w-5 items-center justify-center rounded-md bg-emerald-50 text-emerald-600">
+          <span className="inline-flex h-5 w-5 items-center justify-center rounded-md bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400">
             <IconCheck size={13} stroke={3} />
           </span>
         ) : (
-          <span className="text-slate-300">–</span>
+          <span className="text-slate-300 dark:text-slate-600">–</span>
         );
       default:
-        if (col.key === 'custName') return <span className="font-semibold text-gray-900">{text || '—'}</span>;
+        if (col.key === 'custName') return <span className="font-semibold text-gray-900 dark:text-slate-100">{text || '—'}</span>;
         return text ? <span>{text}</span> : blank;
     }
   };
 
   return (
     <Layout title="แผนขาย" subtitle="Sales Plan">
-      <div className="flex h-full flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
+      <div className="flex h-full flex-col overflow-hidden rounded-2xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-sm">
       {/* ===== Action toolbar ===== */}
-      <div className="flex shrink-0 flex-wrap items-center gap-2.5 border-b border-gray-200 bg-white px-5 py-2.5">
+      <div className="flex shrink-0 flex-wrap items-center gap-2.5 border-b border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-5 py-2.5">
         <div className="flex items-center gap-2">
-          <div className="flex flex-col rounded-lg border border-gray-200 bg-gray-50 px-3 py-1">
-            <span className="text-[9.5px] tracking-wide text-gray-400">เลขที่เอกสาร</span>
+          <div className="flex flex-col rounded-lg border border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-800/60 px-3 py-1">
+            <span className="text-[9.5px] tracking-wide text-gray-400 dark:text-slate-500">เลขที่เอกสาร</span>
             <div className="flex items-center gap-1.5">
               <select
                 value={selectedPlanId}
                 onChange={(e) => onSelectPlan(e.target.value)}           
                 disabled={plansLoading || !!plansError}
                 title={plansError ?? 'เลือกเลขที่เอกสารแผนขาย'}
-                className="mono min-w-[150px] max-w-[220px] cursor-pointer rounded-md border border-gray-200 bg-white px-2 py-0.5 text-xs font-semibold text-gray-800 outline-none transition focus:border-accent disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-400"
+                className="mono min-w-[150px] max-w-[220px] cursor-pointer rounded-md border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-2 py-0.5 text-xs font-semibold text-gray-800 dark:text-slate-100 outline-none transition focus:border-accent disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-400"
               >
                 <option value="">
                   {plansLoading
@@ -976,12 +976,12 @@ export function SalesPlan() {
                 ))}
               </select>
               {linesLoading && <IconLoader2 size={14} className="animate-spin text-accent" />}
-              {plansError && <IconAlertTriangle size={14} className="text-red-500" />}
+              {plansError && <IconAlertTriangle size={14} className="text-red-500 dark:text-red-400" />}
             </div>
           </div>
-          <div className="flex flex-col rounded-lg border border-gray-200 bg-gray-50 px-3 py-1">
-            <span className="text-[9.5px] tracking-wide text-gray-400">ความต้องการแผนขาย</span>
-            <span className="text-xs font-semibold text-gray-800">{PLAN_MONTH}</span>
+          <div className="flex flex-col rounded-lg border border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-800/60 px-3 py-1">
+            <span className="text-[9.5px] tracking-wide text-gray-400 dark:text-slate-500">ความต้องการแผนขาย</span>
+            <span className="text-xs font-semibold text-gray-800 dark:text-slate-100">{PLAN_MONTH}</span>
           </div>
           <div className="mx-1.5 h-8 w-px bg-gray-200" />
         </div>
@@ -996,45 +996,45 @@ export function SalesPlan() {
           เพิ่มแผนขาย
         </button>
 
-        <div className="flex items-center gap-0.5 rounded-lg border border-gray-200 bg-slate-100 p-1">
-          <ToolButton icon={<IconDeviceFloppy size={14} />} className="border-gray-200 bg-white text-slate-700 hover:border-gray-300">
+        <div className="flex items-center gap-0.5 rounded-lg border border-gray-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 p-1">
+          <ToolButton icon={<IconDeviceFloppy size={14} />} className="border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 hover:border-gray-300 dark:hover:border-slate-600">
             บันทึก
           </ToolButton>
-          <ToolButton icon={<IconCopy size={14} />} className="border-transparent text-slate-600 hover:border-gray-200 hover:bg-white">
+          <ToolButton icon={<IconCopy size={14} />} className="border-transparent text-slate-600 dark:text-slate-300 hover:border-gray-200 hover:bg-white">
             คัดลอกแถว
           </ToolButton>
-          <ToolButton icon={<IconTrash size={14} />} className="border-transparent text-red-700 hover:border-red-200 hover:bg-red-50">
+          <ToolButton icon={<IconTrash size={14} />} className="border-transparent text-red-700 dark:text-red-300 hover:border-red-200 dark:hover:border-red-900 hover:bg-red-50 dark:hover:bg-red-950/40">
             ลบแถว
           </ToolButton>
         </div>
 
         <div className="ml-auto flex items-center gap-2">
-          <ToolButton icon={<IconRefresh size={15} />} className="border-gray-200 bg-white text-slate-700 hover:border-gray-300 hover:bg-slate-50">
+          <ToolButton icon={<IconRefresh size={15} />} className="border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 hover:border-gray-300 dark:hover:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-800">
             รีเฟรช
           </ToolButton>
-          <ToolButton icon={<IconDatabase size={15} />} className="border-gray-200 bg-white text-slate-700 hover:border-gray-300 hover:bg-slate-50">
+          <ToolButton icon={<IconDatabase size={15} />} className="border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 hover:border-gray-300 dark:hover:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-800">
             Master Sales Plan
           </ToolButton>
-          <ToolButton icon={<IconFileSpreadsheet size={15} />} className="border-emerald-200 bg-emerald-50 font-semibold text-emerald-700 hover:bg-emerald-100">
+          <ToolButton icon={<IconFileSpreadsheet size={15} />} className="border-emerald-200 dark:border-emerald-900 bg-emerald-50 dark:bg-emerald-950/40 font-semibold text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-900/40">
             Export Excel
           </ToolButton>
-          <ToolButton icon={<IconPrinter size={15} />} className="border-gray-200 bg-white text-slate-700 hover:border-gray-300 hover:bg-slate-50">
+          <ToolButton icon={<IconPrinter size={15} />} className="border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 hover:border-gray-300 dark:hover:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-800">
             พิมพ์
           </ToolButton>
         </div>
       </div>
 
       {/* ===== Filter / preset bar ===== */}
-      <div className="flex shrink-0 flex-wrap items-center gap-3.5 border-b border-gray-200 bg-slate-50 px-5 py-2">
+      <div className="flex shrink-0 flex-wrap items-center gap-3.5 border-b border-gray-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 px-5 py-2">
         <div className="flex items-center gap-2">
-          <span className="text-[11.5px] font-semibold text-gray-500">คอลัมน์</span>
-          <div className="flex gap-0.5 rounded-lg border border-gray-200 bg-[#eef1f6] p-1">
+          <span className="text-[11.5px] font-semibold text-gray-500 dark:text-slate-400">คอลัมน์</span>
+          <div className="flex gap-0.5 rounded-lg border border-gray-200 dark:border-slate-700 bg-[#eef1f6] dark:bg-slate-800 p-1">
             {(Object.keys(COLUMN_PRESETS) as PresetKey[]).map((key) => (
               <button
                 key={key}
                 onClick={() => setPreset(key)}
                 className={`rounded-md px-3 py-1.5 text-[12.5px] font-semibold transition ${
-                  preset === key ? 'bg-[#0b1220] text-white shadow-sm' : 'text-slate-600 hover:text-gray-900'
+                  preset === key ? 'bg-[#0b1220] text-white shadow-sm' : 'text-slate-600 dark:text-slate-300 hover:text-gray-900 dark:hover:text-white'
                 }`}
               >
                 {COLUMN_PRESETS[key].label}
@@ -1043,8 +1043,8 @@ export function SalesPlan() {
           </div>
         </div>
 
-        <div className="flex w-[280px] max-w-[32vw] items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-1.5 transition focus-within:border-accent">
-          <IconSearch size={16} className="shrink-0 text-gray-400" />
+        <div className="flex w-[280px] max-w-[32vw] items-center gap-2 rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-1.5 transition focus-within:border-accent">
+          <IconSearch size={16} className="shrink-0 text-gray-400 dark:text-slate-500" />
           <input
             type="text"
             value={search}
@@ -1053,11 +1053,11 @@ export function SalesPlan() {
               setPage(1);
             }}
             placeholder="ค้นหาลูกค้า / เลขที่แผน..."
-            className="min-w-0 flex-1 bg-transparent text-[13px] outline-none placeholder:text-gray-400"
+            className="min-w-0 flex-1 bg-transparent text-[13px] outline-none placeholder:text-gray-400 dark:placeholder:text-slate-500"
           />
         </div>
 
-        <label className="flex cursor-pointer select-none items-center gap-2 text-[12.5px] text-slate-600">
+        <label className="flex cursor-pointer select-none items-center gap-2 text-[12.5px] text-slate-600 dark:text-slate-300">
           <input
             type="checkbox"
             checked={showClosed}
@@ -1078,7 +1078,7 @@ export function SalesPlan() {
             setSort(null);
             setPage(1);
           }}
-          className="flex items-center gap-1.5 px-2 py-1.5 text-[12.5px] font-medium text-slate-500 transition hover:text-gray-900"
+          className="flex items-center gap-1.5 px-2 py-1.5 text-[12.5px] font-medium text-slate-500 dark:text-slate-400 transition hover:text-gray-900 dark:hover:text-white"
         >
           <IconFilterOff size={14} />
           ล้างตัวกรอง
@@ -1091,81 +1091,81 @@ export function SalesPlan() {
 
         <div className="ml-auto flex items-center gap-3 text-xs">
           {masterError && (
-            <span className="flex items-center gap-1.5 font-semibold text-amber-700">
+            <span className="flex items-center gap-1.5 font-semibold text-amber-700 dark:text-amber-300">
               <IconAlertTriangle size={13} />
               {masterError}
               <button
                 onClick={reloadMaster}
-                className="rounded border border-amber-300 bg-amber-50 px-1.5 py-0.5 text-[11px] font-semibold text-amber-800 transition hover:bg-amber-100"
+                className="rounded border border-amber-300 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/40 px-1.5 py-0.5 text-[11px] font-semibold text-amber-800 dark:text-amber-200 transition hover:bg-amber-100"
               >
                 ลองใหม่
               </button>
             </span>
           )}
           {linesError && (
-            <span className="flex items-center gap-1 font-semibold text-red-600">
+            <span className="flex items-center gap-1 font-semibold text-red-600 dark:text-red-400">
               <IconAlertTriangle size={13} />
               {linesError}
             </span>
           )}
           {selectedPlanId && !linesError && (
-            <span className="text-slate-400">
-              แผน <b className="mono text-gray-700">{selectedPlanId}</b>
+            <span className="text-slate-400 dark:text-slate-500">
+              แผน <b className="mono text-gray-700 dark:text-slate-200">{selectedPlanId}</b>
             </span>
           )}
         </div>
       </div>
 
       {/* ===== KPI strip ===== */}
-      <div className="grid shrink-0 grid-cols-4 gap-3.5 border-b border-gray-200 bg-white px-5 py-3.5">
-        <div className="flex items-center gap-3 rounded-xl border border-gray-200 p-3.5">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-accent">
+      <div className="grid shrink-0 grid-cols-4 gap-3.5 border-b border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-5 py-3.5">
+        <div className="flex items-center gap-3 rounded-xl border border-gray-200 dark:border-slate-700 p-3.5">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-blue-50 dark:bg-blue-950/40 text-accent">
             <IconTrendingUp size={21} />
           </div>
           <div className="min-w-0">
-            <div className="text-[11.5px] font-medium text-slate-500">มูลค่าแผนขายรวม</div>
-            <div className="mono text-xl font-bold leading-tight text-gray-900">{formatMoney(totals.plan)}</div>
+            <div className="text-[11.5px] font-medium text-slate-500 dark:text-slate-400">มูลค่าแผนขายรวม</div>
+            <div className="mono text-xl font-bold leading-tight text-gray-900 dark:text-slate-100">{formatMoney(totals.plan)}</div>
           </div>
         </div>
-        <div className="flex items-center gap-3 rounded-xl border border-gray-200 p-3.5">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600">
+        <div className="flex items-center gap-3 rounded-xl border border-gray-200 dark:border-slate-700 p-3.5">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400">
             <IconCheck size={21} />
           </div>
           <div className="min-w-0">
-            <div className="text-[11.5px] font-medium text-slate-500">มูลค่าที่ขายได้</div>
-            <div className="mono text-xl font-bold leading-tight text-emerald-700">{formatMoney(totals.sold)}</div>
+            <div className="text-[11.5px] font-medium text-slate-500 dark:text-slate-400">มูลค่าที่ขายได้</div>
+            <div className="mono text-xl font-bold leading-tight text-emerald-700 dark:text-emerald-300">{formatMoney(totals.sold)}</div>
           </div>
         </div>
-        <div className="flex items-center gap-3 rounded-xl border border-gray-200 p-3.5">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-amber-50 text-amber-600">
+        <div className="flex items-center gap-3 rounded-xl border border-gray-200 dark:border-slate-700 p-3.5">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400">
             <IconCalendar size={21} />
           </div>
           <div className="min-w-0">
-            <div className="text-[11.5px] font-medium text-slate-500">คงเหลือ (รอปิด)</div>
-            <div className="mono text-xl font-bold leading-tight text-amber-700">{formatMoney(totals.remain)}</div>
+            <div className="text-[11.5px] font-medium text-slate-500 dark:text-slate-400">คงเหลือ (รอปิด)</div>
+            <div className="mono text-xl font-bold leading-tight text-amber-700 dark:text-amber-300">{formatMoney(totals.remain)}</div>
           </div>
         </div>
-        <div className="flex items-center gap-3 rounded-xl border border-red-200 bg-red-50 p-3.5">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-red-100 text-red-600">
+        <div className="flex items-center gap-3 rounded-xl border border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-950/40 p-3.5">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-red-100 text-red-600 dark:text-red-400">
             <IconX size={21} />
           </div>
           <div className="min-w-0">
-            <div className="text-[11.5px] font-medium text-red-700">LOST SALES</div>
-            <div className="mono text-xl font-bold leading-tight text-red-600">{formatMoney(totals.lost)}</div>
+            <div className="text-[11.5px] font-medium text-red-700 dark:text-red-300">LOST SALES</div>
+            <div className="mono text-xl font-bold leading-tight text-red-600 dark:text-red-400">{formatMoney(totals.lost)}</div>
           </div>
         </div>
       </div>
 
       {/* ===== Table meta bar (จำนวนแถว + ล้างตัวกรองตาราง + จำนวน/หน้า) ===== */}
-      <div className="flex shrink-0 flex-wrap items-center gap-3 border-b border-gray-200 bg-slate-50 px-5 py-1.5 text-xs">
-        <span className="text-slate-500">
-          ตาราง <b className="text-gray-900">{rows.length}</b> รายการ
+      <div className="flex shrink-0 flex-wrap items-center gap-3 border-b border-gray-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 px-5 py-1.5 text-xs">
+        <span className="text-slate-500 dark:text-slate-400">
+          ตาราง <b className="text-gray-900 dark:text-slate-100">{rows.length}</b> รายการ
         </span>
 
         <button
           onClick={clearTableFilters}
           disabled={activeFilterCount === 0 && !sort}
-          className="flex items-center gap-1.5 rounded-md border border-gray-200 bg-white px-2.5 py-1 font-medium text-slate-600 transition hover:border-gray-300 hover:text-gray-900 disabled:cursor-not-allowed disabled:opacity-40"
+          className="flex items-center gap-1.5 rounded-md border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-2.5 py-1 font-medium text-slate-600 dark:text-slate-300 transition hover:border-gray-300 dark:hover:border-slate-600 hover:text-gray-900 dark:hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
         >
           <IconFilterOff size={13} />
           ล้างตัวกรองตาราง
@@ -1176,7 +1176,7 @@ export function SalesPlan() {
           )}
         </button>
 
-        <label className="ml-auto flex items-center gap-1.5 text-slate-500">
+        <label className="ml-auto flex items-center gap-1.5 text-slate-500 dark:text-slate-400">
           แสดง
           <select
             value={String(pageSize)}
@@ -1184,7 +1184,7 @@ export function SalesPlan() {
               setPageSize(e.target.value === 'all' ? 'all' : Number(e.target.value));
               setPage(1);
             }}
-            className="cursor-pointer rounded-md border border-gray-200 bg-white px-2 py-1 text-[12px] font-semibold text-gray-700 outline-none transition focus:border-accent"
+            className="cursor-pointer rounded-md border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-2 py-1 text-[12px] font-semibold text-gray-700 dark:text-slate-200 outline-none transition focus:border-accent"
           >
             {PAGE_SIZES.map((s) => (
               <option key={s} value={String(s)}>
@@ -1198,7 +1198,7 @@ export function SalesPlan() {
 
       {/* ===== Data grid ===== */}
       <div className="relative min-h-0 flex-1">
-        <div className="absolute inset-0 overflow-auto bg-white">
+        <div className="absolute inset-0 overflow-auto bg-white dark:bg-slate-900">
           <table className="w-full min-w-max border-separate border-spacing-0">
             <thead>
               <tr>
@@ -1211,7 +1211,7 @@ export function SalesPlan() {
                   return (
                     <th
                       key={col.id}
-                      className={`top-0 whitespace-nowrap border-b-2 border-accent bg-[#0b1220] px-2 py-1.5 text-[11.5px] font-semibold text-slate-300 ${
+                      className={`top-0 whitespace-nowrap border-b-2 border-accent bg-[#0b1220] px-2 py-1.5 text-[11.5px] font-semibold text-slate-300 dark:text-slate-600 ${
                         sticky ? 'sticky z-30' : 'sticky z-20'
                       } ${col.id === lastStickyId ? 'shadow-[inset_-6px_0_6px_-6px_rgba(0,0,0,0.5)]' : ''}`}
                       style={{
@@ -1285,7 +1285,7 @@ export function SalesPlan() {
                 })}
                 {/* คอลัมน์การกระทำ (แก้ไข / ลบ) — ตรึงไว้ด้านขวาสุด */}
                 <th
-                  className="sticky right-0 top-0 z-30 whitespace-nowrap border-b-2 border-accent bg-[#0b1220] px-2 py-1.5 text-center text-[11.5px] font-semibold text-slate-300 shadow-[inset_6px_0_6px_-6px_rgba(0,0,0,0.5)]"
+                  className="sticky right-0 top-0 z-30 whitespace-nowrap border-b-2 border-accent bg-[#0b1220] px-2 py-1.5 text-center text-[11.5px] font-semibold text-slate-300 dark:text-slate-600 shadow-[inset_6px_0_6px_-6px_rgba(0,0,0,0.5)]"
                   style={{ width: 88, minWidth: 88, maxWidth: 88 }}
                 >
                   จัดการ
@@ -1295,7 +1295,7 @@ export function SalesPlan() {
             <tbody>
               {displayRows.length === 0 && (
                 <tr>
-                  <td colSpan={columns.length + 1} className="h-24 border-b border-[#eef1f6] text-center text-[13px] text-slate-400">
+                  <td colSpan={columns.length + 1} className="h-24 border-b border-[#eef1f6] dark:border-slate-800 text-center text-[13px] text-slate-400 dark:text-slate-500">
                     {linesLoading
                       ? 'กำลังโหลดรายละเอียดแผนขาย...'
                       : selectedPlanId
@@ -1315,7 +1315,7 @@ export function SalesPlan() {
                     key={`${line.spid || line.planId}-${line.recNo}-${rowIndex}`}
                     onClick={() => setFocusedRow(rowIndex)}
                     className={`group cursor-pointer transition-colors ${
-                      highlight ? 'bg-[#eef4fb]' : 'bg-white hover:bg-slate-50'
+                      highlight ? 'bg-[#eef4fb] dark:bg-slate-800' : 'bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800'
                     }`}
                   >
                     {columns.map((col, ci) => {
@@ -1331,9 +1331,9 @@ export function SalesPlan() {
                       return (
                         <td
                           key={col.id}
-                          className={`h-[46px] overflow-hidden text-ellipsis whitespace-nowrap border-b border-[#eef1f6] px-3 text-[13px] text-slate-700 ${
+                          className={`h-[46px] overflow-hidden text-ellipsis whitespace-nowrap border-b border-[#eef1f6] dark:border-slate-800 px-3 text-[13px] text-slate-700 dark:text-slate-200 ${
                             sticky
-                              ? `sticky z-10 ${highlight ? 'bg-[#eef4fb]' : 'bg-white group-hover:bg-slate-50'} ${
+                              ? `sticky z-10 ${highlight ? 'bg-[#eef4fb] dark:bg-slate-800' : 'bg-white dark:bg-slate-900 group-hover:bg-slate-50 dark:group-hover:bg-slate-800'} ${
                                   col.id === lastStickyId
                                     ? 'shadow-[inset_-6px_0_6px_-6px_rgba(0,0,0,0.12)]'
                                     : ''
@@ -1349,7 +1349,7 @@ export function SalesPlan() {
                           }}
                         >
                           {col.id === 'no' ? (
-                            <span className="mono text-slate-500">{cellText(line, col)}</span>
+                            <span className="mono text-slate-500 dark:text-slate-400">{cellText(line, col)}</span>
                           ) : (
                             renderCell(line, col)
                           )}
@@ -1358,8 +1358,8 @@ export function SalesPlan() {
                     })}
                     {/* ปุ่มจัดการ (แก้ไข / ลบ) — ตรึงไว้ด้านขวาสุด */}
                     <td
-                      className={`sticky right-0 z-10 h-[46px] border-b border-[#eef1f6] px-2 shadow-[inset_6px_0_6px_-6px_rgba(0,0,0,0.12)] ${
-                        highlight ? 'bg-[#eef4fb]' : 'bg-white group-hover:bg-slate-50'
+                      className={`sticky right-0 z-10 h-[46px] border-b border-[#eef1f6] dark:border-slate-800 px-2 shadow-[inset_6px_0_6px_-6px_rgba(0,0,0,0.12)] ${
+                        highlight ? 'bg-[#eef4fb] dark:bg-slate-800' : 'bg-white dark:bg-slate-900 group-hover:bg-slate-50 dark:group-hover:bg-slate-800'
                       }`}
                       style={{ width: 88, minWidth: 88, maxWidth: 88 }}
                     >
@@ -1371,7 +1371,7 @@ export function SalesPlan() {
                             openRow(line, rowIndex);
                           }}
                           title="แก้ไข / อนุมัติ"
-                          className="inline-flex h-6 w-6 items-center justify-center rounded-md border border-gray-200 bg-white text-slate-500 opacity-60 transition hover:border-accent hover:bg-[#eef4fb] hover:text-accent group-hover:opacity-100"
+                          className="inline-flex h-6 w-6 items-center justify-center rounded-md border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-500 dark:text-slate-400 opacity-60 transition hover:border-accent hover:bg-[#eef4fb] hover:text-accent group-hover:opacity-100"
                         >
                           <IconPencil size={14} />
                         </button>
@@ -1382,7 +1382,7 @@ export function SalesPlan() {
                             deleteRow(line);
                           }}
                           title="ลบแถวนี้"
-                          className="inline-flex h-6 w-6 items-center justify-center rounded-md border border-gray-200 bg-white text-slate-400 opacity-60 transition hover:border-red-300 hover:bg-red-50 hover:text-red-600 group-hover:opacity-100"
+                          className="inline-flex h-6 w-6 items-center justify-center rounded-md border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-400 dark:text-slate-500 opacity-60 transition hover:border-red-300 hover:bg-red-50 dark:hover:bg-red-950/40 hover:text-red-600 group-hover:opacity-100"
                         >
                           <IconTrash size={14} />
                         </button>
@@ -1398,10 +1398,10 @@ export function SalesPlan() {
 
       {/* ===== Pagination ===== */}
       {rows.length > 0 && (
-        <div className="flex shrink-0 flex-wrap items-center gap-2 border-t border-gray-200 bg-white px-5 py-2">
-          <span className="text-xs text-slate-500">
-            แสดง <b className="text-gray-900">{firstIndex}</b>–<b className="text-gray-900">{lastIndex}</b> จาก{' '}
-            <b className="text-gray-900">{rows.length}</b> รายการ
+        <div className="flex shrink-0 flex-wrap items-center gap-2 border-t border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-5 py-2">
+          <span className="text-xs text-slate-500 dark:text-slate-400">
+            แสดง <b className="text-gray-900 dark:text-slate-100">{firstIndex}</b>–<b className="text-gray-900 dark:text-slate-100">{lastIndex}</b> จาก{' '}
+            <b className="text-gray-900 dark:text-slate-100">{rows.length}</b> รายการ
           </span>
 
           {totalPages > 1 && (
@@ -1410,7 +1410,7 @@ export function SalesPlan() {
                 onClick={() => setPage(1)}
                 disabled={safePage === 1}
                 title="หน้าแรก"
-                className="flex h-8 w-8 items-center justify-center rounded-lg border border-gray-200 bg-white text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+                className="flex h-8 w-8 items-center justify-center rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 transition hover:bg-slate-50 dark:hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-40"
               >
                 <IconChevronsLeft size={16} />
               </button>
@@ -1418,7 +1418,7 @@ export function SalesPlan() {
                 onClick={() => setPage((p) => Math.max(1, p - 1))}
                 disabled={safePage === 1}
                 title="ก่อนหน้า"
-                className="flex h-8 items-center gap-1 rounded-lg border border-gray-200 bg-white px-2.5 text-[12.5px] font-semibold text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+                className="flex h-8 items-center gap-1 rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-2.5 text-[12.5px] font-semibold text-slate-600 dark:text-slate-300 transition hover:bg-slate-50 dark:hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-40"
               >
                 <IconChevronLeft size={15} />
                 ก่อนหน้า
@@ -1426,7 +1426,7 @@ export function SalesPlan() {
 
               {pageItems.map((p, i) =>
                 p === 'gap' ? (
-                  <span key={`gap${i}`} className="px-1 text-xs text-slate-400">
+                  <span key={`gap${i}`} className="px-1 text-xs text-slate-400 dark:text-slate-500">
                     …
                   </span>
                 ) : (
@@ -1436,7 +1436,7 @@ export function SalesPlan() {
                     className={`mono flex h-8 min-w-[32px] items-center justify-center rounded-lg border px-2 text-[12.5px] font-semibold transition ${
                       p === safePage
                         ? 'border-accent bg-accent text-white'
-                        : 'border-gray-200 bg-white text-slate-600 hover:bg-slate-50'
+                        : 'border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800'
                     }`}
                   >
                     {p}
@@ -1448,7 +1448,7 @@ export function SalesPlan() {
                 onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                 disabled={safePage === totalPages}
                 title="ถัดไป"
-                className="flex h-8 items-center gap-1 rounded-lg border border-gray-200 bg-white px-2.5 text-[12.5px] font-semibold text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+                className="flex h-8 items-center gap-1 rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-2.5 text-[12.5px] font-semibold text-slate-600 dark:text-slate-300 transition hover:bg-slate-50 dark:hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-40"
               >
                 ถัดไป
                 <IconChevronRight size={15} />
@@ -1457,7 +1457,7 @@ export function SalesPlan() {
                 onClick={() => setPage(totalPages)}
                 disabled={safePage === totalPages}
                 title="หน้าสุดท้าย"
-                className="flex h-8 w-8 items-center justify-center rounded-lg border border-gray-200 bg-white text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+                className="flex h-8 w-8 items-center justify-center rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 transition hover:bg-slate-50 dark:hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-40"
               >
                 <IconChevronsRight size={16} />
               </button>
@@ -1468,24 +1468,24 @@ export function SalesPlan() {
 
       {/* ===== Totals footer ===== */}
       <footer className="flex shrink-0 items-center gap-6 bg-[#0b1220] px-5 py-3 text-white">
-        <div className="text-xs font-semibold tracking-wide text-slate-500">รวมทั้งหมด</div>
+        <div className="text-xs font-semibold tracking-wide text-slate-500 dark:text-slate-400">รวมทั้งหมด</div>
         <div className="flex items-baseline gap-2">
-          <span className="text-[11.5px] text-slate-400">มูลค่าแผนขาย</span>
+          <span className="text-[11.5px] text-slate-400 dark:text-slate-500">มูลค่าแผนขาย</span>
           <span className="mono text-[15px] font-bold">{formatMoney(totals.plan)}</span>
         </div>
         <div className="flex items-baseline gap-2">
-          <span className="text-[11.5px] text-slate-400">ขายได้</span>
+          <span className="text-[11.5px] text-slate-400 dark:text-slate-500">ขายได้</span>
           <span className="mono text-[15px] font-bold text-emerald-300">{formatMoney(totals.sold)}</span>
         </div>
         <div className="flex items-baseline gap-2">
-          <span className="text-[11.5px] text-slate-400">คงเหลือ</span>
+          <span className="text-[11.5px] text-slate-400 dark:text-slate-500">คงเหลือ</span>
           <span className="mono text-[15px] font-bold text-amber-300">{formatMoney(totals.remain)}</span>
         </div>
         <div className="flex items-baseline gap-2">
           <span className="text-[11.5px] text-red-300">LOST SALES</span>
           <span className="mono text-[15px] font-bold text-red-300">{formatMoney(totals.lost)}</span>
         </div>
-        <div className="ml-auto text-xs text-slate-500">
+        <div className="ml-auto text-xs text-slate-500 dark:text-slate-400">
           อัปเดตล่าสุด{' '}
           {new Date().toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' })}
         </div>
@@ -1497,25 +1497,25 @@ export function SalesPlan() {
         <div className="fixed inset-0 z-40 flex items-center justify-center p-4">
           {/* คลิกฉากหลังไม่ปิด modal — ปิดได้เฉพาะปุ่ม X และ ยกเลิก เท่านั้น */}
           <div className="backdrop-fade-in absolute inset-0 bg-slate-900/50" />
-          <div className="modal-pop relative flex max-h-[92vh] w-[min(760px,96vw)] flex-col overflow-hidden rounded-2xl bg-[#f4f6fa] shadow-2xl">
-            <div className="flex shrink-0 items-center gap-3.5 border-b border-gray-200 bg-white px-5 py-4">
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-accent">
+          <div className="modal-pop relative flex max-h-[92vh] w-[min(760px,96vw)] flex-col overflow-hidden rounded-2xl bg-[#f4f6fa] dark:bg-slate-950 shadow-2xl">
+            <div className="flex shrink-0 items-center gap-3.5 border-b border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-5 py-4">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-50 dark:bg-blue-950/40 text-accent">
                 <IconPlus size={18} stroke={2.2} />
               </div>
               <div className="min-w-0">
-                <div className="text-base font-bold text-gray-900">
+                <div className="text-base font-bold text-gray-900 dark:text-slate-100">
                   {selectedId !== null ? `แก้ไขแผนขาย ${form.planId || ''}`.trim() : 'เพิ่มแผนขายใหม่'}
                 </div>
-                <div className="mono truncate text-xs text-slate-400">
+                <div className="mono truncate text-xs text-slate-400 dark:text-slate-500">
                   {form.custName || 'กรอกข้อมูลแผนขาย'}
                 </div>
               </div>
               <button
                 onClick={() => setDrawerOpen(false)}
-                className="ml-auto flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-gray-200 bg-white transition hover:bg-slate-100"
+                className="ml-auto flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 transition hover:bg-slate-100 dark:hover:bg-slate-700"
                 aria-label="ปิด"
               >
-                <IconX size={18} className="text-slate-700" />
+                <IconX size={18} className="text-slate-700 dark:text-slate-200" />
               </button>
             </div>
 

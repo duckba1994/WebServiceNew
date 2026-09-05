@@ -5,11 +5,11 @@ export const SALE_STATUS_META: Record<
   SaleStatus,
   { label: string; color: string; bg: string; border: string }
 > = {
-  quote: { label: 'เสนอราคา', color: '#1d4ed8', bg: '#eff6ff', border: '#bfdbfe' },
-  progress: { label: 'ระหว่างเสนอ', color: '#6d28d9', bg: '#f5f3ff', border: '#ddd6fe' },
-  booked: { label: 'จองแล้ว รอออกงาน', color: '#b45309', bg: '#fffbeb', border: '#fde68a' },
-  won: { label: 'ออกงานแล้ว', color: '#047857', bg: '#ecfdf5', border: '#a7f3d0' },
-  lost: { label: 'LOST SALES', color: '#b91c1c', bg: '#fef2f2', border: '#fecaca' },
+  quote: { label: 'เสนอราคา', color: 'var(--tint-blue-fg)', bg: 'var(--tint-blue-bg)', border: 'var(--tint-blue-bd)' },
+  progress: { label: 'ระหว่างเสนอ', color: 'var(--tint-purple-fg)', bg: 'var(--tint-purple-bg)', border: 'var(--tint-purple-bd)' },
+  booked: { label: 'จองแล้ว รอออกงาน', color: 'var(--tint-amber-fg)', bg: 'var(--tint-amber-bg)', border: 'var(--tint-amber-bd)' },
+  won: { label: 'ออกงานแล้ว', color: 'var(--tint-green-fg)', bg: 'var(--tint-green-bg)', border: 'var(--tint-green-bd)' },
+  lost: { label: 'LOST SALES', color: 'var(--tint-red-fg)', bg: 'var(--tint-red-bg)', border: 'var(--tint-red-bd)' },
 };
 
 // ── นิยามคอลัมน์ + ชุดมุมมอง ─────────────────────────────────

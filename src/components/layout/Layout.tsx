@@ -24,7 +24,7 @@ export function Layout({ title, subtitle, action, children }: LayoutProps) {
           isSidebarOpen={isSidebarOpen}
           onToggleSidebar={() => setIsSidebarOpen((o) => !o)}
         />
-        <main className="flex-1 overflow-auto bg-[#eef1f6] p-6">{children}</main>
+        <main className="flex-1 overflow-auto bg-[#eef1f6] dark:bg-slate-950 p-6">{children}</main>
       </div>
     </div>
   );

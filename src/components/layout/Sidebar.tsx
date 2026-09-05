@@ -9,7 +9,7 @@ interface SidebarProps {
 
 function GroupLabel({ children }: { children: React.ReactNode }) {
   return (
-    <div className="px-3 pb-1 pt-4 text-[10px] font-bold uppercase tracking-widest text-slate-500">
+    <div className="px-3 pb-1 pt-4 text-[10px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">
       {children}
     </div>
   );
@@ -35,7 +35,7 @@ function MenuButton({ item, iconClass }: { item: MenuItem; iconClass: string }) 
           `${baseClass} ${
             isActive
               ? 'bg-accent/20 text-white'
-              : 'text-slate-300 hover:bg-[#161f30] hover:text-white'
+              : 'text-slate-300 dark:text-slate-600 hover:bg-[#161f30] hover:text-white'
           }`
         }
       >
@@ -46,7 +46,7 @@ function MenuButton({ item, iconClass }: { item: MenuItem; iconClass: string }) 
   return (
     <button
       type="button"
-      className={`${baseClass} text-slate-300 hover:bg-[#161f30] hover:text-white`}
+      className={`${baseClass} text-slate-300 dark:text-slate-600 hover:bg-[#161f30] hover:text-white`}
     >
       {content}
     </button>
@@ -68,7 +68,7 @@ export function Sidebar({ isOpen }: SidebarProps) {
           <div className="whitespace-nowrap text-[15px] font-bold tracking-wide text-white">
             {COMPANY.nameEn}
           </div>
-          <div className="whitespace-nowrap text-[10px] font-semibold tracking-[0.15em] text-slate-500">
+          <div className="whitespace-nowrap text-[10px] font-semibold tracking-[0.15em] text-slate-500 dark:text-slate-400">
             {COMPANY.taglineEn}
           </div>
         </div>
@@ -81,7 +81,7 @@ export function Sidebar({ isOpen }: SidebarProps) {
             `relative flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-semibold transition ${
               isActive
                 ? 'bg-accent/20 text-white'
-                : 'text-slate-300 hover:bg-[#161f30] hover:text-white'
+                : 'text-slate-300 dark:text-slate-600 hover:bg-[#161f30] hover:text-white'
             }`
           }
         >
@@ -107,7 +107,7 @@ export function Sidebar({ isOpen }: SidebarProps) {
 
         <GroupLabel>ระบบ</GroupLabel>
         {SYSTEM_MENU.map((item) => (
-          <MenuButton key={item.label} item={item} iconClass="text-slate-400" />
+          <MenuButton key={item.label} item={item} iconClass="text-slate-400 dark:text-slate-500" />
         ))}
       </nav>
     </aside>

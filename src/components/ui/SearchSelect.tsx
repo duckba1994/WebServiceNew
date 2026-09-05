@@ -143,9 +143,9 @@ export function SearchSelect({
     }
   };
 
-  const inputCls = `w-full rounded-lg border bg-slate-50 py-2 pl-8 text-[13px] text-gray-800 outline-none transition focus:bg-white ${
-    invalid ? 'border-red-400 bg-red-50 focus:border-red-500' : 'border-gray-200 focus:border-accent'
-  } ${disabled ? 'cursor-not-allowed bg-gray-100 text-gray-400' : ''} ${
+  const inputCls = `w-full rounded-lg border bg-slate-50 dark:bg-slate-800/60 py-2 pl-8 text-[13px] text-gray-800 dark:text-slate-100 outline-none transition focus:bg-white dark:focus:bg-slate-900 ${
+    invalid ? 'border-red-400 bg-red-50 dark:bg-red-950/40 focus:border-red-500' : 'border-gray-200 dark:border-slate-700 focus:border-accent'
+  } ${disabled ? 'cursor-not-allowed bg-gray-100 dark:bg-slate-800 text-gray-400 dark:text-slate-500' : ''} ${
     selected && !open ? 'pr-14' : 'pr-8'
   } ${className}`;
 
@@ -154,7 +154,7 @@ export function SearchSelect({
   return (
     <div className="relative" ref={rootRef}>
       <div className="relative">
-        <IconSearch size={15} className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400" />
+        <IconSearch size={15} className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500" />
         <input
           ref={inputRef}
           role="combobox"
@@ -191,14 +191,14 @@ export function SearchSelect({
               inputRef.current?.focus();
             }}
             title="ล้างการเลือก"
-            className="absolute right-7 top-1/2 flex h-5 w-5 -translate-y-1/2 items-center justify-center rounded text-gray-400 transition hover:bg-gray-100 hover:text-gray-700"
+            className="absolute right-7 top-1/2 flex h-5 w-5 -translate-y-1/2 items-center justify-center rounded text-gray-400 dark:text-slate-500 transition hover:bg-gray-100 dark:hover:bg-slate-800 hover:text-gray-700"
           >
             <IconX size={13} />
           </button>
         )}
         <IconChevronDown
           size={15}
-          className={`pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 transition ${
+          className={`pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500 transition ${
             open ? 'rotate-180' : ''
           }`}
         />
@@ -209,10 +209,10 @@ export function SearchSelect({
           id={listId}
           role="listbox"
           ref={listRef}
-          className="absolute left-0 right-0 top-full z-50 mt-1 max-h-[260px] overflow-auto rounded-xl border border-gray-200 bg-white py-1 shadow-xl"
+          className="absolute left-0 right-0 top-full z-50 mt-1 max-h-[260px] overflow-auto rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 py-1 shadow-xl"
         >
           {shown.length === 0 ? (
-            <div className="flex items-center gap-2 px-3 py-3 text-[12px] text-amber-700">
+            <div className="flex items-center gap-2 px-3 py-3 text-[12px] text-amber-700 dark:text-amber-300">
               <IconAlertTriangle size={14} className="shrink-0" />
               {emptyText}
             </div>
@@ -231,19 +231,19 @@ export function SearchSelect({
                 onMouseEnter={() => setActive(idx)}
                 className={`flex w-full items-center gap-2 px-3 py-1.5 text-left text-[13px] transition ${
                   o.value === value
-                    ? 'bg-blue-50 font-semibold text-accent'
+                    ? 'bg-blue-50 dark:bg-blue-950/40 font-semibold text-accent'
                     : idx === activeIdx
-                    ? 'bg-slate-100 text-slate-800'
-                    : 'text-slate-700'
+                    ? 'bg-slate-100 dark:bg-slate-800 text-slate-800'
+                    : 'text-slate-700 dark:text-slate-200'
                 }`}
               >
                 <span className="truncate">{o.label}</span>
-                {o.hint && <span className="mono ml-auto shrink-0 text-[11px] text-slate-400">{o.hint}</span>}
+                {o.hint && <span className="mono ml-auto shrink-0 text-[11px] text-slate-400 dark:text-slate-500">{o.hint}</span>}
               </button>
             ))
           )}
           {matched.length > shown.length && (
-            <div className="border-t border-gray-100 px-3 py-1.5 text-[11px] text-gray-400">
+            <div className="border-t border-gray-100 dark:border-slate-800 px-3 py-1.5 text-[11px] text-gray-400 dark:text-slate-500">
               แสดง {shown.length} จาก {matched.length} รายการ — พิมพ์เพื่อค้นหาให้แคบลง
             </div>
           )}

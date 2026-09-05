@@ -27,12 +27,12 @@ export function FileUpload({ label, accentColor = '#1a5fb4', onChange }: FileUpl
 
   return (
     <div>
-      {label && <label className="block text-sm font-medium text-gray-700 mb-1">{label}</label>}
+      {label && <label className="block text-sm font-medium text-gray-700 dark:text-slate-200 mb-1">{label}</label>}
       <button
         type="button"
         onClick={() => inputRef.current?.click()}
         style={{ borderColor: accentColor, color: accentColor }}
-        className="w-full flex items-center justify-center gap-2 rounded-xl border-2 border-dashed py-6 text-sm hover:bg-gray-50"
+        className="w-full flex items-center justify-center gap-2 rounded-xl border-2 border-dashed py-6 text-sm hover:bg-gray-50 dark:hover:bg-slate-800"
       >
         <IconUpload size={18} /> คลิกเพื่อเลือกไฟล์
       </button>
@@ -40,12 +40,12 @@ export function FileUpload({ label, accentColor = '#1a5fb4', onChange }: FileUpl
       {files.length > 0 && (
         <ul className="mt-2 space-y-1">
           {files.map((f, i) => (
-            <li key={i} className="flex items-center justify-between rounded-lg border border-gray-200 px-3 py-1.5 text-sm">
+            <li key={i} className="flex items-center justify-between rounded-lg border border-gray-200 dark:border-slate-700 px-3 py-1.5 text-sm">
               <span className="flex items-center gap-2 truncate">
-                <IconFile size={16} className="text-gray-400 shrink-0" />
+                <IconFile size={16} className="text-gray-400 dark:text-slate-500 shrink-0" />
                 <span className="truncate">{f.name}</span>
               </span>
-              <button type="button" onClick={() => remove(i)} className="text-gray-400 hover:text-red-500 shrink-0">
+              <button type="button" onClick={() => remove(i)} className="text-gray-400 dark:text-slate-500 hover:text-red-500 shrink-0">
                 <IconX size={16} />
               </button>
             </li>

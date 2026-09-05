@@ -43,10 +43,10 @@ export function ImageUpload({
         style={!full && !invalid ? { borderColor: accentColor, color: accentColor } : undefined}
         className={`flex w-full items-center justify-center gap-2 rounded-xl border-2 border-dashed py-5 text-[13px] font-semibold transition ${
           invalid
-            ? 'border-red-300 bg-red-50 text-red-600'
+            ? 'border-red-300 dark:border-red-800 bg-red-50 dark:bg-red-950/40 text-red-600 dark:text-red-400'
             : full
-            ? 'cursor-not-allowed border-gray-200 bg-gray-50 text-gray-400'
-            : 'hover:bg-slate-50'
+            ? 'cursor-not-allowed border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-800/60 text-gray-400 dark:text-slate-500'
+            : 'hover:bg-slate-50 dark:hover:bg-slate-800'
         }`}
       >
         <IconPhotoPlus size={18} />
@@ -57,7 +57,7 @@ export function ImageUpload({
       {previews.length > 0 && (
         <div className="grid grid-cols-4 gap-2.5">
           {previews.map((p, i) => (
-            <div key={p.url} className="group relative aspect-square overflow-hidden rounded-xl border border-gray-200 bg-slate-50">
+            <div key={p.url} className="group relative aspect-square overflow-hidden rounded-xl border border-gray-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60">
               <img src={p.url} alt={p.file.name} className="h-full w-full object-cover" />
               <button
                 type="button"
@@ -74,7 +74,7 @@ export function ImageUpload({
           ))}
         </div>
       )}
-      <span className="text-[11px] text-gray-400">
+      <span className="text-[11px] text-gray-400 dark:text-slate-500">
         แนบได้สูงสุด {max} รูป ({value.length}/{max})
       </span>
     </div>

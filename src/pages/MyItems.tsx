@@ -89,8 +89,8 @@ export function MyItems() {
         key: 'all',
         label: 'ทั้งหมด',
         value: grandTotal,
-        color: '#475569',
-        bg: '#f1f5f9',
+        color: 'var(--ph-other-fg)',
+        bg: 'var(--ph-other-bg)',
         active: phase === null,
         onClick: () => setPhase(null),
       },
@@ -160,8 +160,8 @@ export function MyItems() {
               title="ใบที่ขั้นตอนปัจจุบันวนกลับมาที่แผนกผู้แจ้ง — งานเสร็จแล้วรอเรากดต่อ"
               className={`flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-[12.5px] font-semibold transition ${
                 ourTurnOnly
-                  ? 'border-amber-400 bg-amber-50 text-amber-700'
-                  : 'border-gray-200 bg-white text-slate-600 hover:bg-slate-50'
+                  ? 'border-amber-400 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300'
+                  : 'border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800'
               }`}
             >
               <IconBell size={14} />
@@ -189,14 +189,14 @@ export function StatusTabs({
 }) {
   return (
     <div className="flex items-center gap-2">
-      <span className="text-[11.5px] font-semibold text-gray-500">สถานะ</span>
-      <div className="flex gap-0.5 rounded-lg border border-gray-200 bg-[#eef1f6] p-1">
+      <span className="text-[11.5px] font-semibold text-gray-500 dark:text-slate-400">สถานะ</span>
+      <div className="flex gap-0.5 rounded-lg border border-gray-200 dark:border-slate-700 bg-[#eef1f6] dark:bg-slate-800 p-1">
         {STATUS_FILTERS.map((s) => (
           <button
             key={s.key}
             onClick={() => onChange(s.key)}
             className={`rounded-md px-3 py-1.5 text-[12.5px] font-semibold transition ${
-              value === s.key ? 'bg-[#0b1220] text-white shadow-sm' : 'text-slate-600 hover:text-gray-900'
+              value === s.key ? 'bg-[#0b1220] text-white shadow-sm' : 'text-slate-600 dark:text-slate-300 hover:text-gray-900 dark:hover:text-white'
             }`}
           >
             {s.label}

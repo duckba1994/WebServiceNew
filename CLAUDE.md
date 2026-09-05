@@ -153,6 +153,13 @@ Declared in `.env.example` (copy to `.env` and adjust per environment):
 - Visual style: rounded corners (`rounded-xl`/`rounded-2xl`), soft shadows (`shadow-sm`/`shadow-lg`), `border border-gray-200`
 - Font: IBM Plex Sans Thai (Google Fonts), with Tahoma/Leelawadee UI fallback
 
+### Dark mode (per user decision, 6 Sep 2026)
+Toggled by the `.dark` class on `<html>` (`darkMode: 'class'` in `tailwind.config.js`); `hooks/useTheme.ts` owns it — `'light' | 'dark' | 'system'` persisted in `localStorage` under `app_theme`, and `index.tsx` calls `applyTheme()` **before** React renders so a dark-mode user never sees a white flash. `system` keeps following the OS via a `matchMedia` listener, so switching Windows' theme while the app is open changes the page too. The toggle button lives in the Topbar (`/login` has no Topbar and simply follows the stored/system value).
+
+Two rules that keep it from rotting:
+1. **Every theme-dependent Tailwind class needs its `dark:` twin** — `bg-white dark:bg-slate-900`, `border-gray-200 dark:border-slate-700`, `text-gray-500 dark:text-slate-400`. Depth in dark mode is *inverted* from light: page canvas = `slate-950`, card = `slate-900`, inset bars/inputs = `slate-800` (in light it's canvas `#eef1f6` → card white). The dark navy `bg-[#0b1220]` of the Sidebar and every sticky grid header is already dark and stays as-is in both themes — do **not** add a `dark:` text override on top of it (`text-slate-300` there must stay light).
+2. **Colors that reach `style={{}}` must be CSS variables, never hex** — Tailwind cannot touch an inline style, so a hex written in `data/*.ts` would stay a light-theme color on a dark surface. All status/phase/department palettes therefore ship var names: `PHASE_META` → `--ph-*` (8 phases), `DEPT_META`/`REQUEST_PRIORITY_META` → `--dept-*`/`--pri-*`, and the work pages' status metas (`bookingData` / `salesPlanData` / `deliveryData` / `resourceData`) → the shared `--tint-{blue|indigo|purple|amber|orange|green|red|rose|teal|cyan|slate|salmon|choco|pink|gold|sky}-{fg|bg|bd}` families. Light + dark values live together in `index.css`; the last five tint families deliberately match the WinForms colors (LightSalmon / Chocolate / Pink / Gold / SkyBlue) users already recognize, so their light values must not be "tidied up".
+
 ## Gotchas
 - Tailwind must be v3, not v4 — v4 silently fails to generate utility classes under CRA. If the compiled CSS is abnormally small (<10KB), Tailwind isn't working; a healthy build is typically >20KB.
 - npm package names must be lowercase.

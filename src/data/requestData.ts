@@ -9,29 +9,29 @@ export const REQUEST_PRIORITY_META: Record<
   RequestPriority,
   { label: string; color: string; bg: string; border: string }
 > = {
-  low: { label: 'ต่ำ', color: '#475569', bg: '#f1f5f9', border: '#e2e8f0' },
-  normal: { label: 'ปกติ', color: '#0369a1', bg: '#f0f9ff', border: '#bae6fd' },
-  high: { label: 'สูง', color: '#c2410c', bg: '#fff7ed', border: '#fed7aa' },
-  urgent: { label: 'เร่งด่วน', color: '#b91c1c', bg: '#fef2f2', border: '#fecaca' },
+  low: { label: 'ต่ำ', color: 'var(--pri-low-fg)', bg: 'var(--pri-low-bg)', border: 'var(--pri-low-bd)' },
+  normal: { label: 'ปกติ', color: 'var(--pri-normal-fg)', bg: 'var(--pri-normal-bg)', border: 'var(--pri-normal-bd)' },
+  high: { label: 'สูง', color: 'var(--pri-high-fg)', bg: 'var(--pri-high-bg)', border: 'var(--pri-high-bd)' },
+  urgent: { label: 'เร่งด่วน', color: 'var(--pri-urgent-fg)', bg: 'var(--pri-urgent-bg)', border: 'var(--pri-urgent-bd)' },
 };
 
 // ── สีหน่วยงานปลายทาง (ดู Design System ใน CLAUDE.md) ─────────
 export const DEPT_META: Record<Dept, { label: string; color: string; bg: string; border: string }> = {
-  HR: { label: 'HR', color: '#2d7d46', bg: '#ecfdf3', border: '#bbf7d0' },
-  PL: { label: 'PL', color: '#5b3fa6', bg: '#f5f3ff', border: '#ddd6fe' },
-  SV: { label: 'SV', color: '#b45309', bg: '#fffbeb', border: '#fde68a' },
-  IT: { label: 'IT', color: '#1a5fb4', bg: '#eff6ff', border: '#bfdbfe' },
-  PU: { label: 'จัดซื้อ', color: '#0f766e', bg: '#f0fdfa', border: '#99f6e4' },
-  CR: { label: 'CR', color: '#1a5fb4', bg: '#eff6ff', border: '#bfdbfe' },
-  GA: { label: 'GA', color: '#0e7490', bg: '#ecfeff', border: '#a5f3fc' },
-  IM: { label: 'IM', color: '#4338ca', bg: '#eef2ff', border: '#c7d2fe' },
-  AF: { label: 'AF', color: '#9b3068', bg: '#fdf2f8', border: '#fbcfe8' },
-  SQA: { label: 'SQA', color: '#be123c', bg: '#fff1f2', border: '#fecdd3' },
-  PS: { label: 'PS', color: '#7e22ce', bg: '#faf5ff', border: '#e9d5ff' },
+  HR: { label: 'HR', color: 'var(--dept-hr-fg)', bg: 'var(--dept-hr-bg)', border: 'var(--dept-hr-bd)' },
+  PL: { label: 'PL', color: 'var(--dept-pl-fg)', bg: 'var(--dept-pl-bg)', border: 'var(--dept-pl-bd)' },
+  SV: { label: 'SV', color: 'var(--dept-sv-fg)', bg: 'var(--dept-sv-bg)', border: 'var(--dept-sv-bd)' },
+  IT: { label: 'IT', color: 'var(--dept-it-fg)', bg: 'var(--dept-it-bg)', border: 'var(--dept-it-bd)' },
+  PU: { label: 'จัดซื้อ', color: 'var(--dept-pu-fg)', bg: 'var(--dept-pu-bg)', border: 'var(--dept-pu-bd)' },
+  CR: { label: 'CR', color: 'var(--dept-it-fg)', bg: 'var(--dept-it-bg)', border: 'var(--dept-it-bd)' },
+  GA: { label: 'GA', color: 'var(--dept-ga-fg)', bg: 'var(--dept-ga-bg)', border: 'var(--dept-ga-bd)' },
+  IM: { label: 'IM', color: 'var(--dept-im-fg)', bg: 'var(--dept-im-bg)', border: 'var(--dept-im-bd)' },
+  AF: { label: 'AF', color: 'var(--dept-af-fg)', bg: 'var(--dept-af-bg)', border: 'var(--dept-af-bd)' },
+  SQA: { label: 'SQA', color: 'var(--dept-sqa-fg)', bg: 'var(--dept-sqa-bg)', border: 'var(--dept-sqa-bd)' },
+  PS: { label: 'PS', color: 'var(--dept-ps-fg)', bg: 'var(--dept-ps-bg)', border: 'var(--dept-ps-bd)' },
 };
 
 // สีกลางสำหรับแผนกที่ยังไม่ได้กำหนดสีไว้ (master มีแผนกได้มากกว่าที่ประกาศ)
-export const DEFAULT_DEPT_META = { label: '', color: '#475569', bg: '#f1f5f9', border: '#e2e8f0' };
+export const DEFAULT_DEPT_META = { label: '', color: 'var(--ph-other-fg)', bg: 'var(--ph-other-bg)', border: 'var(--ph-other-bd)' };
 
 // หา meta ของแผนกจาก departmentShort — ไม่พบก็ใช้สีกลาง (label = ชื่อย่อที่ส่งเข้ามา)
 export const deptMeta = (departmentShort: string) =>

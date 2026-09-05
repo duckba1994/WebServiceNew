@@ -109,15 +109,15 @@ const DOC_CHECKS = [
 
 // หัวข้อฟอร์ม 9 หมวด + สีป้ายหมายเลขตามกลุ่ม
 const FORM_SECTIONS = [
-  { no: 1, label: 'วัตถุประสงค์', badge: 'bg-blue-50 text-blue-700' },
-  { no: 2, label: 'ข้อมูลลูกค้า', badge: 'bg-blue-50 text-blue-700' },
-  { no: 3, label: 'เครื่องจักรที่ต้องการ', badge: 'bg-amber-50 text-amber-700' },
-  { no: 4, label: 'ลักษณะงาน', badge: 'bg-amber-50 text-amber-700' },
+  { no: 1, label: 'วัตถุประสงค์', badge: 'bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300' },
+  { no: 2, label: 'ข้อมูลลูกค้า', badge: 'bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300' },
+  { no: 3, label: 'เครื่องจักรที่ต้องการ', badge: 'bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300' },
+  { no: 4, label: 'ลักษณะงาน', badge: 'bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300' },
   { no: 5, label: 'การนำเสนองาน', badge: 'bg-violet-50 text-violet-700' },
   { no: 6, label: 'สำรวจหน้างาน', badge: 'bg-violet-50 text-violet-700' },
-  { no: 7, label: 'เพิ่มเติม Operation', badge: 'bg-emerald-50 text-emerald-600' },
-  { no: 8, label: 'วงเงิน / เครดิต', badge: 'bg-emerald-50 text-emerald-600' },
-  { no: 9, label: 'หมายเหตุอื่นๆ', badge: 'bg-slate-100 text-slate-600' },
+  { no: 7, label: 'เพิ่มเติม Operation', badge: 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400' },
+  { no: 8, label: 'วงเงิน / เครดิต', badge: 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400' },
+  { no: 9, label: 'หมายเหตุอื่นๆ', badge: 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300' },
 ];
 
 // wrapper ผูกหมายเลขหมวดกับสีป้ายและ id เป้าหมายของเมนูนำทาง
@@ -134,9 +134,9 @@ function BkSection({ no, title, children }: { no: number; title: string; childre
 function RoField({ label, value, wide }: { label: string; value: string; wide?: boolean }) {
   return (
     <label className={`flex flex-col gap-1 ${wide ? 'sm:col-span-2' : ''}`}>
-      <span className="text-[11.5px] font-medium text-gray-500">{label}</span>
-      <div className="rounded-lg border border-gray-200 bg-slate-50 px-3 py-2 text-[13px] text-gray-800">
-        {value || <span className="text-slate-300">—</span>}
+      <span className="text-[11.5px] font-medium text-gray-500 dark:text-slate-400">{label}</span>
+      <div className="rounded-lg border border-gray-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 px-3 py-2 text-[13px] text-gray-800 dark:text-slate-100">
+        {value || <span className="text-slate-300 dark:text-slate-600">—</span>}
       </div>
     </label>
   );
@@ -161,20 +161,20 @@ function ApproverBox({
   pending?: boolean;
 }) {
   return (
-    <div className="mt-4 rounded-xl border border-gray-200 bg-slate-50 p-4">
-      <div className="mb-2.5 text-[12.5px] font-bold text-gray-600">{title}</div>
+    <div className="mt-4 rounded-xl border border-gray-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 p-4">
+      <div className="mb-2.5 text-[12.5px] font-bold text-gray-600 dark:text-slate-300">{title}</div>
       <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-[13px]">
         <div className="flex flex-wrap items-center gap-2">
-          <span className="text-gray-500">{personLabel}</span>
-          <span className="rounded-md border border-gray-200 bg-white px-3 py-1 font-semibold text-gray-900">
-            {pending ? <span className="text-amber-600">รอ {name}</span> : name}
+          <span className="text-gray-500 dark:text-slate-400">{personLabel}</span>
+          <span className="rounded-md border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-1 font-semibold text-gray-900 dark:text-slate-100">
+            {pending ? <span className="text-amber-600 dark:text-amber-400">รอ {name}</span> : name}
           </span>
-          <span className="text-[11.5px] text-gray-400">{role}</span>
+          <span className="text-[11.5px] text-gray-400 dark:text-slate-500">{role}</span>
         </div>
         {!pending && (
-          <div className="flex items-center gap-2 text-gray-500">
-            วันที่ <span className="mono font-semibold text-gray-800">{date}</span>
-            เวลา <span className="mono font-semibold text-gray-800">{time}</span> น.
+          <div className="flex items-center gap-2 text-gray-500 dark:text-slate-400">
+            วันที่ <span className="mono font-semibold text-gray-800 dark:text-slate-100">{date}</span>
+            เวลา <span className="mono font-semibold text-gray-800 dark:text-slate-100">{time}</span> น.
           </div>
         )}
       </div>
@@ -195,16 +195,16 @@ function MiniCard({
   rows: [string, string][];
 }) {
   return (
-    <div className="rounded-xl border border-gray-200 bg-white p-3.5" style={{ borderTopColor: accent, borderTopWidth: 2 }}>
+    <div className="rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-3.5" style={{ borderTopColor: accent, borderTopWidth: 2 }}>
       <div className="mb-2 text-[12px] font-bold" style={{ color: accent }}>
         {title}
       </div>
-      {head && <div className="mb-2 text-[13px] font-bold text-gray-900">{head}</div>}
+      {head && <div className="mb-2 text-[13px] font-bold text-gray-900 dark:text-slate-100">{head}</div>}
       <dl className="flex flex-col gap-1.5">
         {rows.map(([k, v]) => (
           <div key={k} className="flex flex-col">
-            <dt className="text-[11px] text-gray-400">{k}</dt>
-            <dd className="text-[12.5px] text-gray-800">{v || '—'}</dd>
+            <dt className="text-[11px] text-gray-400 dark:text-slate-500">{k}</dt>
+            <dd className="text-[12.5px] text-gray-800 dark:text-slate-100">{v || '—'}</dd>
           </div>
         ))}
       </dl>
@@ -232,12 +232,12 @@ function PlTruckForm({
   const rentNo = row.truckPL !== '—' && row.truckPL ? row.truckPL : '160/2';
   const operator = MOCK_STEP_DETAIL.pl.operator;
   const note = {
-    entry: { text: 'กรุณาระบุข้อมูลเบอร์รถ (สำหรับเจ้าหน้าที่ฝ่าย PL)', cls: 'border-amber-200 bg-amber-50 text-amber-700' },
+    entry: { text: 'กรุณาระบุข้อมูลเบอร์รถ (สำหรับเจ้าหน้าที่ฝ่าย PL)', cls: 'border-amber-200 dark:border-amber-900 bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300' },
     review: {
       text: 'เจ้าหน้าที่ PL ระบุข้อมูลแล้ว — Mgr PL ตรวจสอบ/แก้ไขข้อมูลได้ก่อนกดอนุมัติ',
-      cls: 'border-blue-200 bg-blue-50 text-blue-700',
+      cls: 'border-blue-200 bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300',
     },
-    approved: { text: 'อนุมัติแล้ว — แสดงข้อมูลแบบอ่านอย่างเดียว', cls: 'border-emerald-200 bg-emerald-50 text-emerald-700' },
+    approved: { text: 'อนุมัติแล้ว — แสดงข้อมูลแบบอ่านอย่างเดียว', cls: 'border-emerald-200 dark:border-emerald-900 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300' },
   }[mode];
 
   return (
@@ -254,7 +254,7 @@ function PlTruckForm({
         />
 
         <label className="flex flex-col gap-1.5 sm:col-span-2">
-          <span className="text-[11.5px] font-semibold text-gray-500">วันที่สามารถจัดหา / ผลิตรถได้</span>
+          <span className="text-[11.5px] font-semibold text-gray-500 dark:text-slate-400">วันที่สามารถจัดหา / ผลิตรถได้</span>
           <div className="flex flex-wrap items-center gap-3">
             <Check label="ระบุวันที่" disabled={disabled} />
             <input
@@ -262,7 +262,7 @@ function PlTruckForm({
               defaultValue={prefill ? row.startDate : ''}
               placeholder="dd/mm/yyyy"
               disabled={disabled}
-              className={`${INPUT_CLS} mono w-40 ${disabled ? 'cursor-not-allowed bg-gray-100 text-gray-400' : ''}`}
+              className={`${INPUT_CLS} mono w-40 ${disabled ? 'cursor-not-allowed bg-gray-100 dark:bg-slate-800 text-gray-400 dark:text-slate-500' : ''}`}
             />
           </div>
         </label>
@@ -330,11 +330,11 @@ function StepPanel({
   if (s.section === 1) {
     return (
       <div className="flex flex-col gap-4">
-        <div className="rounded-2xl border border-gray-200 bg-white px-5 py-3.5">
-          <div className="text-[15px] font-bold text-gray-800">
+        <div className="rounded-2xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-5 py-3.5">
+          <div className="text-[15px] font-bold text-gray-800 dark:text-slate-100">
             ส่วนที่ {s.section} — {s.title}
           </div>
-          <div className="text-[11.5px] text-gray-400">{s.role} · ข้อมูลจากใบจอง (อ่านอย่างเดียว)</div>
+          <div className="text-[11.5px] text-gray-400 dark:text-slate-500">{s.role} · ข้อมูลจากใบจอง (อ่านอย่างเดียว)</div>
         </div>
         <BookingFormSections row={row} readOnly master={master} />
         <ApproverBox
@@ -410,7 +410,7 @@ function StepPanel({
           </>
         ) : (
           <>
-            <div className="rounded-xl border border-dashed border-amber-300 bg-amber-50/60 px-4 py-5 text-center text-[13px] text-amber-700">
+            <div className="rounded-xl border border-dashed border-amber-300 dark:border-amber-800 bg-amber-50/60 px-4 py-5 text-center text-[13px] text-amber-700 dark:text-amber-300">
               รอฝ่ายขาย / CR ยืนยันการจัดส่งสินค้า — ผู้รับผิดชอบ {s.actor}
             </div>
             <ApproverBox
@@ -427,7 +427,7 @@ function StepPanel({
 
         {canSummary && (
           <div className="mt-5">
-            <div className="mb-2.5 text-[12.5px] font-bold text-gray-600">
+            <div className="mb-2.5 text-[12.5px] font-bold text-gray-600 dark:text-slate-300">
               สรุปสถานะจากฝ่าย PL / SV (ประกอบการตัดสินใจ)
             </div>
             <div className="grid grid-cols-1 gap-3.5 lg:grid-cols-3">
@@ -454,8 +454,8 @@ function StepPanel({
               />
               <MiniCard title="ฝ่าย SV — ยืนยันเบอร์รถ" accent="#047857" head={MOCK_STEP_DETAIL.sv.confirm} rows={[]} />
             </div>
-            <div className="mt-3.5 rounded-xl border border-gray-200 bg-slate-50 p-3.5">
-              <div className="mb-2 text-[12px] font-bold text-gray-600">
+            <div className="mt-3.5 rounded-xl border border-gray-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 p-3.5">
+              <div className="mb-2 text-[12px] font-bold text-gray-600 dark:text-slate-300">
                 ข้อมูลรถ / Operator / วันที่พร้อมใช้งาน
               </div>
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
@@ -471,12 +471,12 @@ function StepPanel({
   }
 
   return (
-    <section className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
-      <div className="border-b border-gray-200 px-5 py-3.5">
-        <div className="text-[15px] font-bold text-gray-800">
+    <section className="overflow-hidden rounded-2xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-sm">
+      <div className="border-b border-gray-200 dark:border-slate-700 px-5 py-3.5">
+        <div className="text-[15px] font-bold text-gray-800 dark:text-slate-100">
           ส่วนที่ {s.section} — {s.title}
         </div>
-        <div className="text-[11.5px] text-gray-400">{s.role}</div>
+        <div className="text-[11.5px] text-gray-400 dark:text-slate-500">{s.role}</div>
       </div>
       <div className="p-5">{body}</div>
     </section>
@@ -486,7 +486,7 @@ function StepPanel({
 // ป้ายแจ้งว่ายังไม่ถึงขั้นตอนนี้
 function PendingNote({ step }: { step: import('../data/bookingData').WorkflowStep }) {
   return (
-    <div className="rounded-xl border border-dashed border-amber-300 bg-amber-50/60 px-4 py-6 text-center text-[13px] text-amber-700">
+    <div className="rounded-xl border border-dashed border-amber-300 dark:border-amber-800 bg-amber-50/60 px-4 py-6 text-center text-[13px] text-amber-700 dark:text-amber-300">
       ขั้นตอนนี้ยังไม่ได้ดำเนินการ — รอ {step.actor} ({step.role})
     </div>
   );
@@ -497,15 +497,15 @@ function PendingNote({ step }: { step: import('../data/bookingData').WorkflowSte
 function CField({ label, value, tone = 'neutral' }: { label: string; value: string; tone?: 'neutral' | 'before' | 'after' }) {
   const box =
     tone === 'before'
-      ? 'border-rose-200 bg-rose-50 text-rose-900'
+      ? 'border-rose-200 bg-rose-50 dark:bg-rose-950/40 text-rose-900'
       : tone === 'after'
-      ? 'border-emerald-200 bg-emerald-50 text-emerald-900'
-      : 'border-gray-200 bg-slate-50 text-gray-800';
+      ? 'border-emerald-200 dark:border-emerald-900 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-900'
+      : 'border-gray-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 text-gray-800 dark:text-slate-100';
   return (
     <label className="flex min-w-0 flex-1 flex-col gap-1">
-      <span className="text-[10.5px] font-medium text-gray-400">{label}</span>
+      <span className="text-[10.5px] font-medium text-gray-400 dark:text-slate-500">{label}</span>
       <div className={`truncate rounded-md border px-2.5 py-1.5 text-[12.5px] ${box}`} title={value}>
-        {value || <span className="text-slate-300">—</span>}
+        {value || <span className="text-slate-300 dark:text-slate-600">—</span>}
       </div>
     </label>
   );
@@ -513,7 +513,7 @@ function CField({ label, value, tone = 'neutral' }: { label: string; value: stri
 
 function RevBadge({ rev }: { rev: number }) {
   return (
-    <span className="mono shrink-0 rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-bold text-slate-500">
+    <span className="mono shrink-0 rounded bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 text-[10px] font-bold text-slate-500 dark:text-slate-400">
       Rev {rev}
     </span>
   );
@@ -521,43 +521,43 @@ function RevBadge({ rev }: { rev: number }) {
 
 function ChangeHistoryPanel({ changes }: { changes: BookingChangeDoc[] }) {
   return (
-    <section className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
-      <div className="flex items-center justify-between border-b border-gray-200 px-5 py-3.5">
-        <div className="text-[15px] font-bold text-gray-800">ประวัติการเปลี่ยนแปลงใบจอง</div>
-        <span className="mono rounded-md bg-slate-100 px-2 py-0.5 text-[11px] text-slate-500">
+    <section className="overflow-hidden rounded-2xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-sm">
+      <div className="flex items-center justify-between border-b border-gray-200 dark:border-slate-700 px-5 py-3.5">
+        <div className="text-[15px] font-bold text-gray-800 dark:text-slate-100">ประวัติการเปลี่ยนแปลงใบจอง</div>
+        <span className="mono rounded-md bg-slate-100 dark:bg-slate-800 px-2 py-0.5 text-[11px] text-slate-500 dark:text-slate-400">
           {changes.length} ใบ
         </span>
       </div>
 
       {changes.length === 0 ? (
-        <div className="p-5 text-[12.5px] text-gray-400">ยังไม่มีประวัติการเปลี่ยนแปลง</div>
+        <div className="p-5 text-[12.5px] text-gray-400 dark:text-slate-500">ยังไม่มีประวัติการเปลี่ยนแปลง</div>
       ) : (
         <div className="flex flex-col gap-4 p-4">
           {changes.map((c) => (
-            <article key={c.changeNo} className="rounded-xl border border-gray-200 p-3">
+            <article key={c.changeNo} className="rounded-xl border border-gray-200 dark:border-slate-700 p-3">
               {/* หัวใบเปลี่ยนแปลง: เลขที่ / วันที่แก้ไข / Rev */}
               <div className="flex flex-wrap items-end gap-2">
                 <CField label="เลขที่ใบเปลี่ยนแปลง / Change No." value={c.changeNo} />
                 <CField label="วันที่แก้ไข / Edit Date" value={c.editDate} />
                 <div className="flex flex-col gap-1">
-                  <span className="text-[10.5px] font-medium text-gray-400">Rev</span>
-                  <div className="mono rounded-md border border-gray-200 bg-slate-50 px-2.5 py-1.5 text-center text-[12.5px] text-gray-800">
+                  <span className="text-[10.5px] font-medium text-gray-400 dark:text-slate-500">Rev</span>
+                  <div className="mono rounded-md border border-gray-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 px-2.5 py-1.5 text-center text-[12.5px] text-gray-800 dark:text-slate-100">
                     {c.rev}
                   </div>
                 </div>
               </div>
 
               {/* หัวข้อกลุ่ม */}
-              <div className="mt-3 border-l-4 border-accent bg-slate-50 px-3 py-1.5 text-[12.5px] font-bold text-gray-700">
+              <div className="mt-3 border-l-4 border-accent bg-slate-50 dark:bg-slate-800/60 px-3 py-1.5 text-[12.5px] font-bold text-gray-700 dark:text-slate-200">
                 {c.groupLabel}
               </div>
 
               {/* รายการฟิลด์ที่แก้ */}
               <div className="mt-2 flex flex-col gap-3">
                 {c.fields.map((f, i) => (
-                  <div key={i} className="rounded-lg border border-gray-100 bg-white p-2.5">
+                  <div key={i} className="rounded-lg border border-gray-100 dark:border-slate-800 bg-white dark:bg-slate-900 p-2.5">
                     <div className="mb-1.5 flex items-center justify-between gap-2">
-                      <span className="text-[12.5px] font-bold text-gray-800">{f.label}</span>
+                      <span className="text-[12.5px] font-bold text-gray-800 dark:text-slate-100">{f.label}</span>
                       <RevBadge rev={f.rev} />
                     </div>
                     {f.detail !== undefined ? (
@@ -604,7 +604,7 @@ function BookingFormSections({
   master?: BookingMaster;
 }) {
   const today = new Date().toLocaleDateString('en-GB');
-  const roInput = readOnly ? 'cursor-not-allowed bg-gray-100 text-gray-500' : '';
+  const roInput = readOnly ? 'cursor-not-allowed bg-gray-100 dark:bg-slate-800 text-gray-500 dark:text-slate-400' : '';
   // ── ตัวเลือกจาก master data (แหล่งเดียวกับเอกสารพิมพ์ ; fallback = ค่าฟอร์มกระดาษ) ──
   const purposes = purposeOpts(master);
   const jobChars = jobCharacterOpts(master).map((o) => o.name);
@@ -680,15 +680,15 @@ function BookingFormSections({
           <Field label="เวลาที่เริ่มทำงาน" value="08:00:00" mono disabled={readOnly} />
         </div>
         <div className="grid grid-cols-2 gap-3.5">
-          <div className="rounded-xl border border-[#eef1f6] bg-slate-50 p-3.5">
-            <div className="mb-2 text-xs font-bold text-slate-600">เงื่อนไขการใช้งาน อปต.</div>
+          <div className="rounded-xl border border-[#eef1f6] dark:border-slate-800 bg-slate-50 dark:bg-slate-800/60 p-3.5">
+            <div className="mb-2 text-xs font-bold text-slate-600 dark:text-slate-300">เงื่อนไขการใช้งาน อปต.</div>
             <div className="flex flex-col gap-2">
               <RadioL name="opt" label="รวม อปต." disabled={readOnly} />
               <RadioL name="opt" label="ไม่รวม อปต. / ใช้ อปต. หน้างาน" disabled={readOnly} />
             </div>
           </div>
-          <div className="rounded-xl border border-[#eef1f6] bg-slate-50 p-3.5">
-            <div className="mb-2 text-xs font-bold text-slate-600">เงื่อนไขการใช้น้ำมัน</div>
+          <div className="rounded-xl border border-[#eef1f6] dark:border-slate-800 bg-slate-50 dark:bg-slate-800/60 p-3.5">
+            <div className="mb-2 text-xs font-bold text-slate-600 dark:text-slate-300">เงื่อนไขการใช้น้ำมัน</div>
             <div className="flex flex-col gap-2">
               <RadioL name="fuel" label="รวมน้ำมันเชื้อเพลิง" disabled={readOnly} />
               <RadioL name="fuel" label="ไม่รวมน้ำมันเชื้อเพลิง" disabled={readOnly} />
@@ -700,7 +700,7 @@ function BookingFormSections({
 
       <BkSection no={6} title="สำรวจหน้างาน">
         <SelectField label="สำรวจหน้างาน" options={['เลือก...', 'สำรวจแล้ว', 'ยังไม่สำรวจ']} disabled={readOnly} />
-        <div className="mt-2 text-[11.5px] text-gray-400">
+        <div className="mt-2 text-[11.5px] text-gray-400 dark:text-slate-500">
           กติกาสำรวจหน้างาน: งานวัน และ เครื่องจักรประเภท TB, CC / สำรวจหน้างาน ทางเข้า-ออก พื้นที่รถ TT ใช้ขนส่ง
           และรถเครนประกอบบูม
         </div>
@@ -709,9 +709,9 @@ function BookingFormSections({
       <BkSection no={7} title="หมวดเพิ่มเติม Operation">
         <div className="flex flex-col gap-3.5">
           <SelectField label="เกี่ยวกับเครื่องจักร" options={['เลือก...']} className="max-w-[360px]" disabled={readOnly} />
-          <CheckGroup title="เกี่ยวกับ อปต." items={optDocs} titleClass="text-cyan-700" disabled={readOnly} />
-          <CheckGroup title="เกี่ยวกับใบงาน" items={DOC_CHECKS} titleClass="text-cyan-700" disabled={readOnly} />
-          <CheckGroup title="เกี่ยวกับช่าง" items={techConds} titleClass="text-cyan-700" disabled={readOnly} />
+          <CheckGroup title="เกี่ยวกับ อปต." items={optDocs} titleClass="text-cyan-700 dark:text-cyan-300" disabled={readOnly} />
+          <CheckGroup title="เกี่ยวกับใบงาน" items={DOC_CHECKS} titleClass="text-cyan-700 dark:text-cyan-300" disabled={readOnly} />
+          <CheckGroup title="เกี่ยวกับช่าง" items={techConds} titleClass="text-cyan-700 dark:text-cyan-300" disabled={readOnly} />
         </div>
       </BkSection>
 
@@ -719,7 +719,7 @@ function BookingFormSections({
         <div className="mb-4 flex flex-wrap items-center gap-5">
           <RadioL name="credit" label="ไม่ติดวงเงิน" disabled={readOnly} />
           <RadioL name="credit" label="ติดวงเงิน" disabled={readOnly} />
-          <label className="flex items-center gap-2.5 text-[12.5px] text-gray-500">
+          <label className="flex items-center gap-2.5 text-[12.5px] text-gray-500 dark:text-slate-400">
             สถานะเครดิต
             <input disabled={readOnly} className={`${INPUT_CLS} w-44 py-1.5 ${roInput}`} />
           </label>
@@ -731,10 +731,10 @@ function BookingFormSections({
           <Field label="Ordered" mono right disabled={readOnly} />
           <Field label="ใบจอง" mono right disabled={readOnly} />
           <label className="flex flex-col gap-1.5">
-            <span className="text-[11.5px] font-semibold text-gray-500">Credit Remaining</span>
+            <span className="text-[11.5px] font-semibold text-gray-500 dark:text-slate-400">Credit Remaining</span>
             <input
               disabled={readOnly}
-              className={`${INPUT_CLS} mono w-full !bg-emerald-50 text-right font-semibold text-emerald-700 ${
+              className={`${INPUT_CLS} mono w-full !bg-emerald-50 dark:bg-emerald-950/40 text-right font-semibold text-emerald-700 dark:text-emerald-300 ${
                 readOnly ? 'cursor-not-allowed' : ''
               }`}
             />
@@ -744,7 +744,7 @@ function BookingFormSections({
 
       <BkSection no={9} title="หมายเหตุอื่นๆ">
         <label className="flex flex-col gap-1.5">
-          <span className="text-[11.5px] font-semibold text-gray-500">Remark</span>
+          <span className="text-[11.5px] font-semibold text-gray-500 dark:text-slate-400">Remark</span>
           <textarea rows={3} disabled={readOnly} className={`${INPUT_CLS} w-full resize-y ${roInput}`} />
         </label>
       </BkSection>
@@ -971,47 +971,47 @@ export function Booking() {
       }
       case 'book':
         return (
-          <span className={`mono font-semibold ${row.flag === 'urgent' ? 'text-red-600' : 'text-accent'}`}>
+          <span className={`mono font-semibold ${row.flag === 'urgent' ? 'text-red-600 dark:text-red-400' : 'text-accent'}`}>
             {row.book}
           </span>
         );
       case 'mono':
         return value === '—' || value === '' ? (
-          <span className="mono text-slate-300">—</span>
+          <span className="mono text-slate-300 dark:text-slate-600">—</span>
         ) : (
           <span className="mono">{String(value)}</span>
         );
       case 'date':
-        return <span className="text-slate-600">{String(value)}</span>;
+        return <span className="text-slate-600 dark:text-slate-300">{String(value)}</span>;
       case 'reply':
         return row.reply === 'ready' ? (
-          <span className="inline-flex items-center gap-1.5 rounded-md border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-700">
+          <span className="inline-flex items-center gap-1.5 rounded-md border border-emerald-200 dark:border-emerald-900 bg-emerald-50 dark:bg-emerald-950/40 px-2 py-0.5 text-[11px] font-semibold text-emerald-700 dark:text-emerald-300">
             <span className="h-1 w-1 rounded-full bg-emerald-600" />
             เครื่องจักรพร้อม
           </span>
         ) : (
-          <span className="text-slate-300">—</span>
+          <span className="text-slate-300 dark:text-slate-600">—</span>
         );
       default:
-        if (col.key === 'no') return <span className="text-xs text-slate-400">{row.id}</span>;
-        if (col.key === 'customer') return <span className="font-semibold text-gray-900">{row.customer}</span>;
+        if (col.key === 'no') return <span className="text-xs text-slate-400 dark:text-slate-500">{row.id}</span>;
+        if (col.key === 'customer') return <span className="font-semibold text-gray-900 dark:text-slate-100">{row.customer}</span>;
         if (value === undefined || value === null || value === '' || value === '—')
-          return <span className="text-slate-300">—</span>;
+          return <span className="text-slate-300 dark:text-slate-600">—</span>;
         return <span>{String(value)}</span>;
     }
   };
 
   const rowClass = (row: BookingRow) => {
-    if (row.flag === 'urgent') return 'bg-red-50 hover:bg-red-100 shadow-[inset_3px_0_0_#f87171]';
+    if (row.flag === 'urgent') return 'bg-red-50 dark:bg-red-950/40 hover:bg-red-100 shadow-[inset_3px_0_0_#f87171]';
     if (row.flag === 'warn') return 'bg-orange-50 hover:bg-orange-100 shadow-[inset_3px_0_0_#fb923c]';
-    return 'bg-white hover:bg-slate-50';
+    return 'bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800';
   };
 
   // สีพื้นของคอลัมน์จัดการที่ตรึงขวา — ต้องทึบให้ตรงกับสีแถว ไม่ให้เนื้อหาทะลุตอนเลื่อนแนวนอน
   const rowActionBg = (row: BookingRow) => {
-    if (row.flag === 'urgent') return 'bg-red-50';
+    if (row.flag === 'urgent') return 'bg-red-50 dark:bg-red-950/40';
     if (row.flag === 'warn') return 'bg-orange-50';
-    return 'bg-white';
+    return 'bg-white dark:bg-slate-900';
   };
 
   // ยกเลิกใบจอง (mock — ตัดออกจาก local list)
@@ -1022,11 +1022,11 @@ export function Booking() {
 
   return (
     <Layout title="ใบจองสินค้า" subtitle="Booking">
-      <div className="flex h-full flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
+      <div className="flex h-full flex-col overflow-hidden rounded-2xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-sm">
         {view === 'list' ? (
           <>
             {/* ===== Toolbar ===== */}
-            <div className="flex shrink-0 flex-wrap items-center gap-2.5 border-b border-gray-200 bg-white px-5 py-2.5">
+            <div className="flex shrink-0 flex-wrap items-center gap-2.5 border-b border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-5 py-2.5">
               <button
                 onClick={() => openForm(null)}
                 className="flex items-center gap-1.5 rounded-lg bg-accent px-4 py-2 text-[13.5px] font-semibold text-white shadow-md shadow-accent/30 transition hover:bg-[#134a8e]"
@@ -1038,7 +1038,7 @@ export function Booking() {
                 onClick={() => exportBookingsToExcel(rows, columns)}
                 disabled={rows.length === 0}
                 title="ส่งออกรายการในตาราง (ตามที่ค้นหา/กรอง) เป็นไฟล์ Excel"
-                className="flex items-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-[12.5px] font-semibold text-emerald-700 transition hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-40"
+                className="flex items-center gap-1.5 rounded-lg border border-emerald-200 dark:border-emerald-900 bg-emerald-50 dark:bg-emerald-950/40 px-3 py-2 text-[12.5px] font-semibold text-emerald-700 dark:text-emerald-300 transition hover:bg-emerald-100 dark:hover:bg-emerald-900/40 disabled:cursor-not-allowed disabled:opacity-40"
               >
                 <IconFileSpreadsheet size={15} />
                 Export Excel
@@ -1046,20 +1046,20 @@ export function Booking() {
             </div>
 
             {/* ===== Search bar ===== */}
-            <div className="flex shrink-0 flex-wrap items-center gap-3 border-b border-gray-200 bg-slate-50 px-5 py-2.5">
-              <span className="text-xs font-bold text-slate-600">ค้นหาข้อมูล</span>
-              <div className="flex w-[300px] max-w-[34vw] items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-1.5 transition focus-within:border-accent">
-                <IconSearch size={16} className="shrink-0 text-gray-400" />
+            <div className="flex shrink-0 flex-wrap items-center gap-3 border-b border-gray-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 px-5 py-2.5">
+              <span className="text-xs font-bold text-slate-600 dark:text-slate-300">ค้นหาข้อมูล</span>
+              <div className="flex w-[300px] max-w-[34vw] items-center gap-2 rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-1.5 transition focus-within:border-accent">
+                <IconSearch size={16} className="shrink-0 text-gray-400 dark:text-slate-500" />
                 <input
                   type="text"
                   value={draft.bookingNo}
                   onChange={(e) => setF({ bookingNo: e.target.value })}
                   onKeyDown={(e) => e.key === 'Enter' && runSearch()}
                   placeholder="เลขที่ใบจองสินค้า..."
-                  className="min-w-0 flex-1 bg-transparent text-[13px] outline-none placeholder:text-gray-400"
+                  className="min-w-0 flex-1 bg-transparent text-[13px] outline-none placeholder:text-gray-400 dark:placeholder:text-slate-500"
                 />
               </div>
-              <label className="flex cursor-pointer select-none items-center gap-2 text-[12.5px] text-slate-600">
+              <label className="flex cursor-pointer select-none items-center gap-2 text-[12.5px] text-slate-600 dark:text-slate-300">
                 <input
                   type="checkbox"
                   checked={draft.showDataAll}
@@ -1078,7 +1078,7 @@ export function Booking() {
               </button>
               <button
                 onClick={resetSearch}
-                className="rounded-lg border border-gray-200 bg-white px-3.5 py-2 text-[12.5px] font-medium text-slate-700 transition hover:border-gray-300 hover:bg-slate-50"
+                className="rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3.5 py-2 text-[12.5px] font-medium text-slate-700 dark:text-slate-200 transition hover:border-gray-300 dark:hover:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-800"
               >
                 ล้างเงื่อนไข
               </button>
@@ -1095,7 +1095,7 @@ export function Booking() {
 
             {/* ===== Advanced filter panel ===== */}
             {filterOpen && (
-              <div className="form-slide-enter shrink-0 border-b border-gray-200 bg-white px-5 py-4">
+              <div className="form-slide-enter shrink-0 border-b border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-5 py-4">
                 <div className="grid grid-cols-3 gap-x-5 gap-y-4">
                   {(
                     [
@@ -1104,28 +1104,28 @@ export function Booking() {
                       { label: 'วันที่ PL ระบุเบอร์รถ', from: 'startPL', to: 'endPL' },
                     ] as { label: string; from: keyof BookingFilterState; to: keyof BookingFilterState }[]
                   ).map((r) => (
-                    <div key={r.label} className="rounded-xl border border-[#eef1f6] bg-slate-50 p-3">
-                      <div className="mb-2 text-[11.5px] font-bold text-slate-600">{r.label}</div>
+                    <div key={r.label} className="rounded-xl border border-[#eef1f6] dark:border-slate-800 bg-slate-50 dark:bg-slate-800/60 p-3">
+                      <div className="mb-2 text-[11.5px] font-bold text-slate-600 dark:text-slate-300">{r.label}</div>
                       <div className="flex items-center gap-2">
                         <input
                           type="date"
                           value={draft[r.from] as string}
                           onChange={(e) => setF({ [r.from]: e.target.value })}
-                          className={`${INPUT_CLS} mono w-full !bg-white py-1.5 text-[12.5px]`}
+                          className={`${INPUT_CLS} mono w-full !bg-white dark:bg-slate-900 py-1.5 text-[12.5px]`}
                         />
-                        <span className="text-xs text-gray-400">ถึง</span>
+                        <span className="text-xs text-gray-400 dark:text-slate-500">ถึง</span>
                         <input
                           type="date"
                           value={draft[r.to] as string}
                           onChange={(e) => setF({ [r.to]: e.target.value })}
-                          className={`${INPUT_CLS} mono w-full !bg-white py-1.5 text-[12.5px]`}
+                          className={`${INPUT_CLS} mono w-full !bg-white dark:bg-slate-900 py-1.5 text-[12.5px]`}
                         />
                       </div>
                     </div>
                   ))}
 
                   <label className="flex flex-col gap-1.5">
-                    <span className="text-[11.5px] font-semibold text-gray-500">รายชื่อลูกค้า</span>
+                    <span className="text-[11.5px] font-semibold text-gray-500 dark:text-slate-400">รายชื่อลูกค้า</span>
                     <input
                       type="text"
                       value={draft.customerName}
@@ -1136,7 +1136,7 @@ export function Booking() {
                     />
                   </label>
                   <label className="flex flex-col gap-1.5">
-                    <span className="text-[11.5px] font-semibold text-gray-500">เบอร์รถ</span>
+                    <span className="text-[11.5px] font-semibold text-gray-500 dark:text-slate-400">เบอร์รถ</span>
                     <input
                       type="text"
                       value={draft.machineID}
@@ -1147,8 +1147,8 @@ export function Booking() {
                     />
                   </label>
                   <label className="flex flex-col gap-1.5">
-                    <span className="text-[11.5px] font-semibold text-gray-500">
-                      สถานะเอกสาร <span className="font-normal text-[10.5px] text-gray-400">(WFStateID)</span>
+                    <span className="text-[11.5px] font-semibold text-gray-500 dark:text-slate-400">
+                      สถานะเอกสาร <span className="font-normal text-[10.5px] text-gray-400 dark:text-slate-500">(WFStateID)</span>
                     </span>
                     <input
                       type="text"
@@ -1165,7 +1165,7 @@ export function Booking() {
                 <div className="mt-4 flex items-center justify-end gap-2">
                   <button
                     onClick={resetSearch}
-                    className="rounded-lg border border-gray-200 bg-white px-4 py-2 text-[12.5px] font-medium text-slate-600 transition hover:border-gray-300 hover:bg-slate-50"
+                    className="rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-4 py-2 text-[12.5px] font-medium text-slate-600 dark:text-slate-300 transition hover:border-gray-300 dark:hover:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-800"
                   >
                     ล้างเงื่อนไข
                   </button>
@@ -1182,10 +1182,10 @@ export function Booking() {
             )}
 
             {/* ===== Column preset bar (มุมมองคอลัมน์ + legend + refresh) ===== */}
-            <div className="flex shrink-0 flex-wrap items-center gap-3.5 border-b border-gray-200 bg-slate-50 px-5 py-2">
+            <div className="flex shrink-0 flex-wrap items-center gap-3.5 border-b border-gray-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 px-5 py-2">
               <div className="flex items-center gap-2">
-                <span className="text-[11.5px] font-semibold text-gray-500">คอลัมน์</span>
-                <div className="flex gap-0.5 rounded-lg border border-gray-200 bg-[#eef1f6] p-1">
+                <span className="text-[11.5px] font-semibold text-gray-500 dark:text-slate-400">คอลัมน์</span>
+                <div className="flex gap-0.5 rounded-lg border border-gray-200 dark:border-slate-700 bg-[#eef1f6] dark:bg-slate-800 p-1">
                   {(Object.keys(BOOKING_COLUMN_PRESETS) as BookingPresetKey[]).map((key) => (
                     <button
                       key={key}
@@ -1194,7 +1194,7 @@ export function Booking() {
                         setPage(1);
                       }}
                       className={`rounded-md px-3 py-1 text-[12px] font-semibold transition ${
-                        preset === key ? 'bg-[#0b1220] text-white shadow-sm' : 'text-slate-600 hover:text-gray-900'
+                        preset === key ? 'bg-[#0b1220] text-white shadow-sm' : 'text-slate-600 dark:text-slate-300 hover:text-gray-900 dark:hover:text-white'
                       }`}
                     >
                       {BOOKING_COLUMN_PRESETS[key].label}
@@ -1203,20 +1203,20 @@ export function Booking() {
                 </div>
               </div>
 
-              <span className="flex items-center gap-1.5 text-[11.5px] text-slate-500">
+              <span className="flex items-center gap-1.5 text-[11.5px] text-slate-500 dark:text-slate-400">
                 <span className="h-2.5 w-2.5 rounded bg-red-300" />
                 เกินกำหนด / เร่งด่วน
               </span>
 
               <div className="ml-auto flex items-center gap-3">
                 {error && (
-                  <span className="flex items-center gap-1.5 text-[11.5px] font-semibold text-red-600">
+                  <span className="flex items-center gap-1.5 text-[11.5px] font-semibold text-red-600 dark:text-red-400">
                     <IconAlertTriangle size={13} />
                     {error}
                   </span>
                 )}
                 {loading && (
-                  <span className="flex items-center gap-1.5 text-[11.5px] text-slate-500">
+                  <span className="flex items-center gap-1.5 text-[11.5px] text-slate-500 dark:text-slate-400">
                     <IconLoader2 size={13} className="animate-spin text-accent" />
                     กำลังโหลด...
                   </span>
@@ -1225,7 +1225,7 @@ export function Booking() {
                   onClick={reload}
                   disabled={loading}
                   title="โหลดข้อมูลใหม่"
-                  className="flex items-center gap-1.5 rounded-md border border-gray-200 bg-white px-2.5 py-1 text-[12px] font-medium text-slate-600 transition hover:border-gray-300 hover:text-gray-900 disabled:cursor-not-allowed disabled:opacity-40"
+                  className="flex items-center gap-1.5 rounded-md border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-2.5 py-1 text-[12px] font-medium text-slate-600 dark:text-slate-300 transition hover:border-gray-300 dark:hover:border-slate-600 hover:text-gray-900 dark:hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   <IconRefresh size={13} />
                   รีเฟรช
@@ -1234,15 +1234,15 @@ export function Booking() {
             </div>
 
             {/* ===== Table meta bar (จำนวนแถว + ล้างตัวกรองตาราง + จำนวน/หน้า) ===== */}
-            <div className="flex shrink-0 flex-wrap items-center gap-3 border-b border-gray-200 bg-slate-50 px-5 py-1.5 text-xs">
-              <span className="text-slate-500">
-                ตาราง <b className="text-gray-900">{rows.length}</b> รายการ
+            <div className="flex shrink-0 flex-wrap items-center gap-3 border-b border-gray-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 px-5 py-1.5 text-xs">
+              <span className="text-slate-500 dark:text-slate-400">
+                ตาราง <b className="text-gray-900 dark:text-slate-100">{rows.length}</b> รายการ
               </span>
 
               <button
                 onClick={clearTableFilters}
                 disabled={activeFilterCount === 0 && !sort}
-                className="flex items-center gap-1.5 rounded-md border border-gray-200 bg-white px-2.5 py-1 font-medium text-slate-600 transition hover:border-gray-300 hover:text-gray-900 disabled:cursor-not-allowed disabled:opacity-40"
+                className="flex items-center gap-1.5 rounded-md border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-2.5 py-1 font-medium text-slate-600 dark:text-slate-300 transition hover:border-gray-300 dark:hover:border-slate-600 hover:text-gray-900 dark:hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
               >
                 <IconFilterOff size={13} />
                 ล้างตัวกรองตาราง
@@ -1253,7 +1253,7 @@ export function Booking() {
                 )}
               </button>
 
-              <label className="ml-auto flex items-center gap-1.5 text-slate-500">
+              <label className="ml-auto flex items-center gap-1.5 text-slate-500 dark:text-slate-400">
                 แสดง
                 <select
                   value={String(pageSize)}
@@ -1261,7 +1261,7 @@ export function Booking() {
                     setPageSize(e.target.value === 'all' ? 'all' : Number(e.target.value));
                     setPage(1);
                   }}
-                  className="cursor-pointer rounded-md border border-gray-200 bg-white px-2 py-1 text-[12px] font-semibold text-gray-700 outline-none transition focus:border-accent"
+                  className="cursor-pointer rounded-md border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-2 py-1 text-[12px] font-semibold text-gray-700 dark:text-slate-200 outline-none transition focus:border-accent"
                 >
                   {PAGE_SIZES.map((s) => (
                     <option key={s} value={String(s)}>
@@ -1275,7 +1275,7 @@ export function Booking() {
 
             {/* ===== Grid ===== */}
             <div className="relative min-h-0 flex-1">
-              <div className="absolute inset-0 overflow-auto bg-white">
+              <div className="absolute inset-0 overflow-auto bg-white dark:bg-slate-900">
                 <table className="w-full min-w-max border-separate border-spacing-0">
                   <thead>
                     <tr>
@@ -1289,7 +1289,7 @@ export function Booking() {
                         return (
                           <th
                             key={col.id}
-                            className="sticky top-0 z-20 whitespace-nowrap border-b-2 border-accent bg-[#0b1220] px-2 py-1.5 text-[11.5px] font-semibold text-slate-300"
+                            className="sticky top-0 z-20 whitespace-nowrap border-b-2 border-accent bg-[#0b1220] px-2 py-1.5 text-[11.5px] font-semibold text-slate-300 dark:text-slate-600"
                             style={{ width: w, minWidth: w, maxWidth: w }}
                           >
                             <div className="relative flex items-center gap-1">
@@ -1358,7 +1358,7 @@ export function Booking() {
                           </th>
                         );
                       })}
-                      <th className="sticky right-0 top-0 z-30 whitespace-nowrap border-b-2 border-accent bg-[#0b1220] px-3 py-1.5 text-center text-[11.5px] font-semibold text-slate-300 shadow-[inset_6px_0_6px_-6px_rgba(0,0,0,0.5)]">
+                      <th className="sticky right-0 top-0 z-30 whitespace-nowrap border-b-2 border-accent bg-[#0b1220] px-3 py-1.5 text-center text-[11.5px] font-semibold text-slate-300 dark:text-slate-600 shadow-[inset_6px_0_6px_-6px_rgba(0,0,0,0.5)]">
                         จัดการ
                       </th>
                     </tr>
@@ -1368,15 +1368,15 @@ export function Booking() {
                       <tr>
                         <td
                           colSpan={columns.length + 1}
-                          className="h-24 border-b border-[#eef1f6] text-center text-[13px] text-slate-400"
+                          className="h-24 border-b border-[#eef1f6] dark:border-slate-800 text-center text-[13px] text-slate-400 dark:text-slate-500"
                         >
                           {loading ? (
-                            <span className="inline-flex items-center gap-2 text-slate-500">
+                            <span className="inline-flex items-center gap-2 text-slate-500 dark:text-slate-400">
                               <IconLoader2 size={16} className="animate-spin text-accent" />
                               กำลังโหลดรายการใบจอง...
                             </span>
                           ) : error ? (
-                            <span className="inline-flex items-center gap-2 text-red-600">
+                            <span className="inline-flex items-center gap-2 text-red-600 dark:text-red-400">
                               <IconAlertTriangle size={16} />
                               {error}
                             </span>
@@ -1393,7 +1393,7 @@ export function Booking() {
                           return (
                             <td
                               key={col.id}
-                              className="h-12 overflow-hidden text-ellipsis whitespace-nowrap border-b border-[#eef1f6] px-3 text-[13px] text-slate-700"
+                              className="h-12 overflow-hidden text-ellipsis whitespace-nowrap border-b border-[#eef1f6] dark:border-slate-800 px-3 text-[13px] text-slate-700 dark:text-slate-200"
                               style={{ width: w, minWidth: w, maxWidth: w, textAlign: col.align }}
                             >
                               {renderCell(row, col)}
@@ -1401,14 +1401,14 @@ export function Booking() {
                           );
                         })}
                         <td
-                          className={`sticky right-0 z-10 h-12 whitespace-nowrap border-b border-[#eef1f6] border-l border-l-gray-200 px-2 shadow-[inset_6px_0_6px_-6px_rgba(0,0,0,0.12)] ${rowActionBg(row)}`}
+                          className={`sticky right-0 z-10 h-12 whitespace-nowrap border-b border-[#eef1f6] dark:border-slate-800 border-l border-l-gray-200 px-2 shadow-[inset_6px_0_6px_-6px_rgba(0,0,0,0.12)] ${rowActionBg(row)}`}
                         >
                           <div className="flex items-center justify-center gap-1">
                             <button
                               type="button"
                               title="แก้ไข / อนุมัติใบจองนี้"
                               onClick={() => openForm(row)}
-                              className="flex h-7 w-7 items-center justify-center rounded-md border border-gray-200 bg-white text-slate-600 transition hover:border-accent hover:bg-[#eef4fb] hover:text-accent"
+                              className="flex h-7 w-7 items-center justify-center rounded-md border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 transition hover:border-accent hover:bg-[#eef4fb] hover:text-accent"
                             >
                               <IconPencil size={15} />
                             </button>
@@ -1416,7 +1416,7 @@ export function Booking() {
                               type="button"
                               title="พิมพ์ใบจองนี้ / บันทึกเป็น PDF"
                               onClick={() => setPrinting(row)}
-                              className="flex h-7 w-7 items-center justify-center rounded-md border border-gray-200 bg-white text-slate-600 transition hover:border-gray-300 hover:bg-slate-100"
+                              className="flex h-7 w-7 items-center justify-center rounded-md border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 transition hover:border-gray-300 dark:hover:border-slate-600 hover:bg-slate-100 dark:hover:bg-slate-700"
                             >
                               <IconPrinter size={15} />
                             </button>
@@ -1424,7 +1424,7 @@ export function Booking() {
                               type="button"
                               title="ยกเลิกใบจองนี้"
                               onClick={() => setCancelTarget(row)}
-                              className="flex h-7 w-7 items-center justify-center rounded-md border border-gray-200 bg-white text-red-600 transition hover:border-red-200 hover:bg-red-50"
+                              className="flex h-7 w-7 items-center justify-center rounded-md border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-red-600 dark:text-red-400 transition hover:border-red-200 dark:hover:border-red-900 hover:bg-red-50 dark:hover:bg-red-950/40"
                             >
                               <IconTrash size={15} />
                             </button>
@@ -1439,10 +1439,10 @@ export function Booking() {
 
             {/* ===== Pagination ===== */}
             {rows.length > 0 && (
-              <div className="flex shrink-0 flex-wrap items-center gap-2 border-t border-gray-200 bg-white px-5 py-2">
-                <span className="text-xs text-slate-500">
-                  แสดง <b className="text-gray-900">{firstIndex}</b>–<b className="text-gray-900">{lastIndex}</b> จาก{' '}
-                  <b className="text-gray-900">{rows.length}</b> รายการ
+              <div className="flex shrink-0 flex-wrap items-center gap-2 border-t border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-5 py-2">
+                <span className="text-xs text-slate-500 dark:text-slate-400">
+                  แสดง <b className="text-gray-900 dark:text-slate-100">{firstIndex}</b>–<b className="text-gray-900 dark:text-slate-100">{lastIndex}</b> จาก{' '}
+                  <b className="text-gray-900 dark:text-slate-100">{rows.length}</b> รายการ
                 </span>
 
                 {totalPages > 1 && (
@@ -1451,7 +1451,7 @@ export function Booking() {
                       onClick={() => setPage(1)}
                       disabled={safePage === 1}
                       title="หน้าแรก"
-                      className="flex h-8 w-8 items-center justify-center rounded-lg border border-gray-200 bg-white text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+                      className="flex h-8 w-8 items-center justify-center rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 transition hover:bg-slate-50 dark:hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-40"
                     >
                       <IconChevronsLeft size={16} />
                     </button>
@@ -1459,7 +1459,7 @@ export function Booking() {
                       onClick={() => setPage((p) => Math.max(1, p - 1))}
                       disabled={safePage === 1}
                       title="ก่อนหน้า"
-                      className="flex h-8 items-center gap-1 rounded-lg border border-gray-200 bg-white px-2.5 text-[12.5px] font-semibold text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+                      className="flex h-8 items-center gap-1 rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-2.5 text-[12.5px] font-semibold text-slate-600 dark:text-slate-300 transition hover:bg-slate-50 dark:hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-40"
                     >
                       <IconChevronLeft size={15} />
                       ก่อนหน้า
@@ -1467,7 +1467,7 @@ export function Booking() {
 
                     {pageItems.map((p, i) =>
                       p === 'gap' ? (
-                        <span key={`gap${i}`} className="px-1 text-xs text-slate-400">
+                        <span key={`gap${i}`} className="px-1 text-xs text-slate-400 dark:text-slate-500">
                           …
                         </span>
                       ) : (
@@ -1477,7 +1477,7 @@ export function Booking() {
                           className={`mono flex h-8 min-w-[32px] items-center justify-center rounded-lg border px-2 text-[12.5px] font-semibold transition ${
                             p === safePage
                               ? 'border-accent bg-accent text-white'
-                              : 'border-gray-200 bg-white text-slate-600 hover:bg-slate-50'
+                              : 'border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800'
                           }`}
                         >
                           {p}
@@ -1489,7 +1489,7 @@ export function Booking() {
                       onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                       disabled={safePage === totalPages}
                       title="ถัดไป"
-                      className="flex h-8 items-center gap-1 rounded-lg border border-gray-200 bg-white px-2.5 text-[12.5px] font-semibold text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+                      className="flex h-8 items-center gap-1 rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-2.5 text-[12.5px] font-semibold text-slate-600 dark:text-slate-300 transition hover:bg-slate-50 dark:hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-40"
                     >
                       ถัดไป
                       <IconChevronRight size={15} />
@@ -1498,7 +1498,7 @@ export function Booking() {
                       onClick={() => setPage(totalPages)}
                       disabled={safePage === totalPages}
                       title="หน้าสุดท้าย"
-                      className="flex h-8 w-8 items-center justify-center rounded-lg border border-gray-200 bg-white text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+                      className="flex h-8 w-8 items-center justify-center rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 transition hover:bg-slate-50 dark:hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-40"
                     >
                       <IconChevronsRight size={16} />
                     </button>
@@ -1510,17 +1510,17 @@ export function Booking() {
         ) : editing ? (
           <>
             {/* ===== Approval header ===== */}
-            <div className="flex shrink-0 items-center gap-4 border-b border-gray-200 bg-white px-5 py-3.5">
+            <div className="flex shrink-0 items-center gap-4 border-b border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-5 py-3.5">
               <button
                 onClick={() => setView('list')}
-                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-gray-200 bg-white transition hover:bg-slate-100"
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 transition hover:bg-slate-100 dark:hover:bg-slate-700"
                 aria-label="กลับไปหน้ารายการ"
               >
-                <IconChevronLeft size={18} className="text-slate-700" />
+                <IconChevronLeft size={18} className="text-slate-700 dark:text-slate-200" />
               </button>
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2.5">
-                  <span className="mono text-[17px] font-bold leading-tight text-gray-900">{editing.book}</span>
+                  <span className="mono text-[17px] font-bold leading-tight text-gray-900 dark:text-slate-100">{editing.book}</span>
                   {(() => {
                     const sc = stateColorOf(editing.stateCode);
                     return (
@@ -1533,23 +1533,23 @@ export function Booking() {
                       </span>
                     );
                   })()}
-                  <span className="rounded-md bg-slate-100 px-2 py-0.5 text-[11px] text-slate-500">
+                  <span className="rounded-md bg-slate-100 dark:bg-slate-800 px-2 py-0.5 text-[11px] text-slate-500 dark:text-slate-400">
                     ประเภท: {editing.purpose}
                   </span>
                 </div>
-                <div className="mt-0.5 truncate text-xs text-gray-400">
+                <div className="mt-0.5 truncate text-xs text-gray-400 dark:text-slate-500">
                   ลูกค้า {editing.customer} · สร้างโดย {progress!.steps[0].actor} · {editing.createDate}
                 </div>
               </div>
             </div>
 
             {/* ===== Approval body ===== */}
-            <div className="min-h-0 flex-1 overflow-auto bg-[#f4f6fa] p-5">
+            <div className="min-h-0 flex-1 overflow-auto bg-[#f4f6fa] dark:bg-slate-950 p-5">
               {/* Workflow stepper (เต็มความกว้างด้านบน) */}
-              <section className="mb-5 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+              <section className="mb-5 rounded-2xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-5 shadow-sm">
                 <div className="mb-5 flex flex-wrap items-center gap-3">
-                  <div className="text-[13px] font-bold text-gray-700">ขั้นตอนการอนุมัติ (Workflow)</div>
-                  <span className="mono rounded-md bg-slate-100 px-2 py-0.5 text-[11px] text-slate-500">
+                  <div className="text-[13px] font-bold text-gray-700 dark:text-slate-200">ขั้นตอนการอนุมัติ (Workflow)</div>
+                  <span className="mono rounded-md bg-slate-100 dark:bg-slate-800 px-2 py-0.5 text-[11px] text-slate-500 dark:text-slate-400">
                     {Math.min(STATUS_STEPS_DONE[editing.docStatus], WORKFLOW_LEN)}/{WORKFLOW_LEN} ขั้น
                   </span>
                   <div className="ml-auto flex flex-wrap items-center gap-2">
@@ -1561,7 +1561,7 @@ export function Booking() {
                       className={`flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-[12px] font-semibold transition ${
                         auditOpen
                           ? 'border-accent/30 bg-accent/5 text-accent hover:bg-accent/10'
-                          : 'border-gray-200 bg-white text-slate-600 hover:bg-slate-50'
+                          : 'border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800'
                       }`}
                     >
                       <IconHistory size={14} />
@@ -1576,7 +1576,7 @@ export function Booking() {
                       className={`flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-[12px] font-semibold transition ${
                         changesOpen
                           ? 'border-accent/30 bg-accent/5 text-accent hover:bg-accent/10'
-                          : 'border-gray-200 bg-white text-slate-600 hover:bg-slate-50'
+                          : 'border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800'
                       }`}
                     >
                       <IconHistory size={14} />
@@ -1612,7 +1612,7 @@ export function Booking() {
                           onClick={() => setActiveStep(st.repStepIndex)}
                           title={`ดู${st.label}`}
                           className={`flex min-w-0 flex-1 flex-col items-center rounded-xl px-1 py-2 text-center transition ${
-                            isActive ? 'bg-accent/5 ring-1 ring-accent/40' : 'hover:bg-slate-50'
+                            isActive ? 'bg-accent/5 ring-1 ring-accent/40' : 'hover:bg-slate-50 dark:hover:bg-slate-800'
                           }`}
                         >
                           <span
@@ -1624,8 +1624,8 @@ export function Booking() {
                                 : st.state === 'cancelled'
                                 ? 'bg-slate-400 text-white'
                                 : st.state === 'current'
-                                ? 'border-2 border-accent bg-white text-accent'
-                                : 'border-2 border-gray-200 bg-white text-gray-400'
+                                ? 'border-2 border-accent bg-white dark:bg-slate-900 text-accent'
+                                : 'border-2 border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-gray-400 dark:text-slate-500'
                             }`}
                           >
                             {st.state === 'done' ? (
@@ -1643,21 +1643,21 @@ export function Booking() {
                               isActive
                                 ? 'text-accent'
                                 : st.state === 'done'
-                                ? 'text-gray-800'
+                                ? 'text-gray-800 dark:text-slate-100'
                                 : st.state === 'rejected'
-                                ? 'text-red-600'
+                                ? 'text-red-600 dark:text-red-400'
                                 : st.state === 'current'
-                                ? 'text-gray-800'
-                                : 'text-gray-400'
+                                ? 'text-gray-800 dark:text-slate-100'
+                                : 'text-gray-400 dark:text-slate-500'
                             }`}
                           >
                             {st.label}
                           </span>
-                          <span className="mt-0.5 text-[10.5px] leading-tight text-slate-500">{sub}</span>
+                          <span className="mt-0.5 text-[10.5px] leading-tight text-slate-500 dark:text-slate-400">{sub}</span>
                           {st.state === 'done' && st.lastAt && (
-                            <span className="mono mt-0.5 text-[10px] text-gray-400">{st.lastAt}</span>
+                            <span className="mono mt-0.5 text-[10px] text-gray-400 dark:text-slate-500">{st.lastAt}</span>
                           )}
-                          <span className="mono mt-0.5 text-[10px] text-gray-400">
+                          <span className="mono mt-0.5 text-[10px] text-gray-400 dark:text-slate-500">
                             {st.doneCount}/{st.total} ขั้นย่อย
                           </span>
                         </button>
@@ -1670,8 +1670,8 @@ export function Booking() {
                   <div
                     className={`mt-4 flex items-center gap-2 rounded-xl border px-4 py-2.5 text-[12.5px] font-semibold ${
                       progress!.termination === 'rejected'
-                        ? 'border-red-200 bg-red-50 text-red-700'
-                        : 'border-slate-200 bg-slate-50 text-slate-600'
+                        ? 'border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-300'
+                        : 'border-slate-200 bg-slate-50 dark:bg-slate-800/60 text-slate-600 dark:text-slate-300'
                     }`}
                   >
                     <IconAlertTriangle size={16} />
@@ -1695,20 +1695,20 @@ export function Booking() {
                 {(auditOpen || changesOpen) && (
                   <div className="flex flex-col gap-5 self-start">
                     {auditOpen && (
-                      <section className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
-                        <div className="border-b border-gray-200 px-5 py-3.5 text-[15px] font-bold text-gray-800">
+                      <section className="overflow-hidden rounded-2xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-sm">
+                        <div className="border-b border-gray-200 dark:border-slate-700 px-5 py-3.5 text-[15px] font-bold text-gray-800 dark:text-slate-100">
                           ประวัติเอกสาร (Audit)
                         </div>
                         <ul className="flex flex-col gap-4 p-5">
                           {progress!.audit.length === 0 ? (
-                            <li className="text-[12.5px] text-gray-400">ยังไม่มีประวัติการดำเนินการ</li>
+                            <li className="text-[12.5px] text-gray-400 dark:text-slate-500">ยังไม่มีประวัติการดำเนินการ</li>
                           ) : (
                             progress!.audit.map((a, i) => (
                               <li key={i} className="flex gap-3">
                                 <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-emerald-500" />
                                 <div>
-                                  <div className="text-[13px] font-semibold text-gray-800">{a.step}</div>
-                                  <div className="text-[11.5px] text-gray-400">
+                                  <div className="text-[13px] font-semibold text-gray-800 dark:text-slate-100">{a.step}</div>
+                                  <div className="text-[11.5px] text-gray-400 dark:text-slate-500">
                                     {a.actor} · {a.at}
                                   </div>
                                 </div>
@@ -1725,18 +1725,18 @@ export function Booking() {
             </div>
 
             {/* ===== Approval action bar (ปุ่มอนุมัติ / ตีกลับ อยู่ที่เดียวด้านล่าง) ===== */}
-            <div className="flex shrink-0 flex-wrap items-center gap-2.5 border-t border-gray-200 bg-white px-5 py-3.5">
-              <div className="text-xs text-gray-500">
+            <div className="flex shrink-0 flex-wrap items-center gap-2.5 border-t border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-5 py-3.5">
+              <div className="text-xs text-gray-500 dark:text-slate-400">
                 {progress!.nextApprover ? (
                   <>
-                    เอกสารนี้รอ <b className="text-gray-800">{progress!.nextApprover}</b> ({progress!.steps[
+                    เอกสารนี้รอ <b className="text-gray-800 dark:text-slate-100">{progress!.nextApprover}</b> ({progress!.steps[
                       STATUS_STEPS_DONE[editing.docStatus]
                     ]?.title}) · การกระทำถัดไป:
                   </>
                 ) : progress!.termination === 'rejected' ? (
-                  <span className="font-semibold text-red-600">เอกสารถูกตีกลับแล้ว — ไม่สามารถดำเนินการต่อได้</span>
+                  <span className="font-semibold text-red-600 dark:text-red-400">เอกสารถูกตีกลับแล้ว — ไม่สามารถดำเนินการต่อได้</span>
                 ) : progress!.termination === 'cancelled' ? (
-                  <span className="font-semibold text-slate-500">เอกสารถูกยกเลิกแล้ว — ไม่สามารถดำเนินการต่อได้</span>
+                  <span className="font-semibold text-slate-500 dark:text-slate-400">เอกสารถูกยกเลิกแล้ว — ไม่สามารถดำเนินการต่อได้</span>
                 ) : (
                   'เอกสารนี้อนุมัติครบทุกขั้นแล้ว'
                 )}
@@ -1744,7 +1744,7 @@ export function Booking() {
               <button
                 onClick={() => setView('list')}
                 disabled={!progress!.nextApprover}
-                className="ml-auto flex items-center gap-1.5 rounded-lg border border-red-200 bg-white px-5 py-2.5 text-[13px] font-semibold text-red-600 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-40"
+                className="ml-auto flex items-center gap-1.5 rounded-lg border border-red-200 dark:border-red-900 bg-white dark:bg-slate-900 px-5 py-2.5 text-[13px] font-semibold text-red-600 dark:text-red-400 transition hover:bg-red-50 dark:hover:bg-red-950/40 disabled:cursor-not-allowed disabled:opacity-40"
               >
                 <IconArrowBackUp size={16} />
                 ตีกลับพร้อมเหตุผล
@@ -1762,44 +1762,44 @@ export function Booking() {
         ) : (
           <>
             {/* ===== Form header ===== */}
-            <div className="flex shrink-0 items-center gap-4 border-b border-gray-200 bg-white px-5 py-3">
+            <div className="flex shrink-0 items-center gap-4 border-b border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-5 py-3">
               <button
                 onClick={() => setView('list')}
-                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-gray-200 bg-white transition hover:bg-slate-100"
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 transition hover:bg-slate-100 dark:hover:bg-slate-700"
                 aria-label="กลับไปหน้ารายการ"
               >
-                <IconChevronLeft size={18} className="text-slate-700" />
+                <IconChevronLeft size={18} className="text-slate-700 dark:text-slate-200" />
               </button>
               <div>
-                <div className="text-[17px] font-bold leading-tight text-gray-900">สร้างใบจองสินค้า</div>
-                <div className="text-xs text-gray-400">{COMPANY.nameTh}</div>
+                <div className="text-[17px] font-bold leading-tight text-gray-900 dark:text-slate-100">สร้างใบจองสินค้า</div>
+                <div className="text-xs text-gray-400 dark:text-slate-500">{COMPANY.nameTh}</div>
               </div>
-              <span className="ml-2 rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-[11.5px] font-semibold text-amber-700">
+              <span className="ml-2 rounded-full border border-amber-200 dark:border-amber-900 bg-amber-50 dark:bg-amber-950/40 px-3 py-1 text-[11.5px] font-semibold text-amber-700 dark:text-amber-300">
                 ส่วนที่ 1 · สำหรับฝ่ายขาย / ผู้จอง
               </span>
               <div className="ml-auto flex gap-2.5">
-                <div className="flex flex-col items-end rounded-lg border border-gray-200 bg-slate-100 px-3.5 py-1">
-                  <span className="text-[9.5px] tracking-wide text-gray-400">เลขที่ใบจอง</span>
-                  <span className="mono text-sm font-bold text-gray-900">AUTO</span>
+                <div className="flex flex-col items-end rounded-lg border border-gray-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 px-3.5 py-1">
+                  <span className="text-[9.5px] tracking-wide text-gray-400 dark:text-slate-500">เลขที่ใบจอง</span>
+                  <span className="mono text-sm font-bold text-gray-900 dark:text-slate-100">AUTO</span>
                 </div>
-                <div className="flex flex-col items-end rounded-lg border border-gray-200 bg-slate-100 px-3.5 py-1">
-                  <span className="text-[9.5px] tracking-wide text-gray-400">วันที่สร้างใบจอง</span>
-                  <span className="mono text-sm font-bold text-gray-900">{today}</span>
+                <div className="flex flex-col items-end rounded-lg border border-gray-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 px-3.5 py-1">
+                  <span className="text-[9.5px] tracking-wide text-gray-400 dark:text-slate-500">วันที่สร้างใบจอง</span>
+                  <span className="mono text-sm font-bold text-gray-900 dark:text-slate-100">{today}</span>
                 </div>
               </div>
             </div>
 
             {/* ===== Form body: nav + scroll sections ===== */}
             <div className="flex min-h-0 flex-1">
-              <nav className="flex w-56 shrink-0 flex-col gap-0.5 overflow-y-auto border-r border-gray-200 bg-white p-3">
-                <div className="px-3 pb-2 pt-1.5 text-[10px] font-bold uppercase tracking-widest text-gray-400">
+              <nav className="flex w-56 shrink-0 flex-col gap-0.5 overflow-y-auto border-r border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-3">
+                <div className="px-3 pb-2 pt-1.5 text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-slate-500">
                   หัวข้อฟอร์ม
                 </div>
                 {FORM_SECTIONS.map((s) => (
                   <button
                     key={s.no}
                     onClick={() => goSection(s.no)}
-                    className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-[13px] font-medium text-slate-700 transition hover:bg-slate-100"
+                    className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-[13px] font-medium text-slate-700 dark:text-slate-200 transition hover:bg-slate-100 dark:hover:bg-slate-700"
                   >
                     <span
                       className={`flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-md text-[11px] font-bold ${s.badge}`}
@@ -1814,18 +1814,18 @@ export function Booking() {
               <div
                 ref={formScrollRef}
                 key="new"
-                className="flex min-w-0 flex-1 flex-col gap-4 overflow-y-auto bg-[#f4f6fa] p-5 pb-10"
+                className="flex min-w-0 flex-1 flex-col gap-4 overflow-y-auto bg-[#f4f6fa] dark:bg-slate-950 p-5 pb-10"
               >
                 <BookingFormSections row={null} readOnly={false} master={bookingMaster} />
               </div>
             </div>
 
             {/* ===== Form action bar ===== */}
-            <div className="flex shrink-0 items-center gap-2.5 border-t border-gray-200 bg-white px-5 py-3.5">
-              <div className="text-xs text-gray-400">กรอกข้อมูลส่วนที่ 1 ให้ครบก่อนส่งอนุมัติ</div>
+            <div className="flex shrink-0 items-center gap-2.5 border-t border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-5 py-3.5">
+              <div className="text-xs text-gray-400 dark:text-slate-500">กรอกข้อมูลส่วนที่ 1 ให้ครบก่อนส่งอนุมัติ</div>
               <button
                 onClick={() => setView('list')}
-                className="ml-auto rounded-lg border border-gray-200 bg-white px-5 py-2.5 text-[13px] font-semibold text-slate-600 transition hover:bg-slate-100"
+                className="ml-auto rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-5 py-2.5 text-[13px] font-semibold text-slate-600 dark:text-slate-300 transition hover:bg-slate-100 dark:hover:bg-slate-700"
               >
                 กลับ
               </button>
@@ -1848,21 +1848,21 @@ export function Booking() {
             className="backdrop-fade-in absolute inset-0 bg-black/40"
             onClick={() => setCancelTarget(null)}
           />
-          <div className="drawer-slide-in relative w-full max-w-sm rounded-2xl bg-white p-6 shadow-2xl">
+          <div className="drawer-slide-in relative w-full max-w-sm rounded-2xl bg-white dark:bg-slate-900 p-6 shadow-2xl">
             <div className="mb-3 flex items-center gap-3">
-              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-red-50 text-red-600">
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-red-50 dark:bg-red-950/40 text-red-600 dark:text-red-400">
                 <IconAlertTriangle size={20} />
               </span>
-              <div className="text-[16px] font-bold text-gray-900">ยกเลิกใบจองสินค้า</div>
+              <div className="text-[16px] font-bold text-gray-900 dark:text-slate-100">ยกเลิกใบจองสินค้า</div>
             </div>
-            <p className="mb-5 text-[13px] leading-relaxed text-gray-500">
-              ต้องการยกเลิกใบจองเลขที่ <b className="mono text-gray-800">{cancelTarget.book}</b> ใช่หรือไม่?
+            <p className="mb-5 text-[13px] leading-relaxed text-gray-500 dark:text-slate-400">
+              ต้องการยกเลิกใบจองเลขที่ <b className="mono text-gray-800 dark:text-slate-100">{cancelTarget.book}</b> ใช่หรือไม่?
               การกระทำนี้ไม่สามารถย้อนกลับได้
             </p>
             <div className="flex justify-end gap-2.5">
               <button
                 onClick={() => setCancelTarget(null)}
-                className="rounded-lg border border-gray-200 bg-white px-4 py-2 text-[13px] font-semibold text-slate-600 transition hover:bg-slate-100"
+                className="rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-4 py-2 text-[13px] font-semibold text-slate-600 dark:text-slate-300 transition hover:bg-slate-100 dark:hover:bg-slate-700"
               >
                 ปิด
               </button>

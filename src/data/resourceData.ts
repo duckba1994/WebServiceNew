@@ -8,12 +8,12 @@ export const MACHINE_STATUS_META: Record<
   MachineStatus,
   { label: string; color: string; bg: string; border: string }
 > = {
-  available: { label: 'ว่าง', color: '#2d7d46', bg: '#ecfdf5', border: '#a7f3d0' },
-  booked: { label: 'จองแล้ว', color: '#1a5fb4', bg: '#eff6ff', border: '#bfdbfe' },
-  preparing: { label: 'เตรียมส่ง', color: '#5b3fa6', bg: '#f5f3ff', border: '#ddd6fe' },
-  onsite: { label: 'อยู่หน้างาน', color: '#ea580c', bg: '#fff7ed', border: '#fed7aa' },
-  returning: { label: 'รอรับกลับ', color: '#b45309', bg: '#fffbeb', border: '#fde68a' },
-  repair: { label: 'ซ่อม', color: '#dc2626', bg: '#fef2f2', border: '#fecaca' },
+  available: { label: 'ว่าง', color: 'var(--tint-green-fg)', bg: 'var(--tint-green-bg)', border: 'var(--tint-green-bd)' },
+  booked: { label: 'จองแล้ว', color: 'var(--tint-blue-fg)', bg: 'var(--tint-blue-bg)', border: 'var(--tint-blue-bd)' },
+  preparing: { label: 'เตรียมส่ง', color: 'var(--tint-purple-fg)', bg: 'var(--tint-purple-bg)', border: 'var(--tint-purple-bd)' },
+  onsite: { label: 'อยู่หน้างาน', color: 'var(--tint-orange-fg)', bg: 'var(--tint-orange-bg)', border: 'var(--tint-orange-bd)' },
+  returning: { label: 'รอรับกลับ', color: 'var(--tint-amber-fg)', bg: 'var(--tint-amber-bg)', border: 'var(--tint-amber-bd)' },
+  repair: { label: 'ซ่อม', color: 'var(--tint-red-fg)', bg: 'var(--tint-red-bg)', border: 'var(--tint-red-bd)' },
 };
 
 export const MACHINE_SUMMARY: { status: MachineStatus; count: number }[] = [

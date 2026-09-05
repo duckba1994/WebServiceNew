@@ -21,15 +21,18 @@ export interface PhaseMeta {
   border: string;
 }
 
+// สีเป็น CSS variable ไม่ใช่ hex — ค่าจริงอยู่ใน index.css และสลับเองตอนเปิดโหมดมืด
+// (สีชุดนี้ถูกส่งเข้า style={{}} ตรง ๆ หลายที่ Tailwind จึงเอื้อมไม่ถึง)
+// ห้ามเปลี่ยนกลับเป็น hex — จะได้ตัวหนังสือสีเข้มบนพื้นเข้มในโหมดมืด
 export const PHASE_META: Record<RequestPhase, PhaseMeta> = {
-  waiting_approve: { label: 'รออนุมัติ', short: 'รออนุมัติ', color: '#7c3aed', bg: '#f5f3ff', border: '#ddd6fe' },
-  waiting_accept: { label: 'รอปลายทางรับเรื่อง', short: 'รอรับเรื่อง', color: '#1d4ed8', bg: '#eff6ff', border: '#bfdbfe' },
-  in_progress: { label: 'กำลังดำเนินการ', short: 'กำลังดำเนินการ', color: '#b45309', bg: '#fffbeb', border: '#fde68a' },
-  waiting_review: { label: 'รอตรวจรับ / ประเมิน', short: 'รอตรวจรับ', color: '#0e7490', bg: '#ecfeff', border: '#a5f3fc' },
-  waiting_close: { label: 'รอปิดงาน', short: 'รอปิดงาน', color: '#0f766e', bg: '#f0fdfa', border: '#99f6e4' },
-  closed: { label: 'ปิดงานแล้ว', short: 'ปิดงานแล้ว', color: '#047857', bg: '#ecfdf5', border: '#a7f3d0' },
-  cancelled: { label: 'ยกเลิก', short: 'ยกเลิก', color: '#9f1239', bg: '#fff1f2', border: '#fecdd3' },
-  other: { label: 'อื่น ๆ (ยังไม่รู้จัก)', short: 'อื่น ๆ', color: '#475569', bg: '#f1f5f9', border: '#e2e8f0' },
+  waiting_approve: { label: 'รออนุมัติ', short: 'รออนุมัติ', color: 'var(--ph-approve-fg)', bg: 'var(--ph-approve-bg)', border: 'var(--ph-approve-bd)' },
+  waiting_accept: { label: 'รอปลายทางรับเรื่อง', short: 'รอรับเรื่อง', color: 'var(--ph-accept-fg)', bg: 'var(--ph-accept-bg)', border: 'var(--ph-accept-bd)' },
+  in_progress: { label: 'กำลังดำเนินการ', short: 'กำลังดำเนินการ', color: 'var(--ph-progress-fg)', bg: 'var(--ph-progress-bg)', border: 'var(--ph-progress-bd)' },
+  waiting_review: { label: 'รอตรวจรับ / ประเมิน', short: 'รอตรวจรับ', color: 'var(--ph-review-fg)', bg: 'var(--ph-review-bg)', border: 'var(--ph-review-bd)' },
+  waiting_close: { label: 'รอปิดงาน', short: 'รอปิดงาน', color: 'var(--ph-close-fg)', bg: 'var(--ph-close-bg)', border: 'var(--ph-close-bd)' },
+  closed: { label: 'ปิดงานแล้ว', short: 'ปิดงานแล้ว', color: 'var(--ph-closed-fg)', bg: 'var(--ph-closed-bg)', border: 'var(--ph-closed-bd)' },
+  cancelled: { label: 'ยกเลิก', short: 'ยกเลิก', color: 'var(--ph-cancel-fg)', bg: 'var(--ph-cancel-bg)', border: 'var(--ph-cancel-bd)' },
+  other: { label: 'อื่น ๆ (ยังไม่รู้จัก)', short: 'อื่น ๆ', color: 'var(--ph-other-fg)', bg: 'var(--ph-other-bg)', border: 'var(--ph-other-bd)' },
 };
 
 // ลำดับการแสดงการ์ด KPI — ไล่ตามจังหวะของงานจริง
