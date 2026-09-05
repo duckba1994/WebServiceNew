@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { IconBell } from '@tabler/icons-react';
 import { Layout } from '../components/layout/Layout';
 import { RequestGrid, SummaryCardSpec } from '../components/items/RequestGrid';
@@ -18,9 +19,14 @@ import { useAuth } from '../context/AuthContext';
 // รวมใบที่ยังไม่ถึงคิวเรา (ต้นทางยังไม่อนุมัติ) ด้วย → ใช้ onlyMyTurn คัดเฉพาะที่ต้องลงมือ
 export function Inbox() {
   const { user } = useAuth();
-  const [status, setStatus] = useState<StatusFilter>('Open');
-  const [onlyMyTurn, setOnlyMyTurn] = useState(false);
-  const [phase, setPhase] = useState<RequestPhase | null>(null);
+  // ตัวกรองเริ่มต้นรับจาก URL ได้ (หน้าภาพรวมลิงก์มา: /inbox?myturn=1, /inbox?phase=closed)
+  // อ่านครั้งเดียวตอน mount แล้วปล่อยให้ state คุมต่อ
+  const [searchParams] = useSearchParams();
+  const urlPhase = (searchParams.get('phase') as RequestPhase | null) || null;
+  // มาจากลิงก์ "ปิดงานแล้ว" ต้องเปิด status เป็น All ไม่งั้นค่าตั้งต้น Open จะกรองทิ้งหมด
+  const [status, setStatus] = useState<StatusFilter>(urlPhase ? 'All' : 'Open');
+  const [onlyMyTurn, setOnlyMyTurn] = useState(() => searchParams.get('myturn') === '1');
+  const [phase, setPhase] = useState<RequestPhase | null>(urlPhase);
 
   // โมดูลของคิวนี้ = แผนกของคนที่ล็อกอิน ไม่ใช่ค่าคงที่ — ห้ามฮาร์ดโค้ด 'IT'
   // ไม่งั้นผู้ใช้แผนกอื่น (PL/HR/SV) จะเห็นคิวของ IT แล้วนึกว่าไม่มีงานเข้า

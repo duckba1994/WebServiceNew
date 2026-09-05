@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { IconBell } from '@tabler/icons-react';
 import { Layout } from '../components/layout/Layout';
 import { RequestGrid, SummaryCardSpec } from '../components/items/RequestGrid';
@@ -7,6 +8,8 @@ import { PHASE_META, isRequesterSide, phaseIndex } from '../data/requestPhase';
 import { RequestAction, RequestListItem, RequestPhase, StatusFilter } from '../types/requestList';
 import { useRequestList } from '../hooks/useRequestList';
 import { useRequestAction } from '../hooks/useRequestAction';
+import { DateRangeFilter } from '../components/ui/DateRangeFilter';
+import { DateRangeKey, DateRangeValue, isRangeInvalid, rangeOf } from '../data/dateRange';
 import { ActionFieldValues } from '../data/requestActionFields';
 import { useAuth } from '../context/AuthContext';
 
@@ -16,18 +19,43 @@ import { useAuth } from '../context/AuthContext';
 // "จังหวะงาน" (phase) ที่ API map มาจาก WFStatus ให้แล้ว
 //
 // ขอบเขตข้อมูล (แผนก) API กรองจาก token ให้เอง หน้าเว็บไม่ส่ง departid
+//
+// ช่วงวันที่: ส่ง dateFrom/dateTo ไปกรองที่ API (ตั้งต้น "เดือนนี้") — เมื่อก่อน
+// ดึงใบทั้งหมดมาแล้วค้นหา/แบ่งหน้าที่ browser ซึ่งโตขึ้นเรื่อย ๆ ตามจำนวนใบ
+// ⚠️ phaseSummary/totalCount จึงเป็นยอด "ในช่วงที่เลือก" ไม่ใช่ยอดตลอดกาล
 export function MyItems() {
   const { user } = useAuth();
+  // ตัวกรองเริ่มต้นรับจาก URL ได้ (หน้าภาพรวมลิงก์มา: /my?ourturn=1, /my?phase=in_progress)
+  // อ่านครั้งเดียวตอน mount แล้วปล่อยให้ state คุมต่อ — ไม่งั้นผู้ใช้กดเปลี่ยนตัวกรอง
+  // แล้ว URL เดิมจะดึงกลับไปค่าเดิมทุกครั้งที่ re-render
+  const [searchParams] = useSearchParams();
   const [status, setStatus] = useState<StatusFilter>('All');
-  const [phase, setPhase] = useState<RequestPhase | null>(null);
-  const [ourTurnOnly, setOurTurnOnly] = useState(false);
+  const [phase, setPhase] = useState<RequestPhase | null>(
+    () => (searchParams.get('phase') as RequestPhase | null) || null
+  );
+  const [ourTurnOnly, setOurTurnOnly] = useState(() => searchParams.get('ourturn') === '1');
+  // ช่วงวันที่แจ้ง — กรองที่ API (dateFrom/dateTo) ไม่ใช่กรองในตาราง
+  // ตั้งต้น "เดือนนี้" (วันที่ 1 → สิ้นเดือน): ดึงทั้งฐานมาทุกครั้งไม่ไหวเมื่อใบสะสมมากขึ้น
+  // ใบเก่ากว่านั้นยังหาได้ด้วยปุ่ม "3 เดือน" / "ปีนี้" / "ทั้งหมด" / กำหนดเอง
+  const [rangeKey, setRangeKey] = useState<DateRangeKey>('month');
+  const [range, setRange] = useState<DateRangeValue>(() => rangeOf('month'));
+  const rangeInvalid = isRangeInvalid(range);
 
   // กรอง phase ที่ backend — phaseSummary ยังคืนยอดเต็มทุกครั้ง
   // การ์ดใบอื่นจึงยังโชว์ตัวเลขจริงแม้กำลังกรองอยู่
   const { items, phaseSummary, totalCount, departId, loading, error, reload, applyItem } =
     useRequestList(
       'outgoing',
-      { status, phase: phase ? [phase] : undefined, sortBy: 'RequestDate', sortDir: 'Desc' },
+      {
+        status,
+        phase: phase ? [phase] : undefined,
+        // ช่วงกลับหัว (จาก > ถึง) ไม่ส่งไป — API จะคืนศูนย์รายการเงียบ ๆ
+        // ปล่อยให้ตารางค้างชุดเดิมไว้ แล้วเตือนด้วยป้ายแดงในตัวกรองแทน
+        dateFrom: rangeInvalid ? undefined : range.from || undefined,
+        dateTo: rangeInvalid ? undefined : range.to || undefined,
+        sortBy: 'RequestDate',
+        sortDir: 'Desc',
+      },
       user?.token
     );
 
@@ -112,11 +140,21 @@ export function MyItems() {
             ? 'ไม่มีใบที่รอแผนกเราลงมือตอนนี้'
             : phase
             ? 'ไม่มีใบในจังหวะงานนี้'
+            : range.from || range.to
+            ? 'ไม่มีเรื่องที่แจ้งออกไปในช่วงวันที่นี้ — ลองขยายช่วงวันที่'
             : 'ยังไม่มีเรื่องที่แผนกนี้แจ้งออกไป'
         }
         toolbar={
           <>
             <StatusTabs value={status} onChange={setStatus} />
+            <DateRangeFilter
+              presetKey={rangeKey}
+              value={range}
+              onChange={(key, v) => {
+                setRangeKey(key);
+                setRange(v);
+              }}
+            />
             <button
               onClick={() => setOurTurnOnly((v) => !v)}
               title="ใบที่ขั้นตอนปัจจุบันวนกลับมาที่แผนกผู้แจ้ง — งานเสร็จแล้วรอเรากดต่อ"

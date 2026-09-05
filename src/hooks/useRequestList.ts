@@ -16,10 +16,13 @@ import {
 // incoming: ต้องส่ง module เสมอ ไม่งั้น 400
 //
 // ไม่ส่ง page = API คืนทั้งหมดครั้งเดียว แล้วแบ่งหน้า/ค้นหาที่ฝั่งนี้
+// enabled = false → ไม่ยิงเลย (ใช้ตอนยังไม่รู้ module ของตัวเอง — incoming ที่ไม่มี
+// module จะได้ 400 และหน้าเว็บจะโชว์ error ทั้งที่แค่ยังโหลดข้อมูลประกอบไม่เสร็จ)
 export function useRequestList(
   direction: RequestDirection,
   query: RequestListQuery,
-  token?: string
+  token?: string,
+  enabled = true
 ) {
   const [items, setItems] = useState<RequestListItem[]>([]);
   const [summary, setSummary] = useState<RequestStatusSummary[]>([]);
@@ -51,6 +54,10 @@ export function useRequestList(
 
   useEffect(() => {
     let alive = true;
+    if (!enabled) {
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     setError(null);
 
@@ -86,7 +93,7 @@ export function useRequestList(
     return () => {
       alive = false;
     };
-  }, [direction, module, status, onlyMyTurn, phase, dateFrom, dateTo, sortBy, sortDir, page, pageSize, token, reloadKey]);
+  }, [enabled, direction, module, status, onlyMyTurn, phase, dateFrom, dateTo, sortBy, sortDir, page, pageSize, token, reloadKey]);
 
   return { items, summary, phaseSummary, workflow, paging, totalCount, departId, loading, error, reload, applyItem };
 }

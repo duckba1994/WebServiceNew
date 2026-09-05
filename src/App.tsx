@@ -9,6 +9,7 @@ import { Inbox } from './pages/Inbox';
 import { SalesPlan } from './pages/SalesPlan';
 import { Booking } from './pages/Booking';
 import { Delivery } from './pages/Delivery';
+import { Resources } from './pages/Resources';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, isAuthenticated } = useAuth();
@@ -39,6 +40,8 @@ export default function App() {
           <Route path="/sales-plan" element={<ProtectedRoute><SalesPlan /></ProtectedRoute>} />
           <Route path="/booking" element={<ProtectedRoute><Booking /></ProtectedRoute>} />
           <Route path="/delivery" element={<ProtectedRoute><Delivery /></ProtectedRoute>} />
+          {/* dashboard เครื่องจักร/คนขับเดิม — ยังเป็น mock ทั้งหมด ยกออกจากหน้าแรกมาไว้ที่นี่ */}
+          <Route path="/resources" element={<ProtectedRoute><Resources /></ProtectedRoute>} />
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Routes>
       </AuthProvider>
