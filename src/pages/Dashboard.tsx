@@ -29,7 +29,7 @@ import { RequestAction, RequestListItem, RequestPhase, RequestPhaseSummary } fro
 //
 // ลำดับความสำคัญ: งานที่รอเราลงมือ → คิวงานเข้าของแผนก → (ท้ายสุด) เรื่องที่แจ้งออกไป
 //
-// ยิง 2 เส้น ทั้งคู่กรองด้วยช่วง "เดือนนี้" เหมือนหน้า /my:
+// ยิง 2 เส้น ทั้งคู่กรองด้วยช่วง "30 วันล่าสุด" (ย้อนหลัง 30 วัน ถึงวันนี้):
 //   /Requests/incoming?module={แผนกเรา}  ← คิวงานของแผนก (ต้องมี module ไม่งั้น 400)
 //   /Requests/outgoing                   ← เอามาเฉพาะใบที่วนกลับมาหาเรา
 export function Dashboard() {
@@ -42,8 +42,9 @@ export function Dashboard() {
     null
   );
 
-  // ช่วงเดือนปัจจุบัน — คิดครั้งเดียวต่อการเปิดหน้า (ข้ามวันแล้วกดรีเฟรชได้ค่าใหม่)
-  const range = useMemo(() => rangeOf('month'), []);
+  // ช่วง 30 วันล่าสุด: วันเริ่มต้น = วันนี้ − 30 วัน, วันสิ้นสุด = วันนี้
+  // คิดครั้งเดียวต่อการเปิดหน้า (ข้ามวันแล้วกดรีเฟรชได้ค่าใหม่)
+  const range = useMemo(() => rangeOf('d30'), []);
 
   // โมดูลของแผนกตัวเอง — vocabulary เดียวกับ module ('IT'/'PL'/'CR'…)
   // ห้ามฮาร์ดโค้ด ไม่งั้นทุกแผนกจะเห็นคิวของ IT (เหมือนที่ Inbox.tsx ทำ)
@@ -137,7 +138,7 @@ export function Dashboard() {
           </div>
 
           <span className="mono ml-auto rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-1.5 text-[12px] font-semibold text-slate-500 dark:text-slate-400">
-            เดือนนี้ · {rangeText(range)}
+            30 วันล่าสุด · {rangeText(range)}
           </span>
           <button
             onClick={reload}
@@ -285,7 +286,7 @@ function TodoSection({
           <IconChecks size={26} className="text-emerald-500" />
           <div className="text-[14px] font-semibold text-gray-700 dark:text-slate-200">ไม่มีใบที่รอแผนกเราลงมือ</div>
           <div className="text-[12.5px] text-gray-500 dark:text-slate-400">
-            ทั้งคิวงานที่แจ้งเข้ามาและใบที่เราแจ้งออกไป ไม่มีอะไรค้างอยู่ที่เราในเดือนนี้
+            ทั้งคิวงานที่แจ้งเข้ามาและใบที่เราแจ้งออกไป ไม่มีอะไรค้างอยู่ที่เราใน 30 วันล่าสุด
           </div>
         </div>
       ) : (
@@ -398,7 +399,7 @@ function IncomingSection({
           {module}
         </span>
         <span className="text-[12.5px] text-gray-500 dark:text-slate-400">
-          {loading ? 'กำลังโหลด…' : `แจ้งเข้ามาในเดือนนี้ ${total} ใบ`}
+          {loading ? 'กำลังโหลด…' : `แจ้งเข้ามาใน 30 วันล่าสุด ${total} ใบ`}
         </span>
         <Link to="/inbox" className="ml-auto text-[12.5px] font-semibold text-accent hover:underline">
           เปิดกล่องงานเข้า
@@ -430,11 +431,11 @@ function IncomingSection({
         })}
       </div>
 
-      {/* "ปิดงานแล้ว" = ใบที่ *แจ้งเข้ามา* ในเดือนนี้แล้วปิดไปแล้ว ไม่ใช่ "ใบที่ปิดในเดือนนี้"
-          — API กรองช่วงวันที่จาก RequestDate เท่านั้น ใบที่แจ้งเดือนก่อนแล้วเพิ่งปิด
-          เดือนนี้จึงไม่ถูกนับ ต้องเขียนกำกับไว้ ไม่ปล่อยให้ตีความเอง */}
+      {/* "ปิดงานแล้ว" = ใบที่ *แจ้งเข้ามา* ใน 30 วันล่าสุดแล้วปิดไปแล้ว ไม่ใช่ "ใบที่ปิดใน 30 วันล่าสุด"
+          — API กรองช่วงวันที่จาก RequestDate เท่านั้น ใบที่แจ้งเกิน 30 วันมาแล้วเพิ่งปิด
+          จึงไม่ถูกนับ ต้องเขียนกำกับไว้ ไม่ปล่อยให้ตีความเอง */}
       <p className="mt-2.5 text-[11.5px] text-gray-400 dark:text-slate-500">
-        ทุกตัวเลขนับจากใบที่แจ้งเข้ามาในเดือนนี้ (ตามวันที่แจ้ง ไม่ใช่วันที่ปิดงาน)
+        ทุกตัวเลขนับจากใบที่แจ้งเข้ามาใน 30 วันล่าสุด (ตามวันที่แจ้ง ไม่ใช่วันที่ปิดงาน)
       </p>
     </section>
   );
@@ -489,7 +490,7 @@ function OutgoingStrip({
     <section className="flex flex-wrap items-center gap-x-6 gap-y-2 rounded-2xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-5 py-3.5 text-[13px] shadow-sm">
       <span className="font-bold text-gray-800 dark:text-slate-100">เรื่องที่แผนกเราแจ้งออกไป</span>
       <span className="text-slate-600 dark:text-slate-300">
-        เดือนนี้ <b className="mono">{loading ? '—' : total}</b> ใบ
+        30 วันล่าสุด <b className="mono">{loading ? '—' : total}</b> ใบ
       </span>
       <span className="text-slate-600 dark:text-slate-300">
         ยังไม่ปิด <b className="mono">{loading ? '—' : open}</b> ใบ

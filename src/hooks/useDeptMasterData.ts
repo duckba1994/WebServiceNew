@@ -23,7 +23,7 @@ const dateText = (v?: string): string => {
   return Number.isNaN(d.getTime()) ? v : d.toLocaleDateString('en-GB');
 };
 
-// ── ตัวเลือกของใบแจ้งเรื่องรายแผนก (GET /MasterData/{ga|im|af|sv|sqa}) ──
+// ── ตัวเลือกของใบแจ้งเรื่องรายแผนก (GET /MasterData/{hr|ga|im|af|sv|sqa|ps}) ──
 // ทุกแผนกในกลุ่มนี้ใช้สัญญาเดียวกัน (DeptMasterDataApi) ต่างแค่ endpoint
 // จึงเป็นฮุคตัวเดียว รับ departmentShort เข้ามาแล้วยิงเส้นของแผนกนั้น
 //
@@ -59,7 +59,7 @@ export function useDeptMasterData(dept: string | null, token?: string) {
       .catch(() => {
         if (!alive) return;
         setData(EMPTY);
-        setError(`โหลดตัวเลือกของแผนก ${dept} ไม่สำเร็จ`);
+        setError(`โหลดตัวเลือกของแผนก ${dept.toUpperCase()} ไม่สำเร็จ`);
       })
       .finally(() => {
         if (alive) setLoading(false);
@@ -71,13 +71,9 @@ export function useDeptMasterData(dept: string | null, token?: string) {
 
   const reload = useCallback(() => setReloadKey((k) => k + 1), []);
 
-  // ส่วนงานเก็บเป็น code (HV/FL) เพราะเป็นคีย์ที่รายการชั้นล่างใช้อ้างถึง
-  // ป้ายบนปุ่มคือ code ส่วนชื่อไทยเป็นข้อความรองไว้ช่วยอ่าน (เหมือน CR)
-  const sectionOptions: FieldOption[] = useMemo(
-    () => (data.sections ?? []).map((s) => ({ value: s.code, label: s.code, sub: s.name })),
-    [data.sections]
-  );
-
+  // ไม่มี sectionOptions ที่นี่ — ช่อง "ส่วนงาน" ของทุกฟอร์มใช้รายการ HV/FL ชุดเดียว
+  // จาก GET /MasterData/cr (ดู useCrMasterData / MasterListKey 'crSections')
+  // แผนกนี้ส่ง sections มาก็ไม่ได้ใช้ แต่ section ที่ผูกกับแถวอื่นต้องเป็นโค้ดชุดเดียวกัน
   const typeOptions = useCallback(
     (section = ''): FieldOption[] => toNameOptions(bySection(data.types ?? [], section)),
     [data.types]
@@ -132,7 +128,6 @@ export function useDeptMasterData(dept: string | null, token?: string) {
   return {
     master: data,
     estimateOptions,
-    sectionOptions,
     typeOptions,
     requestTypeOptions,
     subTypeOptions,

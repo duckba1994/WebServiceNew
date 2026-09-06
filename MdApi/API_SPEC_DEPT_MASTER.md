@@ -1,4 +1,4 @@
-# API SPEC — Master Data ของใบแจ้งเรื่อง GA / IM / AF / SV / SQA / PS
+# API SPEC — Master Data ของใบแจ้งเรื่อง HR / GA / IM / AF / SV / SQA / PS
 
 สถานะ: **รอ backend** — หน้าเว็บ (ฟอร์มสร้างใบแจ้งเรื่อง) ต่อไว้ให้แล้ว
 ยิงทันทีที่เปิดฟอร์มของแผนกนั้น ถ้ายังไม่มี endpoint ฟอร์มจะขึ้นข้อความ
@@ -7,7 +7,7 @@
 ## 1. Endpoint
 
 ```
-GET /api/v1/MasterData/{dept}      dept = ga | im | af | sv | sqa | ps
+GET /api/v1/MasterData/{dept}      dept = hr | ga | im | af | sv | sqa | ps
 Authorization: Bearer <token>
 ```
 
@@ -41,6 +41,9 @@ Authorization: Bearer <token>
 }
 ```
 
+- ⚠️ **`sections` ของเส้นนี้ไม่ได้ใช้แล้ว** — ช่อง "ส่วนงาน" ของทุกฟอร์มอ่านรายการ HV/FL
+  จาก `GET /MasterData/cr` เส้นเดียว (ผู้ใช้สั่ง 6 ก.ย. 2026: ให้เหมือนของ CR)
+  แต่ `section` ที่ผูกมากับแถวอื่น **ต้องเป็นโค้ดชุดเดียวกับของ CR** (HV/FL) ไม่งั้นกรองไม่ตรง
 - ชุดไหนแผนกนั้นไม่มี **ไม่ต้องส่ง field นั้นมา** (หรือส่ง `[]`) — ฟอร์มไม่ได้ใช้ชุดที่ไม่ได้ประกาศไว้
 - `section` / `typeId` = **ไม่บังคับ** ใส่มาเมื่อรายการนั้นแยกตามส่วนงาน / แยกตามประเภทเท่านั้น
   - ไม่ใส่ `section` → หน้าเว็บแสดงทุกแถวไม่ว่าเลือกส่วนงานอะไร
@@ -51,12 +54,13 @@ Authorization: Bearer <token>
 
 | แผนก | ฟิลด์ในฟอร์ม | ชุดที่ต้องส่ง |
 |------|--------------|----------------|
+| HR | เรื่องที่แจ้ง | `requestTypes` (ชุดเดียวที่ HR ใช้) |
 | GA / IM | ประเภท | `types` |
 | GA / IM | เรื่องที่แจ้ง | `requestTypes` |
 | AF | เรื่องที่แจ้ง | `requestTypes` |
-| SV | ส่วนงาน (HV/FL) | `sections` |
+| SV | ส่วนงาน (HV/FL) | — (ใช้ `sections` ของ `/MasterData/cr`) |
 | SV | เรื่องที่แจ้ง | `requestTypes` |
-| SQA | ส่วนงาน (HV/FL) | `sections` |
+| SQA | ส่วนงาน (HV/FL) | — (ใช้ `sections` ของ `/MasterData/cr`) |
 | SQA | ประเภทเรื่องที่แจ้ง | `types` |
 | SQA | รายละเอียดที่แจ้ง | `requestSubTypes` (ผูกกับ `types` ผ่าน `typeId`) |
 | PS | ประเภท | `types` |
@@ -85,7 +89,7 @@ Authorization: Bearer <token>
 
 ## 5. ยังไม่มี (ทำต่อเมื่อ backend พร้อม)
 
-- **endpoint สร้างใบ** ของ GA / IM / AF / SV / SQA / PS — ตอนนี้กด "ส่งใบแจ้งเรื่อง" แล้วขึ้นหน้าสรุปอย่างเดียว
+- **endpoint สร้างใบ** ของ HR / GA / IM / AF / SV / SQA / PS — ตอนนี้กด "ส่งใบแจ้งเรื่อง" แล้วขึ้นหน้าสรุปอย่างเดียว
   ยังไม่ได้ยิง API (แบบเดียวกับที่ IT/PL/CR เคยเป็นก่อนมี endpoint)
 - **endpoint แนบรูปของ SV** (`ImgPath1..3` แบบ IT/PL) — ฟอร์มมีช่องแนบรูป 3 รูปแล้ว
 - ฟิลด์ที่ยังไม่มีที่เก็บฝั่ง DB: `customerType` (ลูกค้าภายนอก/ภายใน) + `customerDept` (แผนกลูกค้าภายใน)

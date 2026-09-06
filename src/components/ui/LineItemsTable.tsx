@@ -7,7 +7,6 @@ import {
   lineTotal,
   lineItemsTotal,
   formatBaht,
-  UNIT_OPTIONS,
 } from '../../data/requestForm';
 
 // ── ตารางรายการย่อย (reusable) ───────────────────────────────
@@ -23,16 +22,16 @@ export function LineItemsTable({
   accentColor = '#1a5fb4',
   variant = 'purchase',
   invalid,
-  units = UNIT_OPTIONS,
+  units,
 }: {
   value: LineItem[];
   onChange: (items: LineItem[]) => void;
   accentColor?: string;
   variant?: LineItemsVariant;
   invalid?: boolean;
-  // หน่วยที่ให้เลือก — แผนกที่มี master data ของตัวเองส่งรายการจาก API เข้ามา
-  // (PL: GET /MasterData/pl → units) ไม่ส่ง = ใช้ชุดกลางของแผนกที่ยังไม่มี master
-  units?: string[];
+  // หน่วยที่ให้เลือก — มาจาก GET /MasterData/pl (units) ชุดเดียวกันทุกแผนก
+  // ไม่มีรายการสำรองในโค้ด: โหลดไม่ได้ = ว่าง แล้วให้หน้าที่เรียกแสดง error + ลองใหม่
+  units: string[];
 }) {
   const withPrice = variant === 'purchase';
   const update = (id: string, patch: Partial<LineItem>) =>

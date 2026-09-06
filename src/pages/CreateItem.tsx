@@ -6,13 +6,14 @@ import {
   IconCheck,
   IconSend,
   IconLoader2,
+  IconArrowNarrowRight,
   IconArrowRight,
   IconLock,
 } from '@tabler/icons-react';
 import { Layout } from '../components/layout/Layout';
 import { ImageUpload } from '../components/ui/ImageUpload';
 import { LineItemsTable } from '../components/ui/LineItemsTable';
-import { DateQuickPick, thaiDateLabel } from '../components/ui/DateQuickPick';
+import { DateQuickButtons, DateQuickPick, thaiDateLabel } from '../components/ui/DateQuickPick';
 import { SearchSelect, SearchOption } from '../components/ui/SearchSelect';
 import { RequestPriority } from '../types/request';
 import { DepartmentApi } from '../types/masterData';
@@ -41,6 +42,8 @@ import {
   validateRequestForm,
   getDeptForm,
   commonFieldsOf,
+  hasLineItems,
+  usesMaster,
   DETAIL_MAX_LEN,
   DEPT_FORMS,
   summaryTitle,
@@ -65,9 +68,36 @@ const IT_UPLOADER: ImageUploader = { check: checkItAttachment, upload: uploadItA
 const PL_UPLOADER: ImageUploader = { check: checkPlAttachment, upload: uploadPlAttachment };
 
 
-// แผนกที่ตัวเลือกมาจาก GET /MasterData/{ชื่อย่อแผนก} (ดู useDeptMasterData)
-// แผนกใหม่ที่ใช้สัญญาเดียวกัน เพิ่มชื่อย่อที่นี่ที่เดียว
-const DEPT_MASTER_DEPTS = ['GA', 'IM', 'AF', 'SV', 'SQA', 'PS'];
+// แผนกที่ตัวเลือกมาจาก GET /MasterData/{ชื่อ endpoint} (ดู useDeptMasterData)
+// ชื่อย่อแผนกกับชื่อ endpoint ไม่ตรงกันเสมอไป — SV-HV ยิง /MasterData/sv, SA ยิง /MasterData/sqa
+// (ชื่อย่อมาจาก master ส่วนชื่อ endpoint มาจาก MdApi/API_SPEC_DEPT_MASTER.md)
+// แผนกใหม่ที่ใช้สัญญาเดียวกัน เพิ่มคู่ชื่อย่อ→endpoint ที่นี่ที่เดียว
+const DEPT_MASTER_ENDPOINTS: Record<string, string> = {
+  'HR-PR': 'hr',
+  GA: 'ga',
+  IM: 'im',
+  AF: 'af',
+  'SV-HV': 'sv',
+  SA: 'sqa',
+  PS: 'ps',
+};
+
+// แผนกปลายทางที่เปิดให้แจ้งเรื่องได้ + ลำดับที่แสดงในตัวเลือก
+// (per user decision, 6 ก.ย. 2026) — /MasterData/departments ส่งมาทุกแผนกในบริษัท
+// แต่หน้านี้ต้องเลือกได้เฉพาะแผนกที่มีแบบฟอร์มและมีคนรับเรื่องจริง
+// ชื่อในลิสต์ต้องตรงกับ departmentShort ที่ master ส่งมา และตรงกับคีย์ใน DEPT_FORMS
+const REQUEST_DEPTS = ['IT', 'PL', 'GA', 'IM', 'PS', 'AF', 'HR-PR', 'CR', 'SV-HV', 'SA'];
+
+// คัดเฉพาะแผนกใน REQUEST_DEPTS แล้วเรียงตามลำดับนั้น (ไม่ใช่ลำดับที่ API ส่งมา)
+// ข้อมูลแผนกยังมาจาก master ทั้งหมด — ลิสต์นี้เป็นแค่ตัวคัด ไม่ได้ตั้งชื่อ/รหัสเอง
+// ถ้าไม่ตรงสักชื่อ (master เปลี่ยนชื่อย่อ) คืนทั้งหมดแทน — หน้านี้ต้องแจ้งเรื่องได้เสมอ
+const pickRequestDepts = (rows: DepartmentApi[]): DepartmentApi[] => {
+  const norm = (v: string) => (v ?? '').trim().toUpperCase();
+  const picked = REQUEST_DEPTS.map((short) =>
+    rows.find((d) => norm(d.departmentShort) === short)
+  ).filter((d): d is DepartmentApi => !!d);
+  return picked.length ? picked : rows;
+};
 
 const INPUT_CLS =
   'rounded-lg border border-gray-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 px-3 py-2 text-[13px] text-gray-800 dark:text-slate-100 outline-none transition focus:bg-white dark:focus:bg-slate-900';
@@ -81,6 +111,7 @@ function FormRow({
   hint,
   required,
   span2,
+  headerRight,
   error,
   children,
 }: {
@@ -88,16 +119,23 @@ function FormRow({
   hint?: string;
   required?: boolean;
   span2?: boolean;
+  // ของที่วางต่อท้ายป้าย (ตอนนี้มีแค่ปุ่มลัดวันที่) — อยู่บนแถวป้าย ไม่กินที่ของช่องกรอก
+  headerRight?: React.ReactNode;
   error?: string;
   children: React.ReactNode;
 }) {
   return (
     <div className={`flex flex-col gap-1.5 ${span2 ? 'col-span-2' : ''}`} data-invalid={error ? 'true' : undefined}>
-      <span className="flex items-center gap-1.5 text-[11.5px] font-semibold text-gray-500 dark:text-slate-400">
-        {label}
-        {required && <span className="text-red-500 dark:text-red-400">*</span>}
-        {hint && <span className="text-[10.5px] font-normal text-gray-400 dark:text-slate-500">{hint}</span>}
-      </span>
+      {/* min-h-6 = ความสูงของปุ่มลัด — แถวป้ายของทุกฟิลด์จึงสูงเท่ากัน
+          ช่องกรอกในแถวเดียวกันเลยเริ่มที่ระดับเดียวกัน ไม่ว่าฟิลด์ไหนจะมีปุ่มหรือไม่ */}
+      <div className="flex min-h-6 flex-wrap items-center gap-x-2.5 gap-y-1">
+        <span className="flex items-center gap-1.5 text-[11.5px] font-semibold text-gray-500 dark:text-slate-400">
+          {label}
+          {required && <span className="text-red-500 dark:text-red-400">*</span>}
+          {hint && <span className="text-[10.5px] font-normal text-gray-400 dark:text-slate-500">{hint}</span>}
+        </span>
+        {headerRight}
+      </div>
       {children}
       {error && <span className="text-[11px] font-medium text-red-500 dark:text-red-400">{error}</span>}
     </div>
@@ -212,7 +250,7 @@ function DeptPicker({
 
           {!loading && !error && (
             <div className="mt-2 text-[11.5px] text-gray-400 dark:text-slate-500">
-              มีแผนกในระบบ {departments.length} แผนก
+              แจ้งเรื่องได้ {departments.length} แผนก
             </div>
           )}
 
@@ -284,7 +322,7 @@ function RequestForm({
   dep: DepartmentApi;
   auto: AutoFillValues;
   // รายชื่อแผนกทั้งหมด — หน้าแม่โหลดไว้ตั้งแต่ขั้นเลือกแผนกแล้ว จึงส่งต่อมาใช้
-  // (ฟิลด์ "แผนกลูกค้าภายใน" ของ SV) ไม่ยิงซ้ำ
+  // (ฟิลด์ "หน่วยงานที่ขอใช้บริการ" ของ SV) ไม่ยิงซ้ำ
   departments: DepartmentApi[];
   deptsLoading: boolean;
   deptsError: string | null;
@@ -298,14 +336,19 @@ function RequestForm({
 
   const { user, isAuthenticated, sessionExpired } = useAuth();
   // ตัวเลือกของแผนก PL (ประเภท / เรื่องที่แจ้ง / หน่วย) — มาจาก GET /MasterData/pl
+  // ทุกแผนกที่มีกล่อง "รายการที่ขอ" ใช้ชุด "หน่วย" ของ PL ร่วมกัน จึงต้องโหลดเส้นนี้ด้วย
+  // แม้จะไม่ใช่ใบของ PL (per user decision, 6 ก.ย. 2026)
   const isPl = dep.departmentShort === 'PL';
-  const plMaster = usePlMasterData(user?.token, isPl);
+  const needsUnits = hasLineItems(cfg);
+  const plMaster = usePlMasterData(user?.token, isPl || needsUnits);
   // ตัวเลือกของแผนก CR (ส่วนงาน → ประเภทที่แจ้ง → รายละเอียดที่แจ้ง) — GET /MasterData/cr
+  // ทุกฟอร์มที่มีช่อง "ส่วนงาน" ใช้รายการ HV/FL ชุดนี้ด้วย (ผู้ใช้สั่ง 6 ก.ย. 2026)
+  // จึงต้องยิงเส้นนี้แม้ไม่ใช่ใบของ CR
   const isCr = dep.departmentShort === 'CR';
-  const crMaster = useCrMasterData(user?.token, isCr);
-  // ตัวเลือกของแผนกที่ใช้สัญญากลาง (GA/IM/AF/SV/SQA) — GET /MasterData/{แผนก}
-  const usesDeptMaster = DEPT_MASTER_DEPTS.includes(dep.departmentShort);
-  const deptMaster = useDeptMasterData(usesDeptMaster ? dep.departmentShort : null, user?.token);
+  const crMaster = useCrMasterData(user?.token, isCr || usesMaster(cfg, 'crSections'));
+  // ตัวเลือกของแผนกที่ใช้สัญญากลาง (HR-PR/GA/IM/AF/SV-HV/SA/PS) — GET /MasterData/{แผนก}
+  const deptMasterPath = DEPT_MASTER_ENDPOINTS[dep.departmentShort] ?? null;
+  const deptMaster = useDeptMasterData(deptMasterPath, user?.token);
   // ตัวเลือกแผนก (ค้นหาได้) — ใช้กับฟิลด์ kind='searchSelect' ที่ master='departments'
   const deptOptions = useMemo(() => toDeptOptions(departments), [departments]);
   const [f, setF] = useState<RequestFormState>(() => createEmptyForm(dep, auto));
@@ -519,10 +562,9 @@ function RequestForm({
           options: crMaster.requestSubTypeOptions(f.values.section ?? '', f.values.requestType ?? ''),
           ...cr,
         };
-      // ── ชุดกลางของ GA / IM / AF / SV / SQA ──
+      // ── ชุดกลางของ HR / GA / IM / AF / SV / SQA / PS ──
       // ส่ง section ที่เลือกไว้เข้าไปเสมอ — แผนกที่ไม่มีฟิลด์ส่วนงานจะได้ทุกแถวเหมือนเดิม
-      case 'deptSections':
-        return { options: deptMaster.sectionOptions, ...dm };
+      // (ค่าใน f.values.section เป็นโค้ดจากชุดของ CR — แถวของแผนกต้องใช้โค้ดเดียวกัน)
       case 'deptTypes':
         return { options: deptMaster.typeOptions(f.values.section ?? ''), ...dm };
       case 'deptRequestTypes':
@@ -608,24 +650,25 @@ function RequestForm({
         );
       case 'lineItems':
         return (
-          <LineItemsTable
-            variant={fd.variant}
-            // หน่วยจาก master ของแผนก (ไม่มี = ใช้ชุดกลางของ LineItemsTable)
-            units={
-              isPl
-                ? plMaster.unitNames
-                : deptMaster.unitNames.length > 0
-                ? deptMaster.unitNames
-                : undefined
-            }
-            value={f.lineItems}
-            onChange={(items) => {
-              setF((prev) => ({ ...prev, lineItems: items }));
-              clearError(fd.key);
-            }}
-            accentColor={accentColor}
-            invalid={bad}
-          />
+          <>
+            <LineItemsTable
+              variant={fd.variant}
+              // หน่วยมาจาก GET /MasterData/pl ชุดเดียวสำหรับทุกแผนกที่มีกล่องนี้
+              // (ไม่ใช้ units ของ master รายแผนกแล้ว — คนละชุดทำให้หน่วยของใบไม่ตรงกัน)
+              units={plMaster.unitNames}
+              value={f.lineItems}
+              onChange={(items) => {
+                setF((prev) => ({ ...prev, lineItems: items }));
+                clearError(fd.key);
+              }}
+              accentColor={accentColor}
+              invalid={bad}
+            />
+            {plMaster.loading && (
+              <span className="text-[11.5px] text-gray-400 dark:text-slate-500">กำลังโหลดหน่วย…</span>
+            )}
+            {masterError(plMaster)}
+          </>
         );
       case 'textarea': {
         const v = f.values[fd.key] ?? '';
@@ -796,12 +839,12 @@ function RequestForm({
       }
 
       case 'date':
-        // quickPick = ช่องวันที่แบบอ่านง่าย (ปุ่มลัด + ข้อความไทยกำกับ)
-        return fd.quickPick ? (
+        // quickPick / quickPickPlain = ช่องวันที่แบบอ่านง่าย (มีข้อความไทยกำกับ)
+        // ต่างกันแค่ปุ่มลัด ซึ่งไปอยู่บนแถวป้าย (ดู headerRight ด้านล่าง) ไม่ใช่ในนี้
+        return fd.quickPick || fd.quickPickPlain ? (
           <DateQuickPick
             value={f.values[fd.key] ?? ''}
             onChange={(v) => setValue(fd.key, v)}
-            accentColor={accentColor}
             invalid={bad}
             inputClass={common}
           />
@@ -935,18 +978,69 @@ function RequestForm({
   // ส่วนเฉพาะแผนก — มาจาก schema ใน requestForm.ts
   const deptSections = cfg.sections.map((sec) => (no: number) => (
     <SectionCard key={sec.title} no={no} title={sec.title} accentColor={accentColor}>
-      {sec.fields.filter((fd) => fieldVisible(fd, f.values)).map((fd) => (
-        <FormRow
-          key={fd.key}
-          label={fd.label}
-          hint={fd.hint}
-          required={fd.required}
-          span2={fd.span2 || fd.kind === 'lineItems' || fd.kind === 'images' || fd.kind === 'textarea' || fd.kind === 'checkboxes'}
-          error={errors[fd.key]}
-        >
-          {renderField(fd)}
-        </FormRow>
-      ))}
+      {sec.fields
+        // ฟิลด์ที่ประกาศ inlineWith ไว้ ไปเรนเดอร์อยู่ในแถวของฟิลด์แม่แล้ว (ไม่มีแถวของตัวเอง)
+        .filter((fd) => !fd.inlineWith && fieldVisible(fd, f.values))
+        .map((fd) => {
+          const inlines = sec.fields.filter((c) => c.inlineWith === fd.key && fieldVisible(c, f.values));
+          return (
+            <FormRow
+              key={fd.key}
+              label={fd.label}
+              hint={fd.hint}
+              required={fd.required}
+              headerRight={
+                fd.quickPick ? (
+                  <DateQuickButtons
+                    value={f.values[fd.key] ?? ''}
+                    onChange={(v) => setValue(fd.key, v)}
+                    accentColor={accentColor}
+                  />
+                ) : undefined
+              }
+              span2={
+                fd.span2 ||
+                inlines.length > 0 ||
+                fd.kind === 'lineItems' ||
+                fd.kind === 'images' ||
+                fd.kind === 'textarea' ||
+                fd.kind === 'checkboxes'
+              }
+              error={errors[fd.key]}
+            >
+              {inlines.length === 0 ? (
+                renderField(fd)
+              ) : (
+                // ตัวเลือกที่ต้องระบุต่อทันที — ช่องของฟิลด์ลูกอยู่ต่อท้ายในแถวเดียวกัน
+                // (SV: เลือก "หน่วยงานภายในองค์กร" แล้วเลือกหน่วยงานได้เลย ไม่ต้องมองหาช่องข้างล่าง)
+                <div className="flex flex-wrap items-start gap-2">
+                  <div className="min-w-0">{renderField(fd)}</div>
+                  {inlines.map((c) => (
+                    // ผิดพลาดที่ฟิลด์ลูกต้องมี data-invalid ของตัวเอง ไม่งั้นปุ่มส่งเลื่อนจอไปหาไม่เจอ
+                    <div
+                      key={c.key}
+                      className="flex min-w-[240px] flex-1 flex-col gap-1"
+                      data-invalid={errors[c.key] ? 'true' : undefined}
+                    >
+                      <div className="flex items-center gap-1.5">
+                        <IconArrowNarrowRight
+                          size={16}
+                          className="shrink-0 text-gray-400 dark:text-slate-500"
+                        />
+                        <div className="min-w-0 flex-1">{renderField(c)}</div>
+                      </div>
+                      {errors[c.key] && (
+                        <span className="pl-[22px] text-[11px] font-medium text-red-500 dark:text-red-400">
+                          {errors[c.key]}
+                        </span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </FormRow>
+          );
+        })}
       {/* ฟิลด์ส่วนกลางของแผนกที่ให้รวมอยู่ในกล่องนี้ (เช่น "รายละเอียด" ของ CR) */}
       {cfg.commonInto === sec.title && commonFields.length > 0 && commonRows}
     </SectionCard>
@@ -1205,6 +1299,10 @@ export function CreateItem() {
   const { departments, loading, error, reload } = useDepartments(user?.token);
   const [dep, setDep] = useState<DepartmentApi | null>(null);
 
+  // เฉพาะตัวเลือก "แผนกปลายทาง" ที่ถูกคัด — ฟิลด์ในฟอร์มที่อ้างถึงหน่วยงานอื่น
+  // (master='departments') ยังใช้รายชื่อเต็มจาก master เหมือนเดิม
+  const requestDepts = useMemo(() => pickRequestDepts(departments), [departments]);
+
   // ข้อมูลที่ระบบเติมให้เอง: ผู้แจ้ง/หน่วยงาน มาจากการ login,
   // ชื่อเครื่องมาจาก AD (backend ต้องส่งมาใน login response — เบราว์เซอร์อ่านเองไม่ได้)
   const auto: AutoFillValues = useMemo(
@@ -1228,7 +1326,7 @@ export function CreateItem() {
     <Layout title="สร้างใบแจ้งเรื่อง" subtitle={subtitle}>
       {dep === null ? (
         <DeptPicker
-          departments={departments}
+          departments={requestDepts}
           loading={loading}
           error={error}
           reload={reload}

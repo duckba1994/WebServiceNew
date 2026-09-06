@@ -8,6 +8,9 @@ const EMPTY: CrMasterDataApi = { sections: [], requestTypes: [], requestSubTypes
 // ── ตัวเลือกของใบแจ้งเรื่อง CR (GET /MasterData/cr) ───────────
 // เป็นชุดลูกโซ่ 3 ชั้น: ส่วนงาน → ประเภทที่แจ้ง → รายละเอียดที่แจ้ง
 //
+// "ส่วนงาน" (HV/FL) เป็นชุดกลางของทั้งบริษัท — ฟอร์มแผนกอื่นที่มีช่องนี้ (SV/SQA)
+// ก็ยิงเส้นนี้เหมือนกัน ข้อความ error จึงไม่ระบุชื่อแผนก CR (ดู CreateItem)
+//
 // ⚠️ id ซ้ำข้ามส่วนงาน (HV/FL ต่างมี id 1) จึงต้องกรองด้วย section ทุกครั้ง
 //    ไม่งั้นเลือก "รถยก" แล้วจะได้รายการของ "รถใหญ่" ปนมา
 export function useCrMasterData(token?: string, enabled = true) {
@@ -38,7 +41,7 @@ export function useCrMasterData(token?: string, enabled = true) {
       .catch(() => {
         if (!alive) return;
         setData(EMPTY);
-        setError('โหลดตัวเลือกของแผนก CR ไม่สำเร็จ');
+        setError('โหลดตัวเลือกไม่สำเร็จ');
       })
       .finally(() => {
         if (alive) setLoading(false);

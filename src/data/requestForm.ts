@@ -52,12 +52,14 @@ export type MasterListKey =
   | 'plTypes'
   | 'plRequestTypes'
   // CR: ตัวเลือกขึ้นกับค่าที่เลือกไว้ก่อนหน้า (ดู dependsOn/resets ด้านล่าง)
+  // ⚠️ crSections = "ส่วนงาน" (HV/FL) ของทั้งบริษัท ไม่ใช่ของ CR แผนกเดียว —
+  // ทุกฟอร์มที่มีช่องส่วนงานใช้ชุดนี้ (ผู้ใช้สั่ง 6 ก.ย. 2026: ให้เหมือนของ CR)
+  // เสิร์ฟจาก GET /MasterData/cr เส้นเดียว จะได้ไม่ต้องให้ทุกแผนกส่งรายการซ้ำกันมา
   | 'crSections'
   | 'crRequestTypes'
   | 'crRequestSubTypes'
-  // GA / IM / AF / SV / SQA: endpoint แยกตามแผนก แต่รูปร่างข้อมูลเดียวกัน
-  // (GET /MasterData/{ga|im|af|sv|sqa} — ดู useDeptMasterData) จึงใช้คีย์กลางชุดนี้
-  | 'deptSections' // ส่วนงาน HV/FL
+  // HR / GA / IM / AF / SV / SQA / PS: endpoint แยกตามแผนก แต่รูปร่างข้อมูลเดียวกัน
+  // (GET /MasterData/{hr|ga|im|af|sv|sqa|ps} — ดู useDeptMasterData) จึงใช้คีย์กลางชุดนี้
   | 'deptTypes' // ประเภท / ประเภทเรื่องที่แจ้ง
   | 'deptRequestTypes' // เรื่องที่แจ้ง
   | 'deptRequestSubTypes' // รายละเอียดที่แจ้ง (ผูกกับประเภท)
@@ -104,9 +106,16 @@ export interface FieldDef {
   fills?: string[];
   // kind='date' เท่านั้น — เพิ่มปุ่มลัด (วันนี้/พรุ่งนี้/…) + ข้อความไทยกำกับวันที่
   quickPick?: boolean;
+  // kind='date' ที่ใช้ช่องวันที่แบบอ่านง่ายเหมือน quickPick แต่ "ไม่เอาปุ่มลัด"
+  // (ยังได้ข้อความไทยกำกับวันที่เหมือนกัน)
+  quickPickPlain?: boolean;
   // ฟิลด์ที่โผล่เฉพาะเมื่อฟิลด์อื่นมีค่าตามที่ระบุ (ไม่ระบุ = แสดงเสมอ)
   // equals = ฟิลด์แม่มีค่านี้ · includes = ฟิลด์แม่แบบ checkboxes ติ๊กข้อนี้ไว้
   showWhen?: { key: string; equals?: string; includes?: string };
+  // เรนเดอร์ต่อท้ายฟิลด์ที่ระบุ "ในแถวเดียวกัน" แทนที่จะขึ้นแถวใหม่ — ใช้กับตัวเลือก
+  // ที่ต้องระบุต่อทันที (SV: เลือก "หน่วยงานภายในองค์กร" แล้วเลือกหน่วยงานต่อหลังเลย)
+  // ป้ายของฟิลด์ลูกไม่ถูกแสดง — ตัวเลือกที่เลือกไว้ทำหน้าที่เป็นป้ายให้อยู่แล้ว
+  inlineWith?: string;
   // kind='auto' เท่านั้น
   auto?: AutoSource;
   // ดึงค่าอัตโนมัติไม่ได้ (เช่น AD ไม่ส่งชื่อเครื่องมา) → ให้ผู้ใช้พิมพ์เองแทนที่จะตัน
@@ -148,6 +157,16 @@ export interface DeptFormConfig {
 
 // ฟิลด์ส่วนกลางที่แผนกนี้ต้องกรอกจริง
 export const commonFieldsOf = (cfg: DeptFormConfig): CommonField[] => cfg.common ?? ALL_COMMON_FIELDS;
+
+// ฟอร์มนี้มีกล่อง "รายการที่ขอ" หรือไม่ — ใช้ตัดสินว่าต้องโหลดหน่วยของ PL มาด้วย
+// (ทุกแผนกที่มีกล่องนี้ใช้ชุดหน่วยเดียวกับ PL — per user decision, 6 ก.ย. 2026)
+export const hasLineItems = (cfg: DeptFormConfig): boolean =>
+  cfg.sections.some((sec) => sec.fields.some((fd) => fd.kind === 'lineItems'));
+
+// ฟอร์มนี้ใช้ตัวเลือกชุดไหนจาก master บ้าง — หน้าเว็บใช้ตัดสินว่าต้องยิง endpoint ไหน
+// (เช่นฟอร์ม SV/SQA ที่มีช่องส่วนงาน ต้องโหลด master ของ CR ด้วยทั้งที่ไม่ใช่ใบ CR)
+export const usesMaster = (cfg: DeptFormConfig, key: MasterListKey): boolean =>
+  cfg.sections.some((sec) => sec.fields.some((fd) => fd.master === key));
 
 // ความยาวสูงสุดของ "รายละเอียดที่แจ้ง" (ตกลงไว้ 17 ส.ค. 2026)
 export const DETAIL_MAX_LEN = 1000;
@@ -204,15 +223,11 @@ export const checkedText = (v?: string): string => checkedValues(v).join(', ');
 // ── ค่าคงที่ของฟอร์ม SV ──────────────────────────────────────
 // ข้อความต้องตรงกับตัวเลือกใน schema เพราะ showWhen เทียบด้วยข้อความ
 export const SV_EXTERNAL = 'ลูกค้าภายนอก';
-export const SV_INTERNAL = 'ลูกค้าภายใน';
+export const SV_INTERNAL = 'หน่วยงานภายในองค์กร';
 export const OTHER_ATTACHMENT = 'อื่นๆ';
 
 // ประเภทที่แจ้งของ CR ที่เปิดช่อง "ระบุเพิ่มเติม" (ชื่อตรงตาม master ของ API)
 export const CR_OTHER_TYPE = 'อื่นๆ';
-
-// ── หน่วยของรายการย่อย (แผนกที่ยังไม่มี master data ของตัวเอง เช่น จัดซื้อ) ──
-// PL ไม่ใช้ชุดนี้แล้ว — ดึงจาก GET /MasterData/pl (units) ผ่าน usePlMasterData
-export const UNIT_OPTIONS = ['ชิ้น', 'อัน', 'ชุด', 'กล่อง', 'เส้น', 'ลิตร', 'งาน'];
 
 // ── สถานะฟอร์ม ───────────────────────────────────────────────
 export interface RequestFormState {
@@ -334,22 +349,46 @@ const supplyForm = (o: {
 });
 
 // ── schema ของแต่ละแผนก ──────────────────────────────────────
-// key = departmentShort จาก /MasterData/departments (เช่น 'IT', 'HR', 'MD')
+// key = departmentShort จาก /MasterData/departments (เช่น 'IT', 'HR-PR', 'CR')
 // แผนกที่ยังไม่มี schema เฉพาะ จะใช้ DEFAULT_FORM แทน
 export const DEPT_FORMS: Record<string, DeptFormConfig> = {
-  HR: {
+  // ชื่อย่อของ HR ใน master คือ 'HR-PR' — คีย์ต้องตรงเป๊ะ ไม่งั้นตกไปใช้ฟอร์มมาตรฐาน
+  // ผู้ใช้สั่ง 6 ก.ย. 2026: ฟอร์ม HR เหลือ 4 ช่อง — ชื่อ-นามสกุล / ตำแหน่ง (กล่องผู้แจ้ง)
+  // และ เรื่องที่แจ้ง / รายละเอียด (กล่องเรื่องที่แจ้ง) — ไม่มีประเภทเรื่อง ความเร่งด่วน
+  // วันที่ต้องการ หรือรายการที่ขอ
+  'HR-PR': {
     tagline: 'เอกสาร / สวัสดิการ / หนังสือแจ้งเตือน',
     examples: 'ขอใบรับรองเงินเดือน, ออกหนังสือแจ้งเตือนคนขับ, ขอสลิปเงินเดือน',
-    categories: ['ขอเอกสาร', 'ออกหนังสือ', 'สวัสดิการ', 'ข้อมูลบุคคล', 'อื่นๆ'],
+    categories: [], // ไม่ได้ใช้ — HR ไม่มีช่อง "ประเภทเรื่อง" ส่วนกลาง
+    // "รายละเอียด" ใช้ช่องส่วนกลาง (นับตัวอักษร 1000 ตัวให้อยู่แล้ว) แต่ไปอยู่ในกล่อง
+    // "เรื่องที่แจ้ง" เพราะเป็นเนื้อของเรื่อง ไม่ใช่กล่องของตัวเอง
+    common: ['detail'],
+    commonInto: 'เรื่องที่แจ้ง',
+    summaryKey: 'topic',
     sections: [
       {
-        title: 'รายละเอียดคำร้อง',
+        title: 'ผู้แจ้ง',
         fields: [
-          { key: 'docType', label: 'ประเภทเอกสารที่ขอ', kind: 'select', required: true, options: ['ใบรับรองเงินเดือน', 'หนังสือรับรองการทำงาน', 'สลิปเงินเดือน', 'หนังสือแจ้งเตือน', 'อื่นๆ'] },
-          { key: 'copies', label: 'จำนวนชุด', kind: 'number', required: true, placeholder: '1' },
-          { key: 'language', label: 'ภาษาเอกสาร', kind: 'select', options: ['ภาษาไทย', 'ภาษาอังกฤษ', 'ไทย-อังกฤษ'] },
-          { key: 'purpose', label: 'วัตถุประสงค์การใช้', kind: 'text', required: true, placeholder: 'เช่น ยื่นกู้ธนาคาร / ทำวีซ่า' },
-          { key: 'targetPerson', label: 'พนักงานที่เกี่ยวข้อง', kind: 'text', hint: '(กรณีออกหนังสือแจ้งเตือน)', span2: true, placeholder: 'ชื่อ-นามสกุล / รหัสพนักงาน' },
+          // ชื่อมาจาก login เสมอ — ผู้ใช้ไม่ต้องพิมพ์เอง (เหมือนทุกแผนก)
+          { key: 'reporterName', label: 'ชื่อ-นามสกุล', kind: 'auto', auto: 'reporter', required: true },
+          // ยังไม่มีตำแหน่งใน login response จึงให้กรอกเอง (เปลี่ยนเป็น auto ได้เมื่อ API ส่งมา)
+          {
+            key: 'position',
+            label: 'ตำแหน่ง',
+            kind: 'text',
+            required: true,
+            maxLen: 100,
+            placeholder: 'เช่น พนักงานขับรถ / เจ้าหน้าที่ธุรการ',
+          },
+        ],
+      },
+      {
+        title: 'เรื่องที่แจ้ง',
+        fields: [
+          // ตัวเลือกมาจาก GET /MasterData/hr (requestTypes) — ยังไม่มี endpoint จริง
+          // ระหว่างนี้ช่องจะขึ้นข้อความโหลดไม่สำเร็จ + ปุ่ม "ลองใหม่"
+          // (ห้ามใส่รายการสำรองไว้ในโค้ด — ชื่อที่พิมพ์เองจะไม่ตรงกับที่ระบบเก็บจริง)
+          { key: 'topic', label: 'เรื่องที่แจ้ง', kind: 'select', required: true, master: 'deptRequestTypes' },
         ],
       },
     ],
@@ -427,7 +466,7 @@ export const DEPT_FORMS: Record<string, DeptFormConfig> = {
   // ── ใบแจ้งเรื่อง SV (บริการหลังการขาย) ──────────────────────
   // ผู้ใช้สั่ง 2 ก.ย. 2026: ประเภทเรื่องที่แจ้ง (ลูกค้าภายนอก/ภายใน) → ส่วนงาน →
   // เรื่องที่แจ้ง → สิ่งที่แนบมาด้วย → รายการที่ขอ → รูปภาพ 3 รูป
-  SV: {
+  'SV-HV': {
     tagline: 'บริการหลังการขาย / ซ่อมบำรุงเครื่องจักร',
     examples: 'แจ้งซ่อมเครื่องจักร, ขอช่างเข้าหน้างาน, แจ้งอาการผิดปกติของเครื่อง',
     categories: [], // ไม่ได้ใช้ — SV ไม่มีช่อง "ประเภทเรื่อง" ส่วนกลาง
@@ -438,7 +477,8 @@ export const DEPT_FORMS: Record<string, DeptFormConfig> = {
       {
         title: 'เรื่องที่แจ้ง',
         fields: [
-          // ลูกค้าภายใน = แผนกในองค์กรเป็นผู้ใช้บริการ → ต้องระบุว่าแผนกไหน
+          // หน่วยงานภายในองค์กร = แผนกในองค์กรเป็นผู้ใช้บริการ → ต้องระบุว่าหน่วยงานไหน
+          // (ผู้ใช้สั่ง 6 ก.ย. 2026: ให้เลือกหน่วยงานต่อท้ายตัวเลือกในแถวเดียวกันเลย)
           {
             key: 'customerType',
             label: 'ประเภทเรื่องที่แจ้ง',
@@ -450,12 +490,13 @@ export const DEPT_FORMS: Record<string, DeptFormConfig> = {
           },
           {
             key: 'customerDept',
-            label: 'แผนกลูกค้าภายใน',
+            label: 'หน่วยงานที่ขอใช้บริการ',
             kind: 'searchSelect',
             required: true,
             master: 'departments',
-            placeholder: 'พิมพ์ชื่อแผนก หรือชื่อย่อ เช่น IT, HR',
+            placeholder: 'เลือกหน่วยงาน — พิมพ์ชื่อ หรือชื่อย่อ เช่น IT, HR',
             showWhen: { key: 'customerType', equals: SV_INTERNAL },
+            inlineWith: 'customerType',
           },
           {
             key: 'section',
@@ -463,7 +504,8 @@ export const DEPT_FORMS: Record<string, DeptFormConfig> = {
             kind: 'radio',
             required: true,
             span2: true,
-            master: 'deptSections',
+            // ส่วนงานเป็นชุดเดียวกันทั้งบริษัท — ใช้ของ CR (GET /MasterData/cr)
+            master: 'crSections',
             // ตัวเลือกชั้นล่างอาจแยกตามส่วนงาน (ถ้า API ผูก section มา) → เปลี่ยนแล้วต้องล้าง
             resets: ['topic'],
           },
@@ -496,7 +538,7 @@ export const DEPT_FORMS: Record<string, DeptFormConfig> = {
   // ── ใบแจ้งเรื่อง SQA (ประกันคุณภาพ) ─────────────────────────
   // ประเภทเรื่องที่แจ้ง → รายละเอียดที่แจ้ง ผูกกันเป็นลูกโซ่ (เหมือน CR)
   // ส่วนงาน HV/FL กรองชั้นล่างให้อีกชั้นเมื่อ API ผูก section มากับรายการ
-  SQA: {
+  SA: {
     tagline: 'ประกันคุณภาพ / มาตรฐานการให้บริการ',
     examples: 'ขอตรวจสอบคุณภาพงาน, แจ้งข้อร้องเรียนคุณภาพ, ขอเอกสารมาตรฐาน',
     categories: [],
@@ -514,7 +556,8 @@ export const DEPT_FORMS: Record<string, DeptFormConfig> = {
             kind: 'radio',
             required: true,
             span2: true,
-            master: 'deptSections',
+            // ส่วนงานเป็นชุดเดียวกันทั้งบริษัท — ใช้ของ CR (GET /MasterData/cr)
+            master: 'crSections',
             resets: ['requestType', 'requestSubType'],
           },
           {
@@ -557,7 +600,15 @@ export const DEPT_FORMS: Record<string, DeptFormConfig> = {
           { key: 'topic', label: 'เรื่องที่แจ้ง', kind: 'select', required: true, master: 'deptRequestTypes' },
           { key: 'priceDate', label: 'วันที่ต้องการราคา', kind: 'date', required: true, quickPick: true },
           // แผนวันที่จะได้ราคา — ยังไม่บังคับ (รอยืนยันว่าผู้แจ้งเป็นคนกรอกเองหรือฝั่ง PS เติมทีหลัง)
-          { key: 'planPriceDate', label: 'Plan วันที่ต้องการราคา', kind: 'date', hint: '(ถ้ามี)' },
+          // ไม่มีปุ่มลัด (ผู้ใช้สั่ง 6 ก.ย. 2026) — ช่องกรอกอยู่ระดับเดียวกับ
+          // "วันที่ต้องการราคา" ที่อยู่แถวเดียวกันอยู่แล้ว เพราะปุ่มลัดอยู่ใต้ช่องกรอก
+          {
+            key: 'planPriceDate',
+            label: 'Plan วันที่ต้องการราคา',
+            kind: 'date',
+            hint: '(ถ้ามี)',
+            quickPickPlain: true,
+          },
           { key: 'dueDate', label: 'วันที่ต้องการใช้งาน', kind: 'date', required: true, quickPick: true },
           {
             key: 'topicDetail',
@@ -789,7 +840,7 @@ export const getDeptForm = (departmentShort: string): DeptFormConfig =>
   DEPT_FORMS[departmentShort] ?? DEFAULT_FORM;
 
 // แผนกที่ใช้กล่อง "รายการที่ขอ" แบบ PL (ไม่มีราคา — บังคับแค่จำนวนของแถวที่กรอกชื่อ)
-const LINE_ITEM_QTY_DEPTS = ['PL', 'GA', 'IM', 'AF', 'SV', 'PS'];
+const LINE_ITEM_QTY_DEPTS = ['PL', 'GA', 'IM', 'AF', 'SV-HV', 'PS'];
 
 // ── ตรวจสอบความถูกต้อง (คืน map ของ error — ไม่มี React) ──────
 export type FormErrors = Record<string, string>;

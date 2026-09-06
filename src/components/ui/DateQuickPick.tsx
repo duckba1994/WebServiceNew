@@ -4,6 +4,8 @@ import { IconCalendar } from '@tabler/icons-react';
 // ── ช่องเลือกวันที่แบบอ่านง่าย ────────────────────────────────
 // input type="date" ล้วน ๆ อ่านยาก (โชว์ 2026-09-03 แล้วผู้ใช้ต้องแปลงเอง)
 // ตัวนี้เพิ่มให้ 2 อย่าง: ปุ่มลัดวันที่ที่เลือกบ่อย + ข้อความไทยกำกับว่าวันไหน
+// ปุ่มลัดอยู่ต่อท้าย "ป้ายฟิลด์" (ผู้ใช้สั่ง 6 ก.ย. 2026) จึงแยกเป็นคนละคอมโพเนนต์
+// กับช่องกรอก — ป้าย+ช่องกรอกของทุกฟิลด์ในแถวจะได้อยู่ระดับเดียวกันเสมอ
 // ค่าที่เก็บยังเป็น 'YYYY-MM-DD' เหมือนเดิม (ฟอร์ม/ payload ไม่ต้องรู้เรื่องนี้)
 
 const ymd = (d: Date): string => {
@@ -43,17 +45,55 @@ export const thaiDateLabel = (value: string): string => {
   });
 };
 
-export function DateQuickPick({
+// ── ปุ่มลัดวันที่ ─────────────────────────────────────────────
+// อยู่บน "แถวป้าย" ของฟิลด์ ไม่ใช่เหนือหรือใต้ช่องกรอก (ผู้ใช้สั่ง 6 ก.ย. 2026)
+// สูง h-6 เท่ากับความสูงขั้นต่ำของแถวป้าย (ดู FormRow) ช่องกรอกของทุกฟิลด์
+// ในแถวเดียวกันจึงเริ่มที่ระดับเดียวกัน ไม่ว่าฟิลด์ไหนจะมีปุ่มลัดหรือไม่
+export function DateQuickButtons({
   value,
   onChange,
   accentColor = '#1a5fb4',
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  accentColor?: string;
+}) {
+  return (
+    <div className="flex flex-wrap gap-1.5">
+      {QUICK.map((q) => {
+        const v = shift(q.days);
+        const on = value === v;
+        return (
+          <button
+            key={q.label}
+            type="button"
+            onClick={() => onChange(v)}
+            style={on ? { borderColor: accentColor, color: accentColor } : undefined}
+            className={`inline-flex h-6 items-center rounded-lg border px-2.5 text-[12px] font-semibold leading-none transition ${
+              on
+                ? 'bg-white dark:bg-slate-900'
+                : 'border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'
+            }`}
+          >
+            {q.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+// ── ช่องกรอกวันที่ + ข้อความไทยกำกับ ──────────────────────────
+// ปุ่มลัดไม่ได้อยู่ในนี้แล้ว (ดู DateQuickButtons) — ตัวนี้เหลือแค่ช่องกรอก
+export function DateQuickPick({
+  value,
+  onChange,
   invalid,
   min,
   inputClass,
 }: {
   value: string; // 'YYYY-MM-DD' ('' = ยังไม่เลือก)
   onChange: (v: string) => void;
-  accentColor?: string;
   invalid?: boolean;
   min?: string; // วันที่ย้อนหลังกว่านี้เลือกไม่ได้ (ไม่ระบุ = เลือกได้ทุกวัน)
   inputClass: string; // สไตล์ช่องกรอกของฟอร์มที่เรียกใช้ (ไม่ตั้งเอง จะได้หน้าตาเดียวกัน)
@@ -62,25 +102,6 @@ export function DateQuickPick({
 
   return (
     <div className="flex flex-col gap-1.5">
-      <div className="flex flex-wrap gap-1.5">
-        {QUICK.map((q) => {
-          const v = shift(q.days);
-          const on = value === v;
-          return (
-            <button
-              key={q.label}
-              type="button"
-              onClick={() => onChange(v)}
-              style={on ? { borderColor: accentColor, color: accentColor } : undefined}
-              className={`rounded-lg border px-2.5 py-1 text-[12px] font-semibold transition ${
-                on ? 'bg-white dark:bg-slate-900' : 'border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'
-              }`}
-            >
-              {q.label}
-            </button>
-          );
-        })}
-      </div>
       {/* อยู่ในคอลัมน์แคบ ๆ ได้ — ข้อความวันที่ห้ามตัดขึ้นบรรทัดใหม่
           (ผู้ใช้สั่ง 2 ก.ย. 2026: เลือกวันแล้วป้ายแตกเป็น 2 บรรทัด) */}
       <div className="flex min-w-0 items-center gap-2">
@@ -98,7 +119,9 @@ export function DateQuickPick({
           </span>
         )}
       </div>
-      {invalid && !value && <span className="text-[11.5px] font-semibold text-red-600 dark:text-red-400">ยังไม่ได้เลือกวันที่</span>}
+      {invalid && !value && (
+        <span className="text-[11.5px] font-semibold text-red-600 dark:text-red-400">ยังไม่ได้เลือกวันที่</span>
+      )}
     </div>
   );
 }

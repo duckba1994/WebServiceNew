@@ -307,7 +307,7 @@ export interface CrMasterDataApi {
   requestSubTypes: CrRequestSubTypeApi[];
 }
 
-// ── /MasterData/{ga|im|af|sv|sqa} — ตัวเลือกของใบแจ้งเรื่องรายแผนก ──
+// ── /MasterData/{hr|ga|im|af|sv|sqa|ps} — ตัวเลือกของใบแจ้งเรื่องรายแผนก ──
 // สัญญาเดียวใช้ได้ทุกแผนกในกลุ่มนี้ (คนละ endpoint คนละรายการ) — แผนกไหน
 // ไม่มีชุดไหนก็ไม่ต้องส่ง field นั้นมา ฟอร์มจะไม่แสดงตัวเลือกของชั้นนั้นเอง
 // ดู MdApi/API_SPEC_DEPT_MASTER.md สำหรับรูปแบบที่ฝั่งเว็บรออยู่
