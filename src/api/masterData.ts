@@ -1,4 +1,4 @@
-import { apiGet } from './client';
+import { ApiError, apiFetch, apiGet } from './client';
 import {
   DepartmentApi,
   SalesmanApi,
@@ -30,6 +30,7 @@ import {
   PlMasterDataApi,
   CrMasterDataApi,
   DeptMasterDataApi,
+  PsPrelimApi,
 } from '../types/masterData';
 
 // ── แผนก — ใช้เป็นแผนกปลายทางของใบแจ้งเรื่อง ──
@@ -136,3 +137,22 @@ export const fetchCrMasterData = (token?: string) =>
 // dept = departmentShort จาก /MasterData/departments
 export const fetchDeptMasterData = (dept: string, token?: string) =>
   apiGet<DeptMasterDataApi>(`/MasterData/${dept.toLowerCase()}`, token);
+
+// ── ใบประเมินของ PS (ดึงสดจากฐานระบบซ่อม — ดู PsPrelimApi) ──────
+// รายการคืนมาเป็นเลขที่ใบล้วน ๆ ราว 800 รายการ กรองต่อฝั่งหน้าเว็บได้เลย
+// take: ค่า default ของ API คือ 1000 — ส่ง 5000 (ค่าสูงสุด) ไว้กันรายการโดนตัดเงียบ ๆ
+// เมื่อไรที่ใบเยอะกว่านี้ ค่อยเปลี่ยนไปค้นฝั่ง server (?search=... ตอนผู้ใช้พิมพ์)
+export const fetchPsPrelims = (token?: string, search?: string) => {
+  const q = new URLSearchParams({ take: '5000' });
+  if (search) q.set('search', search);
+  return apiGet<string[]>(`/MasterData/ps/prelims?${q.toString()}`, token);
+};
+
+// รายละเอียดของใบเดียว — 404 = ไม่มีเลขที่ใบนี้ (ของเดิมขึ้น "ไม่พบข้อมูล ID : xxx")
+// ปลายทางไม่กรองสถานะ ใบที่ปิดงานแล้วยังเปิดดูได้ถ้ารู้เลขที่ (ตรงกับของเดิม)
+export async function fetchPsPrelim(id: string, token?: string): Promise<PsPrelimApi> {
+  const res = await apiFetch(`/MasterData/ps/prelims/${encodeURIComponent(id)}`, { token });
+  if (res.status === 404) throw new ApiError(`ไม่พบข้อมูล ID : ${id}`, 404);
+  if (!res.ok) throw new ApiError(`ดึงข้อมูลใบประเมินไม่สำเร็จ (HTTP ${res.status})`, res.status);
+  return res.json();
+}

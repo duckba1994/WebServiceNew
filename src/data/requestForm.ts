@@ -63,7 +63,9 @@ export type MasterListKey =
   | 'deptTypes' // ประเภท / ประเภทเรื่องที่แจ้ง
   | 'deptRequestTypes' // เรื่องที่แจ้ง
   | 'deptRequestSubTypes' // รายละเอียดที่แจ้ง (ผูกกับประเภท)
-  | 'psEstimates' // ใบประเมินราคาของ PS (ตัวเลือกหิ้วข้อมูลทั้งใบมาด้วย)
+  // ใบประเมินของ PS — ไม่ได้มากับ master รายแผนก แต่เป็นเส้นของตัวเอง (ดู usePsPrelims)
+  // รายการเป็นเลขที่ใบล้วน ๆ ข้อมูลของใบต้องยิงต่ออีกทีตอนผู้ใช้เลือก
+  | 'psPrelims'
   | 'departments'; // รายชื่อแผนกทั้งหมด (GET /MasterData/departments)
 
 // แปลงตัวเลือกให้อยู่ในรูป { value, label } เสมอ
@@ -97,6 +99,10 @@ export interface FieldDef {
   // kind='select'|'radio' เท่านั้น — ตัวเลือกมาจาก master data ตอน runtime ไม่ใช่จากโค้ด
   // (หน้าฟอร์มเป็นคนโหลดแล้วเติมให้ ดู usePlMasterData / useCrMasterData)
   master?: MasterListKey;
+  // เปิดฟอร์มมาให้เลือกตัวเลือกแรกไว้เลย (ของเดิมตั้ง SelectedIndex = 0)
+  // ตัวเลือกมาจาก master ที่โหลดทีหลัง หน้าฟอร์มจึงเซ็ตให้เมื่อรายการมาถึง
+  // เซ็ตครั้งเดียว — ผู้ใช้ล้างกลับเป็น "-- เลือก --" แล้วต้องไม่ถูกเติมซ้ำ
+  defaultFirst?: boolean;
   // ตัวเลือกของฟิลด์นี้ขึ้นกับค่าของฟิลด์ที่ระบุ — ยังไม่เลือกตัวนั้น = ยังเลือกตัวนี้ไม่ได้
   dependsOn?: string;
   // เปลี่ยนค่าฟิลด์นี้แล้วต้องล้างฟิลด์เหล่านี้ทิ้ง (ตัวเลือกเดิมใช้กับค่าใหม่ไม่ได้แล้ว)
@@ -151,6 +157,9 @@ export interface DeptFormConfig {
   // (ผู้ใช้สั่ง 2 ก.ย. 2026: รายละเอียด = เนื้อของเรื่องที่แจ้ง ไม่ใช่กล่องของตัวเอง)
   // ระบุแล้ว commonTitle/commonPosition จะไม่ถูกใช้
   commonInto?: string;
+  // ช่อง "รายละเอียด" ส่วนกลางยังกรอกไม่ได้จนกว่าฟิลด์นี้จะมีค่า (SQA: ต้องเลือกส่วนงานก่อน
+  // เหมือนสองช่องที่เป็นลูกโซ่ ไม่งั้นผู้ใช้พิมพ์รายละเอียดของส่วนงานที่ยังไม่ได้เลือก)
+  detailDependsOn?: string;
   // แผนกที่ไม่ใช้ฟิลด์ส่วนกลาง subject/detail — ใช้ค่าฟิลด์นี้เป็นชื่อเรื่องในหน้าสรุป
   summaryKey?: string;
 }
@@ -305,12 +314,29 @@ const PHOTOS_SECTION: DeptSection = {
 
 // ── ฟอร์มกลุ่ม "ขอของ / ขอบริการ" (GA / IM / AF) ───────────────
 // หน้าตาเดียวกันหมด ต่างกันแค่ชุดตัวเลือกที่ดึงจาก endpoint ของแผนกตัวเอง
-// (GET /MasterData/ga · /im · /af) — AF ไม่มีชั้น "ประเภท" และไม่มีช่องระบุเรื่อง
+// (GET /MasterData/ga · /im · /af) — AF ไม่มีชั้น "ประเภท"
+// ช่องข้อความยาวของกลุ่มนี้ — คีย์ topicDetail เหมือนกันทุกแผนกที่มีช่องนี้
+// (ป้ายต่างกันได้ แต่ที่เก็บฝั่ง API เป็นช่องเดียวกัน — ดู MdApi/API_SPEC_CREATE_REQUEST.md)
+const supplyDetailField = (label: string): FieldDef[] => [
+  {
+    key: 'topicDetail',
+    label,
+    kind: 'textarea',
+    required: true,
+    span2: true,
+    maxLen: 1000,
+    placeholder: 'อธิบายรายละเอียดของเรื่องที่ต้องการแจ้ง',
+  },
+];
+
 const supplyForm = (o: {
   tagline: string;
   examples: string;
   withType?: boolean; // มีชั้น "ประเภท" ก่อนเรื่องที่แจ้ง (GA/IM)
-  withDetail?: boolean; // มีช่อง "ระบุเรื่องที่แจ้ง" (GA/IM)
+  // ช่องข้อความยาวของเรื่องที่แจ้ง — ป้ายกับตำแหน่งไม่เหมือนกันในแต่ละแผนก
+  // GA/IM: "ระบุเรื่องที่แจ้ง" อยู่ท้ายกล่อง · AF: "รายละเอียด" ต่อจากเรื่องที่แจ้งทันที
+  // (ผู้ใช้สั่ง 8 ก.ย. 2026) ไม่ระบุ = ไม่มีช่องนี้
+  detail?: { label: string; afterTopic?: boolean };
 }): DeptFormConfig => ({
   tagline: o.tagline,
   examples: o.examples,
@@ -324,24 +350,21 @@ const supplyForm = (o: {
       fields: [
         ...(o.withType
           ? ([
-              { key: 'requestType', label: 'ประเภท', kind: 'select', required: true, master: 'deptTypes' },
-            ] as FieldDef[])
-          : []),
-        { key: 'topic', label: 'เรื่องที่แจ้ง', kind: 'select', required: true, master: 'deptRequestTypes' },
-        { key: 'dueDate', label: 'วันที่ต้องการใช้งาน', kind: 'date', required: true, quickPick: true },
-        ...(o.withDetail
-          ? ([
+              // ของเดิมเปิดมาเลือกตัวแรก ("ทรัพย์สิน") ไว้ให้แล้ว — ทำตามเพื่อไม่ให้ผู้ใช้สะดุด
               {
-                key: 'topicDetail',
-                label: 'ระบุเรื่องที่แจ้ง',
-                kind: 'textarea',
+                key: 'requestType',
+                label: 'ประเภท',
+                kind: 'select',
                 required: true,
-                span2: true,
-                maxLen: 1000,
-                placeholder: 'อธิบายรายละเอียดของเรื่องที่ต้องการแจ้ง',
+                master: 'deptTypes',
+                defaultFirst: true,
               },
             ] as FieldDef[])
           : []),
+        { key: 'topic', label: 'เรื่องที่แจ้ง', kind: 'select', required: true, master: 'deptRequestTypes' },
+        ...(o.detail?.afterTopic ? supplyDetailField(o.detail.label) : []),
+        { key: 'dueDate', label: 'วันที่ต้องการใช้งาน', kind: 'date', required: true, quickPick: true },
+        ...(o.detail && !o.detail.afterTopic ? supplyDetailField(o.detail.label) : []),
       ],
     },
     ITEMS_SECTION,
@@ -509,7 +532,16 @@ export const DEPT_FORMS: Record<string, DeptFormConfig> = {
             // ตัวเลือกชั้นล่างอาจแยกตามส่วนงาน (ถ้า API ผูก section มา) → เปลี่ยนแล้วต้องล้าง
             resets: ['topic'],
           },
-          { key: 'topic', label: 'เรื่องที่แจ้ง', kind: 'select', required: true, master: 'deptRequestTypes' },
+          // เรื่องที่แจ้งของ SV เป็นคนละชุดกันระหว่าง HV/FL (ชื่อซ้ำกันข้ามส่วนงานด้วย)
+          // ของเดิมเปิดใช้งาน dropdown นี้หลังติ๊ก HV/FL เท่านั้น — ผูก dependsOn ให้เหมือนกัน
+          {
+            key: 'topic',
+            label: 'เรื่องที่แจ้ง',
+            kind: 'select',
+            required: true,
+            master: 'deptRequestTypes',
+            dependsOn: 'section',
+          },
           // ไม่บังคับติ๊ก — แต่ติ๊ก "อื่นๆ" แล้วต้องระบุข้อความ (ช่องด้านล่างจะโผล่มาเอง)
           {
             key: 'attachedDocs',
@@ -544,6 +576,7 @@ export const DEPT_FORMS: Record<string, DeptFormConfig> = {
     categories: [],
     common: ['detail'], // "รายละเอียด" ต่อท้ายกล่องเรื่องที่แจ้ง
     commonInto: 'เรื่องที่แจ้ง',
+    detailDependsOn: 'section', // ของเดิมล็อกช่องรายละเอียดไว้จนกว่าจะเลือกส่วนงาน
     summaryKey: 'requestType',
     sections: [
       REPORTER_SECTION,
@@ -560,12 +593,15 @@ export const DEPT_FORMS: Record<string, DeptFormConfig> = {
             master: 'crSections',
             resets: ['requestType', 'requestSubType'],
           },
+          // SQA ส่งชั้นนี้มาที่ requestTypes (แยกตามส่วนงาน) ไม่ใช่ types แบบ GA/IM/PS
+          // และของเดิมเปิดใช้งานสองช่องล่างหลังเลือก HV/FL เท่านั้น
           {
             key: 'requestType',
             label: 'ประเภทเรื่องที่แจ้ง',
             kind: 'select',
             required: true,
-            master: 'deptTypes',
+            master: 'deptRequestTypes',
+            dependsOn: 'section',
             resets: ['requestSubType'],
           },
           {
@@ -628,11 +664,12 @@ export const DEPT_FORMS: Record<string, DeptFormConfig> = {
             key: 'estimateNo',
             label: 'เลขที่ใบประเมินราคา',
             kind: 'searchSelect',
-            master: 'psEstimates',
+            master: 'psPrelims',
             span2: true,
             hint: '(ไม่บังคับ — เลือกแล้วระบบดึงข้อมูลใบนั้นมาให้)',
-            placeholder: 'พิมพ์เลขที่ใบ หรือหมายเลขเครื่องจักร',
-            // ทั้งชุดนี้ถูกเติม/ล้างพร้อมกันตามใบที่เลือก — คีย์ต้องตรงกับ FieldOption.data
+            // ค้นได้เฉพาะเลขที่ใบ — ข้อมูลเครื่องจักรอยู่คนละเส้น ยังไม่มีตอนที่ยังไม่ได้เลือกใบ
+            placeholder: 'พิมพ์เลขที่ใบประเมิน เช่น SBF26',
+            // ทั้งชุดนี้ถูกเติม/ล้างพร้อมกันตามใบที่เลือก — คีย์ต้องตรงกับที่ prelimToFields คืนมา
             fills: [
               'estDate',
               'estMachineType',
@@ -665,19 +702,21 @@ export const DEPT_FORMS: Record<string, DeptFormConfig> = {
     tagline: 'ธุรการ / อาคารสถานที่ / งานบริการทั่วไป',
     examples: 'ขอวัสดุสำนักงาน, แจ้งซ่อมอาคาร, ขอใช้รถส่วนกลาง',
     withType: true,
-    withDetail: true,
+    detail: { label: 'ระบุเรื่องที่แจ้ง' },
   }),
 
   IM: supplyForm({
     tagline: 'คลังพัสดุ / อะไหล่ / เบิก-จ่ายของ',
     examples: 'ขอเบิกอะไหล่, ขอตรวจสอบสต็อก, ขอโอนย้ายพัสดุ',
     withType: true,
-    withDetail: true,
+    detail: { label: 'ระบุเรื่องที่แจ้ง' },
   }),
 
   AF: supplyForm({
     tagline: 'บัญชี / การเงิน',
     examples: 'ขอเอกสารทางบัญชี, ขอตั้งเบิก, สอบถามยอดค้างชำระ',
+    // ผู้ใช้สั่ง 8 ก.ย. 2026: ช่องรายละเอียดอยู่ต่อจาก "เรื่องที่แจ้ง" ทันที ไม่ใช่ท้ายกล่องแบบ GA/IM
+    detail: { label: 'รายละเอียด', afterTopic: true },
   }),
 
   // ── ใบแจ้งเรื่อง CR (ประสานงานเอกสารฝ่ายขาย) ────────────────
@@ -845,7 +884,11 @@ const LINE_ITEM_QTY_DEPTS = ['PL', 'GA', 'IM', 'AF', 'SV-HV', 'PS'];
 // ── ตรวจสอบความถูกต้อง (คืน map ของ error — ไม่มี React) ──────
 export type FormErrors = Record<string, string>;
 
-export function validateRequestForm(f: RequestFormState): FormErrors {
+// optionless = คีย์ของฟิลด์ลูกที่เลือกฟิลด์แม่แล้ว แต่ master ไม่มีรายการให้เลือกเลย
+// (ของจริงมีกรณีนี้: SQA ประเภท "การขนย้าย" ของ FL ไม่มีรายละเอียดผูกไว้)
+// หน้าฟอร์มเป็นคนคำนวณให้ เพราะฟังก์ชันนี้ไม่รู้จัก master — และนับเฉพาะตอนโหลดสำเร็จจริง ๆ
+// (โหลด master พลาด = ยังบังคับกรอกเหมือนเดิม ไม่งั้นใบจะออกไปโดยไม่มีค่าที่ต้องมี)
+export function validateRequestForm(f: RequestFormState, optionless?: Set<string>): FormErrors {
   const e: FormErrors = {};
   const cfg = getDeptForm(f.departmentShort);
 
@@ -866,6 +909,8 @@ export function validateRequestForm(f: RequestFormState): FormErrors {
     for (const fd of sec.fields) {
       // ฟิลด์ที่ถูกซ่อนอยู่ = ยังไม่ใช่เรื่องของผู้ใช้ตอนนี้ (ค่าก็ถูกล้างไปแล้ว)
       if (!fieldVisible(fd, f.values)) continue;
+      // ไม่มีตัวเลือกให้เลือกเลย = กรอกไม่ได้ ไม่ใช่ไม่ยอมกรอก
+      if (optionless?.has(fd.key)) continue;
       // ฟิลด์ไม่บังคับ แต่ถ้ามี maxLen ก็ยังต้องตรวจความยาว
       if (!fd.required) {
         const val = f.values[fd.key] || '';

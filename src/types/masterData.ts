@@ -324,27 +324,44 @@ export interface DeptMasterOptionApi extends MasterOptionApi {
   typeId?: number;
 }
 
-// ใบประเมินราคาที่อ้างถึงได้ในใบแจ้งเรื่อง PS — เลือกเลขที่ใบแล้วหน้าเว็บ
-// เอาข้อมูลทั้งใบมาเติมช่องอ่านอย่างเดียวให้ครบชุด (ผู้ใช้ไม่ต้องพิมพ์ซ้ำ)
-// ทุก field นอกจาก docNo เป็นข้อความพร้อมแสดง (backend จัดรูปแบบวันที่มาให้ได้เลย)
-export interface PsEstimateApi {
-  docNo: string; // เลขที่ใบประเมินราคา (คีย์ที่ฟอร์มเก็บ)
-  docDate?: string; // วันที่
-  machineType?: string; // ประเภทเครื่องจักร
-  engineModel?: string; // รุ่นเครื่องยนต์
-  serialNo?: string; // ทะเบียน S/N
-  machineNo?: string; // หมายเลขเครื่องจักร
-  machineModel?: string; // รุ่นเครื่องจักร
-  system?: string; // ระบบ
-  symptom?: string; // รายละเอียดอาการ
-  remark?: string; // รายละเอียดเพิ่มเติม
+// รายละเอียดที่แจ้ง (SQA) — ชั้นที่ 3 ผูกกับ "ประเภทเรื่องที่แจ้ง" (requestTypes)
+// ส่งมาทั้ง requestTypeId และ requestType (ชื่อ) — หน้าเว็บ join ด้วย "ชื่อ" เพราะฟอร์มเก็บชื่อ
+// และ id ของ SQA ซ้ำข้ามส่วนงาน (HV id 4 = "อื่นๆ" · FL id 4 = "อบรมลูกค้า")
+export interface DeptRequestDetailApi extends DeptMasterOptionApi {
+  requestTypeId?: number;
+  requestType?: string;
+}
+
+// ใบประเมินของ PS — ไม่ใช่ master ที่ cache ได้แบบชุดอื่น: มาจากวิวของ "ฐานระบบซ่อม"
+// (คนละฐานกับใบแจ้งเรื่อง) และงานซ่อมเดินตลอด จึงดึงสดทุกครั้งที่เปิดฟอร์ม ห้าม cache ข้ามวัน
+// รายการใน dropdown มาจาก GET /MasterData/ps/prelims เป็น "เลขที่ใบ" ล้วน ๆ (string[])
+// รายละเอียดต้องยิงต่อทีละใบที่ /ps/prelims/{id} — ทุก field ยกเว้น prelimId เป็น null ได้
+// (ใบที่ยังไม่ได้ประเมินยังไม่มีข้อมูลเครื่องจักร) API trim + แปลงสตริงว่างเป็น null มาให้แล้ว
+export interface PsPrelimApi {
+  prelimId: string; // เลขที่ใบประเมิน (คีย์ที่ฟอร์มเก็บ)
+  prelimDate?: string | null; // วันที่ (ISO)
+  carType?: string | null; // ประเภทเครื่องจักร
+  carEngineNo?: string | null; // รุ่นเครื่องยนต์
+  carSerial?: string | null; // ทะเบียน S/N
+  carId?: string | null; // หมายเลขเครื่องจักร
+  carModel?: string | null; // รุ่นเครื่องจักร
+  groupName?: string | null; // ระบบ
+  subGroupName?: string | null; // รายละเอียดอาการ
+  reComment?: string | null; // รายละเอียดเพิ่มเติม
+  // 5 ตัวล่างไม่ได้อยู่บนฟอร์ม — status ไว้เตือนใบที่ปิดงานแล้ว, site/place ไว้โชว์เสริม
+  // ส่วน carIdStarAcc/ncrNo ของเดิมซ่อนไว้แล้วใช้ตอนบันทึกใบ (ฝั่ง API อ่านจากใบต้นทางได้เอง)
+  status?: string | null;
+  site?: string | null;
+  place?: string | null;
+  carIdStarAcc?: string | null;
+  ncrNo?: string | null;
 }
 
 export interface DeptMasterDataApi {
   sections?: MasterSectionApi[]; // ส่วนงาน (SV / SQA)
   types?: DeptMasterOptionApi[]; // ประเภท (GA/IM) · ประเภทเรื่องที่แจ้ง (SQA)
   requestTypes?: DeptMasterOptionApi[]; // เรื่องที่แจ้ง (GA/IM/AF/SV)
-  requestSubTypes?: DeptMasterOptionApi[]; // รายละเอียดที่แจ้ง (SQA) — ผูกกับ types ผ่าน typeId
+  requestSubTypes?: DeptMasterOptionApi[]; // รายละเอียดที่แจ้ง แบบผูกกับ types ผ่าน typeId
+  requestDetails?: DeptRequestDetailApi[]; // รายละเอียดที่แจ้ง (SQA) — ผูกกับ requestTypes ด้วยชื่อ
   units?: MasterOptionApi[]; // หน่วยของ "รายการที่ขอ"
-  estimates?: PsEstimateApi[]; // ใบประเมินราคา (PS)
 }

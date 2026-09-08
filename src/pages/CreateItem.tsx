@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   IconBuildingCommunity,
   IconArrowLeft,
@@ -22,6 +22,7 @@ import { useDepartments } from '../hooks/useDepartments';
 import { usePlMasterData } from '../hooks/usePlMasterData';
 import { useCrMasterData } from '../hooks/useCrMasterData';
 import { useDeptMasterData } from '../hooks/useDeptMasterData';
+import { usePsPrelims } from '../hooks/usePsPrelims';
 import {
   IT_ATTACHMENT_SLOTS,
   checkItAttachment,
@@ -349,6 +350,8 @@ function RequestForm({
   // ตัวเลือกของแผนกที่ใช้สัญญากลาง (HR-PR/GA/IM/AF/SV-HV/SA/PS) — GET /MasterData/{แผนก}
   const deptMasterPath = DEPT_MASTER_ENDPOINTS[dep.departmentShort] ?? null;
   const deptMaster = useDeptMasterData(deptMasterPath, user?.token);
+  // เลขที่ใบประเมินของ PS — คนละเส้นกับ master ของแผนก และดึงสดทุกครั้งที่เปิดฟอร์ม
+  const psPrelims = usePsPrelims(user?.token, usesMaster(cfg, 'psPrelims'));
   // ตัวเลือกแผนก (ค้นหาได้) — ใช้กับฟิลด์ kind='searchSelect' ที่ master='departments'
   const deptOptions = useMemo(() => toDeptOptions(departments), [departments]);
   const [f, setF] = useState<RequestFormState>(() => createEmptyForm(dep, auto));
@@ -363,6 +366,11 @@ function RequestForm({
   const [uploadFailed, setUploadFailed] = useState<{ name: string; reason: string }[]>([]);
   // CR: ยืนยันก่อนบันทึก — เลขที่ใบผูกกับ (ส่วนงาน + ประเภทที่แจ้ง) และแก้ทีหลังไม่ได้
   const [confirmCr, setConfirmCr] = useState(false);
+  // PS: สถานะของการดึงข้อมูลใบประเมิน (ยิงตอนเลือกเลขที่ใบ — ดู pickPrelim)
+  const [prelimBusy, setPrelimBusy] = useState(false);
+  const [prelimError, setPrelimError] = useState<string | null>(null);
+  // ใบที่ผู้ใช้เลือกไว้ล่าสุด — ใช้ทิ้งผลของใบก่อนหน้าที่ตอบกลับมาช้ากว่า
+  const prelimReq = useRef('');
 
   const clearError = (key: string) =>
     setErrors((prev) => {
@@ -404,6 +412,39 @@ function RequestForm({
     });
     clearError(fd.key);
     for (const r of fd.resets ?? []) clearError(r);
+  };
+
+  // เลือกเลขที่ใบประเมินของ PS — ต่างจาก setFromOption ตรงที่ข้อมูลของใบไม่ได้มากับตัวเลือก
+  // แต่อยู่คนละเส้น (GET /MasterData/ps/prelims/{id}) จึงต้องยิงต่อแล้วค่อยเติม 9 ช่องด้านล่าง
+  // ล้างชุดเดิมทิ้งทันทีที่เปลี่ยนใบ ไม่รอผลลัพธ์ — ไม่งั้นข้อมูลของใบเก่าจะค้างอยู่ข้าง ๆ เลขที่ใบใหม่
+  const pickPrelim = async (fd: FieldDef, id: string) => {
+    setPrelimError(null);
+    prelimReq.current = id;
+    setF((prev) => {
+      const values = { ...prev.values, [fd.key]: id };
+      for (const k of fd.fills ?? []) values[k] = '';
+      return { ...prev, values };
+    });
+    clearError(fd.key);
+    if (!id) {
+      setPrelimBusy(false);
+      return;
+    }
+    setPrelimBusy(true);
+    const res = await psPrelims.loadDetail(id);
+    // เลือกใบอื่น (หรือล้างค่า) ไปแล้วระหว่างรอ — ผลของใบเก่าต้องตกไปทั้งอัน
+    // ทั้งข้อมูลที่จะเติมและสถานะ "กำลังดึง" ที่ยังเป็นของใบใหม่อยู่
+    if (prelimReq.current !== id) return;
+    setPrelimBusy(false);
+    if (!res.ok) {
+      setPrelimError(res.error);
+      return;
+    }
+    setF((prev) => {
+      const values = { ...prev.values };
+      for (const k of fd.fills ?? []) values[k] = res.fields[k] ?? '';
+      return { ...prev, values };
+    });
   };
 
   const errorCount = Object.keys(errors).length;
@@ -448,7 +489,7 @@ function RequestForm({
   };
 
   const submit = async () => {
-    const e = validateRequestForm(f);
+    const e = validateRequestForm(f, optionlessKeys);
     setErrors(e);
     setSendError(null);
     if (Object.keys(e).length > 0) {
@@ -574,8 +615,13 @@ function RequestForm({
           options: deptMaster.subTypeOptions(f.values.section ?? '', f.values.requestType ?? ''),
           ...dm,
         };
-      case 'psEstimates':
-        return { options: deptMaster.estimateOptions, ...dm };
+      case 'psPrelims':
+        return {
+          options: psPrelims.options,
+          loading: psPrelims.loading,
+          error: psPrelims.error,
+          reload: psPrelims.reload,
+        };
       case 'departments':
         return {
           options: deptOptions,
@@ -588,6 +634,38 @@ function RequestForm({
     }
   };
 
+  // ── ค่าตั้งต้นของฟิลด์ที่ประกาศ defaultFirst (GA/IM: ประเภท = "ทรัพย์สิน") ──
+  // ของเดิมเปิดฟอร์มมาเลือกตัวแรกไว้ให้แล้ว แต่ตัวเลือกมาจาก master ที่โหลดทีหลัง
+  // จึงเซ็ตตอนรายการมาถึง ไม่ใช่ตอนสร้างฟอร์มเปล่า
+  // เซ็ตครั้งเดียวต่อฟิลด์ (จำไว้ใน ref) — ไม่งั้นผู้ใช้ล้างค่ากลับเป็น "-- เลือก --" ไม่ได้เลย
+  const defaultsDone = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    for (const fd of cfg.sections.flatMap((s) => s.fields)) {
+      if (!fd.defaultFirst || defaultsDone.current.has(fd.key)) continue;
+      // มีค่าอยู่แล้ว (ผู้ใช้เลือกเอง) = ถือว่าจบหน้าที่ของค่าตั้งต้น ไม่ต้องมายุ่งอีก
+      if (f.values[fd.key]) {
+        defaultsDone.current.add(fd.key);
+        continue;
+      }
+      const first = (masterFor(fd)?.options ?? fieldOptions(fd.options))[0];
+      if (!first) continue;
+      defaultsDone.current.add(fd.key);
+      setValue(fd.key, first.value, fd.resets);
+    }
+  });
+
+  // ── ฟิลด์ลูกที่เลือกฟิลด์แม่แล้ว แต่ master ไม่มีรายการผูกไว้เลย ──
+  // ของจริงมีกรณีนี้: SQA ประเภท "การขนย้าย" ของ FL ไม่มีรายละเอียดผูกไว้ (ตรงกับของเดิม ไม่ใช่บั๊ก)
+  // ช่องพวกนี้ต้องไม่บล็อกการส่งใบ และไม่ใช่ความผิดพลาดที่ต้องเตือน
+  // นับเฉพาะตอนโหลด master สำเร็จ — โหลดพลาดยังบังคับกรอกเหมือนเดิม
+  const optionlessKeys = new Set<string>();
+  for (const fd of cfg.sections.flatMap((s) => s.fields)) {
+    if (!fd.master || !fd.dependsOn || !fd.required) continue;
+    if (!(f.values[fd.dependsOn] ?? '')) continue;
+    const m = masterFor(fd);
+    if (m && !m.loading && !m.error && m.options.length === 0) optionlessKeys.add(fd.key);
+  }
+
   // ข้อความบอกเมื่อโหลดตัวเลือกไม่สำเร็จ (ไม่มีรายการสำรองในโค้ด — ดู CLAUDE.md)
   const masterError = (m: { error: string | null; reload: () => void }) =>
     m.error ? (
@@ -598,6 +676,36 @@ function RequestForm({
         </button>
       </span>
     ) : null;
+
+  // ข้อความใต้ช่องที่ตัวเลือกมาจาก master — สองกรณีที่ผู้ใช้ต้องรู้:
+  // โหลดพลาด = แดง + ปุ่มลองใหม่ · โหลดผ่านแต่ไม่มีสักรายการ = เหลือง
+  // (เช่นใบประเมินราคาของ PS ที่ยังไม่มีในชุดข้อมูล) ไม่งั้นช่องจะดูเหมือนเสียเฉย ๆ
+  // waiting = ยังไม่เลือกฟิลด์แม่ ยังไม่ถึงตาบ่นว่าไม่มีตัวเลือก
+  const masterNote = (
+    fd: FieldDef,
+    m: { loading: boolean; error: string | null; reload: () => void } | null,
+    opts: FieldOption[],
+    waiting = false
+  ) => {
+    if (!m) return null;
+    if (m.error) return masterError(m);
+    if (m.loading || waiting || opts.length) return null;
+    // ไม่มีลูกผูกไว้กับตัวเลือกที่เลือก = เรื่องปกติของข้อมูลชุดนี้ ข้ามช่องนี้ได้ (ไม่ต้องมีปุ่มลองใหม่)
+    if (optionlessKeys.has(fd.key))
+      return (
+        <span className="text-[11.5px] text-gray-500 dark:text-slate-400">
+          ไม่มี{fd.label}สำหรับตัวเลือกที่เลือกไว้ — ข้ามช่องนี้ได้
+        </span>
+      );
+    return (
+      <span className="text-[11.5px] font-semibold text-amber-600 dark:text-amber-400">
+        ยังไม่มีตัวเลือกจากระบบ
+        <button type="button" onClick={m.reload} className="ml-1.5 underline hover:no-underline">
+          ลองใหม่
+        </button>
+      </span>
+    );
+  };
 
   // เรนเดอร์ช่องกรอกตามชนิดฟิลด์ที่ประกาศไว้ใน schema ของแผนก
   const renderField = (fd: FieldDef) => {
@@ -729,7 +837,7 @@ function RequestForm({
                 })}
               </div>
             )}
-            {m && masterError(m)}
+            {masterNote(fd, m, opts)}
           </>
         );
       }
@@ -783,7 +891,7 @@ function RequestForm({
                 })}
               </div>
             )}
-            {m && masterError(m)}
+            {masterNote(fd, m, opts)}
           </>
         );
       }
@@ -791,17 +899,32 @@ function RequestForm({
       case 'searchSelect': {
         const m = masterFor(fd);
         const opts = m?.options ?? fieldOptions(fd.options);
+        // ใบประเมินของ PS เป็นตัวเดียวที่ข้อมูลไม่ได้ติดมากับตัวเลือก ต้องยิงต่อหลังเลือก
+        const isPrelim = fd.master === 'psPrelims';
         return (
           <>
             <SearchSelect
               value={f.values[fd.key] ?? ''}
-              onChange={(v) => setFromOption(fd, v, opts)}
+              onChange={(v) => {
+                if (isPrelim) void pickPrelim(fd, v);
+                else setFromOption(fd, v, opts);
+              }}
               options={opts.map((o) => ({ value: o.value, label: o.label, hint: o.sub }))}
               disabled={!!m?.loading}
               invalid={bad}
               placeholder={m?.loading ? 'กำลังโหลด…' : fd.placeholder ?? '-- เลือก --'}
             />
-            {m && masterError(m)}
+            {isPrelim && prelimBusy && (
+              <span className="text-[11.5px] text-gray-500 dark:text-slate-400">
+                กำลังดึงข้อมูลใบประเมิน…
+              </span>
+            )}
+            {isPrelim && prelimError && (
+              <span className="text-[11.5px] font-semibold text-red-600 dark:text-red-400">
+                {prelimError}
+              </span>
+            )}
+            {masterNote(fd, m, opts)}
           </>
         );
       }
@@ -833,7 +956,7 @@ function RequestForm({
                 </option>
               ))}
             </select>
-            {m && masterError(m)}
+            {masterNote(fd, m, opts, waiting)}
           </>
         );
       }
@@ -878,6 +1001,13 @@ function RequestForm({
         );
     }
   };
+
+  // ของเดิมล็อกช่อง "รายละเอียด" ไว้จนกว่าจะเลือกฟิลด์ที่กำหนด (SQA: ต้องเลือกส่วนงานก่อน)
+  const detailLockedBy = cfg.detailDependsOn ?? '';
+  const detailLocked = !!detailLockedBy && !(f.values[detailLockedBy] ?? '');
+  const detailLockLabel = detailLockedBy
+    ? cfg.sections.flatMap((s) => s.fields).find((x) => x.key === detailLockedBy)?.label ?? ''
+    : '';
 
   // ── ส่วนกลาง: เรนเดอร์เฉพาะฟิลด์ที่แผนกนี้ใช้ (cfg.common) ──
   // เป็น "แถว" ล้วน ๆ เพราะบางแผนกให้ไปอยู่ในกล่องของแผนกเอง (cfg.commonInto)
@@ -954,8 +1084,13 @@ function RequestForm({
             onChange={(e) => setTop('detail', e.target.value.slice(0, DETAIL_MAX_LEN))}
             maxLength={DETAIL_MAX_LEN}
             rows={4}
-            placeholder="อธิบายรายละเอียดของเรื่องที่ต้องการแจ้ง"
-            className={`${INPUT_CLS} w-full resize-y ${errors.detail ? INVALID_CLS : 'focus:border-accent'}`}
+            disabled={detailLocked}
+            placeholder={
+              detailLocked ? `เลือก${detailLockLabel}ก่อน` : 'อธิบายรายละเอียดของเรื่องที่ต้องการแจ้ง'
+            }
+            className={`${INPUT_CLS} w-full resize-y disabled:cursor-not-allowed disabled:bg-gray-100 dark:disabled:bg-slate-800 ${
+              errors.detail ? INVALID_CLS : 'focus:border-accent'
+            }`}
           />
           <span
             className={`mono self-end text-[11px] ${
@@ -988,7 +1123,7 @@ function RequestForm({
               key={fd.key}
               label={fd.label}
               hint={fd.hint}
-              required={fd.required}
+              required={fd.required && !optionlessKeys.has(fd.key)}
               headerRight={
                 fd.quickPick ? (
                   <DateQuickButtons
