@@ -2,6 +2,11 @@ import { useCallback, useState } from 'react';
 import { ItRequestUpdatePayload, updateItRequest } from '../api/itRequest';
 import { PlRequestUpdatePayload, updatePlRequest } from '../api/plRequest';
 import { CrRequestUpdatePayload, updateCrRequest } from '../api/crRequest';
+import {
+  DeptRequestUpdatePayload,
+  isDeptRequestModule,
+  updateDeptRequest,
+} from '../api/deptRequest';
 import { fetchRequestDetail } from '../api/requests';
 import { RequestListItem } from '../types/requestList';
 
@@ -34,17 +39,25 @@ export function useRequestEdit(token?: string) {
   const save = useCallback(
     async (
       item: RequestListItem,
-      payload: ItRequestUpdatePayload | PlRequestUpdatePayload | CrRequestUpdatePayload
+      payload:
+        | ItRequestUpdatePayload
+        | PlRequestUpdatePayload
+        | CrRequestUpdatePayload
+        | DeptRequestUpdatePayload
     ): Promise<EditResult> => {
       setPending(true);
       setNotice(null);
       try {
         // เลือกเส้นตามโมดูลของใบ — payload คนละ shape (ตัวเรียกเป็นคนสร้างให้ตรง
-        // ด้วย toUpdatePayload / toPlUpdatePayload / toCrUpdatePayload ใน data/requestEdit.ts)
+        // ด้วย toUpdatePayload / toPlUpdatePayload / toCrUpdatePayload / toDeptUpdatePayload
+        // ใน data/requestEdit.ts)
         if (item.module === 'PL') {
           await updatePlRequest(item.docNo, payload as PlRequestUpdatePayload, token);
         } else if (item.module === 'CR') {
           await updateCrRequest(item.docNo, payload as CrRequestUpdatePayload, token);
+        } else if (isDeptRequestModule(item.module)) {
+          // GA / IM — payload ชุดเดียวกัน ต่างแค่ base path
+          await updateDeptRequest(item.module, item.docNo, payload as DeptRequestUpdatePayload, token);
         } else {
           await updateItRequest(item.docNo, payload as ItRequestUpdatePayload, token);
         }

@@ -20,12 +20,13 @@ import {
 import {
   RequestAction,
   RequestAttachment,
-  RequestDetailResponse,
+  RequestActionResult,
   RequestListItem,
   RequestLog,
   RequestResolution,
   RequestWorkflow,
 } from '../../types/requestList';
+import { GaImServicePanel } from './GaImServicePanel';
 import { fmtDate, fmtDateTime } from '../../data/requestListData';
 import { phaseLabel, phaseMetaOf } from '../../data/requestPhase';
 import { actionBtnClass } from './RequestActionDialog';
@@ -42,7 +43,7 @@ import { usePlMasterData } from '../../hooks/usePlMasterData';
 import { CrMasterData, useCrMasterData } from '../../hooks/useCrMasterData';
 import { useCrRequest } from '../../hooks/useCrRequest';
 import { CrRequestDetail } from '../../api/crRequest';
-import { FieldOption, MasterListKey } from '../../data/requestForm';
+import { FieldOption, GA_IM_ATTACH, MasterListKey } from '../../data/requestForm';
 import {
   EditFieldDef,
   EditFieldKey,
@@ -59,12 +60,17 @@ import {
   emptyEditLine,
   editFieldVisible,
   hasFormChanges,
+  isApiEditGated,
   toCrUpdatePayload,
+  toDeptUpdatePayload,
   toEditForm,
   toPlUpdatePayload,
   toUpdatePayload,
   validateEditForm,
 } from '../../data/requestEdit';
+import { DeptRequestDetail, isDeptRequestModule } from '../../api/deptRequest';
+import { useDeptRequest } from '../../hooks/useDeptRequest';
+import { DeptMasterData, useDeptMasterData } from '../../hooks/useDeptMasterData';
 import {
   PL_CHECKLIST_MAX,
   PlRequestDetail,
@@ -229,10 +235,43 @@ const CR_STEP_TABS: StepTab[] = [
   },
 ];
 
+// GA / IM: 3 ขั้น — Mgr ต้นสังกัดอนุมัติ → แผนกรับเรื่อง → แผนกดำเนินการ
+// สองโมดูลใช้ workflow ชุดเดียวกันเป๊ะ (ดู GARequestModuleProvider / IMRequestModuleProvider
+// ฝั่ง backend ที่เป็นไฟล์ฝาแฝดกัน) จึงใช้ชุดแท็บตัวเดียวกัน
+//
+// ⚠️ ขั้นอนุมัติไม่มีแท็บของตัวเอง เหมือนทุกโมดูล — ปุ่มอนุมัติตกไปอยู่ท้ายแท็บ General
+//    ข้าง ๆ เรื่องที่กำลังจะอนุมัติ (ห้ามใส่ 'approve' ลง actionCodes ของแท็บไหน)
+//
+// ⚠️ ขั้นสุดท้ายรวม "ดำเนินการเสร็จ" กับ "ปิดงาน" ไว้ด้วยกัน (WFStatus = Service And Close-Job)
+//    กด `service` แล้วใบปิดทันที ไม่มีขั้นปิดงานแยกให้ใครมาตรวจรับ — จึงมีแค่ 3 แท็บ
+const GA_IM_STEP_TABS: StepTab[] = [
+  { key: 'general', label: 'General', reachedStep: 0, logAction: 'create', actionCodes: [] },
+  {
+    key: 'receive',
+    label: 'รับเรื่อง',
+    reachedStep: 2,
+    logAction: 'receive',
+    actionCodes: ['receive'], // ไม่มีฟิลด์ → ใช้ปุ่ม+กล่องยืนยันมาตรฐาน
+    wfCodes: ['Receive-Request'],
+  },
+  {
+    key: 'gaService',
+    label: 'ดำเนินการ',
+    reachedStep: 3,
+    logAction: 'service',
+    actionCodes: [],
+    // ปุ่มทั้งคู่หิ้วค่าจากฟอร์มในแผงไปด้วย จึงให้แผงเป็นคนเรนเดอร์เอง
+    panelCodes: ['saveService', 'service'],
+    wfCodes: ['Service And Close-Job'],
+  },
+];
+
 const STEP_TABS_BY_MODULE: Record<string, StepTab[]> = {
   IT: IT_STEP_TABS,
   PL: PL_STEP_TABS,
   CR: CR_STEP_TABS,
+  GA: GA_IM_STEP_TABS,
+  IM: GA_IM_STEP_TABS,
 };
 
 // แผนกที่ยังไม่ได้ทำหน้าจอเฉพาะ ใช้ชุดของ IT ไปก่อน (ของเดิมก่อนแยกรายโมดูล)
@@ -302,10 +341,10 @@ export function RequestDetailModal({
   // ใบถูกแก้ไขสำเร็จ — ส่งแถวที่อัปเดตแล้วกลับให้ลิสต์เอาไปแทนของเดิม
   onEdited?: (item: RequestListItem) => void;
   // ยิง action จากฟอร์มในแท็บ (ดำเนินการ/ปิดงานรับเรื่อง/สำรวจ) ตรง ไม่ผ่านกล่องยืนยัน
-  onStepSubmit?: (action: RequestAction, fields: ActionFieldValues) => void | Promise<void>;
+  onStepSubmit?: (action: RequestAction, fields: ActionFieldValues) => void | Promise<void | RequestActionResult | null>;
   actionPending?: boolean;
   // ผลของการกดปุ่ม — โชว์ในตัว modal เพราะแถบของตารางถูก modal บังไว้
-  notice?: { kind: 'success' | 'error'; text: string } | null;
+  notice?: { kind: 'success' | 'error'; text: string; status?: number } | null;
   onDismissNotice?: () => void;
 }) {
   const { user } = useAuth();
@@ -313,12 +352,20 @@ export function RequestDetailModal({
   // ต้องมี refreshTick เพราะ saveService/service ไม่เลื่อน step และไม่แตะ updatedDate
   // (= MAX(ApproveDate)) → ถ้าไม่บังคับโหลด จะไม่เห็น servicedBy / ค่าที่เพิ่งบันทึก
   const [refreshTick, setRefreshTick] = useState(0);
-  const { detail, loading: detailLoading, error: detailError } = useRequestDetail(
+  const { detail, loading: detailLoading, error: detailError, applyItem: applyDetailItem } = useRequestDetail(
     item.module,
     item.docNo,
     user?.token,
     `${item.updatedDate ?? ''}|${item.wfStep ?? ''}|${refreshTick}`
   );
+
+  useEffect(() => {
+    if (isDeptRequestModule(item.module) && detailError === 'ไม่พบใบแจ้งเรื่องนี้ในระบบ') onClose();
+  }, [item.module, detailError, onClose]);
+
+  useEffect(() => {
+    if (isDeptRequestModule(item.module) && notice?.status === 409) setRefreshTick((tick) => tick + 1);
+  }, [item.module, notice]);
 
   // ชุดแท็บของโมดูลนี้ — จำนวน/ชื่อขั้นต่างกันต่อแผนก (IT 6 แท็บ, PL 5 แท็บ, CR 6 แท็บ)
   // เลขขั้นของแต่ละแท็บยึดจาก workflow ที่ API ส่งมาก่อน (ค่าในโค้ดเป็นแค่ตัวสำรอง)
@@ -372,11 +419,24 @@ export function RequestDetailModal({
     user?.token,
     `${item.updatedDate ?? ''}|${refreshTick}`
   );
+  // ค่าดิบของใบ GA/IM — เส้นกลางไม่ได้ส่ง lines กับ canEdit มา ต้องยิงเส้นของฟอร์ม
+  // (payload สองโมดูลนี้เหมือนกันทุกช่อง ต่างแค่ base path — ดู api/deptRequest.ts)
+  const deptModule = isDeptRequestModule(item.module) ? item.module : null;
+  const deptDoc = useDeptRequest(
+    deptModule,
+    item.docNo,
+    user?.token,
+    `${item.updatedDate ?? ''}|${refreshTick}`
+  );
+  // ตัวเลือกของฟอร์มแก้ไขใบ GA/IM (ประเภท / เรื่องที่แจ้ง) — GET /MasterData/{ga|im}
+  // ชื่อ endpoint = ชื่อโมดูลตัวเล็ก (ต่างจาก HR-PR/SV-HV/SA ที่ต้องมีตารางแปลงชื่อ)
+  const deptMaster = useDeptMasterData(deptModule ? deptModule.toLowerCase() : null, user?.token);
   // รายการย่อยในรูปแบบที่ตารางใช้ (loading/error ใช้ก้อนเดียวกับใบ)
+  // ใบ PL กับ GA/IM มีรายการย่อยเหมือนกันและหน้าตาแถวเดียวกัน — ใช้ตารางตัวเดียวกัน
   const plLines = {
-    lines: plDoc.doc?.lines ?? null,
-    loading: plDoc.loading,
-    error: plDoc.error,
+    lines: plDoc.doc?.lines ?? deptDoc.doc?.lines ?? null,
+    loading: plDoc.loading || deptDoc.loading,
+    error: plDoc.error ?? deptDoc.error,
   };
   // ⚠️ ต้องอ่านจาก full (= detail.item) ไม่ใช่ item ของลิสต์:
   // /Requests/{module}/{docNo} คำนวณ availableActions ให้ "คนที่เปิดดูใบนี้"
@@ -493,9 +553,17 @@ export function RequestDetailModal({
   //    แต่ผู้ใช้สั่งว่า "อนุมัติแล้วห้ามแก้" (1 ก.ย. 2026) กติกาหน้าเว็บจึงเข้มกว่า
   //    → ตอนนี้เป็นแค่การซ่อนปุ่ม ไม่ใช่การบังคับ ใครยิง PUT ตรงยังแก้ได้อยู่
   //    ต้องให้ backend ใส่เงื่อนไขเดียวกันด้วย (เขาเสนอไว้เองใน guide §7)
-  const apiCanEdit = plDoc.doc?.canEdit ?? crDoc.doc?.canEdit;
+  const apiCanEdit = plDoc.doc?.canEdit ?? crDoc.doc?.canEdit ?? deptDoc.doc?.canEdit;
   // สิทธิ์แก้ "ฟิลด์หัวใบ + รายการที่ขอ" (PUT /{module}/{docNo})
-  const canEditFields = !!onEdited && canEditRequest(full, user) && apiCanEdit !== false;
+  //
+  // GA/IM ยกให้ API ตัดสินอย่างเดียว (isApiEditGated) — จึงต้องเป็น true "เป๊ะ ๆ"
+  // ไม่ใช่ !== false แบบโมดูลอื่น เพราะที่นี่ไม่มีกติกาหน้าเว็บมาค้ำ:
+  // undefined (ยังโหลดไม่เสร็จ / โหลดไม่ติด) ต้องแปลว่า "ยังแก้ไม่ได้" ไม่ใช่ "แก้ได้"
+  const canEditFields =
+    !!onEdited &&
+    (isApiEditGated(full.module)
+      ? apiCanEdit === true
+      : canEditRequest(full, user) && apiCanEdit !== false);
   // สิทธิ์แนบ/ลบรูปเป็นคนละชุด — ห้ามผูกกับ canEdit เพราะปลายทางที่รับงานแล้ว
   // ได้ canEdit: false แต่ canAttach: true (backend แยกให้ 27 ส.ค. 2026)
   // โมดูลที่ยังไม่ส่ง canAttach มา (IT) = undefined → ใช้สิทธิ์เดียวกับฟิลด์เหมือนเดิม
@@ -555,7 +623,8 @@ export function RequestDetailModal({
   const submitEdit = async (form: RequestEditForm) => {
     const attSlots = Object.keys(attRef.current).length;
     const fieldsChanged =
-      canEditFields && hasFormChanges(toEditForm(full, plLines.lines, crDoc.doc), form);
+      canEditFields &&
+      hasFormChanges(toEditForm(full, plLines.lines, crDoc.doc, deptDoc.doc), form);
     // ไม่ได้แก้อะไรเลย → ไม่ต้องยิง API ให้เปลืองรอบ
     if (!fieldsChanged && attSlots === 0) {
       setEditing(false);
@@ -568,6 +637,8 @@ export function RequestDetailModal({
           ? toPlUpdatePayload(full, form, plDoc.doc)
           : full.module === 'CR'
           ? toCrUpdatePayload(form)
+          : isDeptRequestModule(full.module)
+          ? toDeptUpdatePayload(full, form)
           : toUpdatePayload(full, form);
       const res = await saveEdit(full, payload);
       if (res.item) onEdited?.(res.item);
@@ -823,13 +894,17 @@ export function RequestDetailModal({
                 editPending={editPending || attachBusy}
                 editHint={
                   onEdited && !editable
-                    ? plDoc.doc?.editBlockedReason || editBlockedReason(full, user)
+                    ? plDoc.doc?.editBlockedReason ||
+                      deptDoc.doc?.editBlockedReason ||
+                      editBlockedReason(full, user)
                     : null
                 }
                 onEditCancel={() => setEditing(false)}
                 onEditSubmit={submitEdit}
                 crMaster={crMaster}
                 crDoc={crDoc}
+                deptMaster={deptMaster}
+                deptDoc={deptDoc.doc}
                 canEditFields={canEditFields}
                 canAttachFiles={canAttachFiles}
                 attachBlockedReason={attachBlockedReason}
@@ -898,6 +973,18 @@ export function RequestDetailModal({
                 closeLog={lastCloseLog()}
                 pending={!!actionPending}
                 onSubmit={onStepSubmit ? submitStep : undefined}
+              />
+            ) : activeTab.key === 'gaService' ? (
+              <GaImServicePanel
+                key={`${item.module}::${item.docNo}`}
+                item={full}
+                actions={detailError ? [] : actions}
+                pending={!!actionPending || detailLoading}
+                onSubmit={onStepSubmit ? async (action, fields) => {
+                  const result = await onStepSubmit(action, fields);
+                  if (result) applyDetailItem(result.item);
+                  return result;
+                } : undefined}
               />
             ) : activeTab.key === 'service' ? (
               <ServicePanel
@@ -1832,6 +1919,8 @@ function GeneralPanel({
   onStageAttachment,
   crMaster,
   crDoc,
+  deptMaster,
+  deptDoc,
 }: {
   item: RequestListItem;
   full: RequestListItem;
@@ -1856,9 +1945,16 @@ function GeneralPanel({
   // ตัวเลือก + ค่าดิบของใบ CR (ใช้ทั้งหน้าอ่านและฟอร์มแก้ไข)
   crMaster: CrMasterData;
   crDoc: { doc: CrRequestDetail | null; loading: boolean; error: string | null };
+  // ตัวเลือกของใบ GA/IM (ประเภท / เรื่องที่แจ้ง) — ใช้ในฟอร์มแก้ไข
+  deptMaster: DeptMasterData;
+  // ค่าดิบของใบ GA/IM — เส้นกลางไม่รับประกันว่าจะส่ง ประเภท/เรื่องที่แจ้ง/วันที่ต้องการ มาครบ
+  deptDoc: DeptRequestDetail | null;
 }) {
   const imgs = attachments ?? [];
   const isPl = full.module === 'PL';
+  // ใบ GA/IM กรอกชุดเดียวกับ PL (ประเภท → เรื่องที่แจ้ง → วันที่ต้องการ → รายละเอียด
+  // + รายการที่ขอ) จึงใช้แผงอ่าน/แผงแก้ไขชุดเดียวกัน
+  const isDeptReq = isDeptRequestModule(full.module);
   // ใบ CR กรอกคนละชุดกับ IT/PL (ส่วนงาน → ประเภทที่แจ้ง → รายละเอียดที่แจ้ง)
   // ถ้าไม่แยกออกมา ใบ CR จะไปโชว์ช่องของ IT (เบอร์ติดต่อ/ชื่อคอมพิวเตอร์) ซึ่งว่างเปล่าทุกใบ
   const isCr = full.module === 'CR';
@@ -1884,6 +1980,8 @@ function GeneralPanel({
         onSubmit={onEditSubmit}
         crMaster={crMaster}
         crDoc={crDoc}
+        deptMaster={deptMaster}
+        deptDoc={deptDoc}
       />
     );
   }
@@ -1962,7 +2060,7 @@ function GeneralPanel({
         <DetailRow label="หน่วยงาน">{full.departmentName || '—'}</DetailRow>
         {/* เบอร์ติดต่อ/ชื่อเครื่อง เป็นช่องของ IT — โมดูลอื่นที่ยังไม่มีแท็บของตัวเอง
             ก็ตกมาชุดนี้เหมือนเดิม (ของเดิมเป็น else ของ PL/CR ไม่ใช่ isIt) */}
-        {!isPl && !isCr && (
+        {!isPl && !isCr && !isDeptReq && (
           <>
             <DetailRow label="เบอร์ติดต่อ">{full.phoneNumber || '—'}</DetailRow>
             <DetailRow label="ชื่อคอมพิวเตอร์">{full.comName || '—'}</DetailRow>
@@ -1970,7 +2068,7 @@ function GeneralPanel({
         )}
         {/* ใบ PL: วันที่แจ้งเรื่อง = requestDate (ผู้ใช้สั่ง 2 ก.ย. 2026)
             ⚠️ เฉพาะ PL — ใบ CR ใช้คอลัมน์เดียวกันนี้เก็บ "วันที่ต้องการ" ไม่ใช่วันที่แจ้ง */}
-        {isPl && (
+        {(isPl || isDeptReq) && (
           <DetailRow label="วันที่แจ้งเรื่อง">
             {full.requestDate ? <span className="mono">{fmtDate(full.requestDate)}</span> : '—'}
           </DetailRow>
@@ -1978,10 +2076,11 @@ function GeneralPanel({
       </InfoCard>
 
       <InfoCard title="เรื่องที่แจ้ง" icon={IconFileText}>
-        {isPl && (
+        {(isPl || isDeptReq) && (
           <>
             <DetailRow label="ประเภท">{full.type || '—'}</DetailRow>
-            <DetailRow label="หัวข้อเรื่อง">{full.requestType || '—'}</DetailRow>
+            {/* ป้ายต่างกันตามแบบฟอร์มของแต่ละแผนก: PL เรียก "หัวข้อเรื่อง" · GA/IM เรียก "เรื่องที่แจ้ง" */}
+            <DetailRow label={isDeptReq ? 'เรื่องที่แจ้ง' : 'หัวข้อเรื่อง'}>{full.requestType || '—'}</DetailRow>
             {/* วันที่ต้องการใช้งาน = สิ่งที่ขอ ไม่ใช่ข้อมูลตัวผู้แจ้ง จึงอยู่การ์ดนี้
                 (ผู้ใช้สั่ง 2 ก.ย. 2026 — ย้ายมาจากการ์ด "ข้อมูลผู้แจ้ง" พร้อมกับหน้าสร้างใบ) */}
             <DetailRow label="วันที่ต้องการใช้งาน">
@@ -2028,6 +2127,17 @@ function GeneralPanel({
             (ผู้ใช้สั่ง 2 ก.ย. 2026 — กล่องมาตรฐาน: ผู้แจ้ง / เรื่องที่แจ้ง / รายการที่ขอ / รูปภาพ) */}
         {detailBlock}
 
+        {/* สิ่งที่แนบมาด้วย — ผู้แจ้งติ๊กไว้ตอนสร้างใบ อยู่ในกล่องเดียวกับที่กรอก
+            ผู้อนุมัติต้องเห็นว่าใบนี้มีงบประมาณ/สเปกแนบมาหรือยัง ก่อนกดอนุมัติ */}
+        {isDeptReq && (
+          <div className="col-span-2">
+            <span className="mb-1 block text-[11.5px] font-semibold text-gray-500 dark:text-slate-400">
+              สิ่งที่แนบมาด้วย
+            </span>
+            <DeptAttachList module={full.module} doc={deptDoc} />
+          </div>
+        )}
+
         {isPl && (
           <div className="col-span-2">
             <span className="mb-1 block text-[11.5px] font-semibold text-gray-500 dark:text-slate-400">เหตุผลการขอ</span>
@@ -2038,8 +2148,8 @@ function GeneralPanel({
         )}
       </InfoCard>
 
-      {/* มีเฉพาะโมดูลที่ผู้แจ้งกรอกรายการมาด้วย (ตอนนี้ = PL) */}
-      {isPl && (
+      {/* มีเฉพาะโมดูลที่ผู้แจ้งกรอกรายการมาด้วย (PL / GA / IM) */}
+      {(isPl || isDeptReq) && (
         <InfoCard title="รายการที่ขอ" icon={IconList}>
           <div className="col-span-2">
             <PlLinesTable {...plLines} />
@@ -2057,6 +2167,90 @@ function GeneralPanel({
       </InfoCard>
 
       {hintBlock}
+    </div>
+  );
+}
+
+// ── "สิ่งที่แนบมาด้วย" ของใบ GA/IM (อ่านอย่างเดียว) ─────────────
+// เช็คลิสต์ติ๊ก ไม่ใช่ไฟล์แนบ — ผู้แจ้งติ๊กตอนสร้างใบ ผู้อนุมัติอ่านตรงนี้
+//
+// ⚠️ ช่องเลขที่ของ GA เก็บสลับคอลัมน์กับ IM (ดู swapsDocNo ใน data/deptRequestForm.ts)
+// ต้องอ่านสลับให้ตรงกับตอนเขียน ไม่งั้นใบเดียวกันจะโชว์เลขคนละช่องกับที่ผู้แจ้งกรอก
+function DeptAttachList({ module, doc }: { module: string; doc: DeptRequestDetail | null }) {
+  if (!doc) return <span className="text-[13px] text-slate-400 dark:text-slate-500">—</span>;
+  const swap = module === 'GA';
+  // โชว์ครบทั้ง 4 ข้อ ไม่ใช่เฉพาะข้อที่ติ๊ก — ผู้อนุมัติต้องอ่านได้ว่า "ไม่มีงบประมาณแนบมา"
+  // ไม่ใช่แค่ไม่เห็นบรรทัดนั้นแล้วต้องเดาว่าหายไปหรือไม่ได้ติ๊ก
+  // hasNo = ข้อนี้มีช่องเลขที่เอกสารคู่กันไหม — มีแค่สองข้อแรก
+  // สองข้อล่างไม่มีช่องนี้ตั้งแต่ในฟอร์ม จึงต้องไม่โชว์อะไรในคอลัมน์เลขที่เลย
+  // (ขึ้นว่า "ไม่ได้ระบุเลขที่" จะกลายเป็นบอกว่าผู้แจ้งกรอกไม่ครบ ทั้งที่ไม่มีอะไรให้กรอก)
+  const rows = [
+    {
+      on: !!doc.attachBudget,
+      label: GA_IM_ATTACH.budget,
+      hasNo: true,
+      no: swap ? doc.exBudgetDocNo : doc.budgetDocNo,
+    },
+    {
+      on: !!doc.attachExBudget,
+      label: GA_IM_ATTACH.exBudget,
+      hasNo: true,
+      no: swap ? doc.budgetDocNo : doc.exBudgetDocNo,
+    },
+    { on: !!doc.attachSpec, label: GA_IM_ATTACH.spec, hasNo: false, no: null },
+    { on: !!doc.attachQuatation, label: GA_IM_ATTACH.quotation, hasNo: false, no: null },
+  ];
+
+  return (
+    <div className="overflow-hidden rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900">
+      {rows.map((r, i) => (
+        <div
+          key={r.label}
+          className={`flex flex-wrap items-start gap-x-3 gap-y-1 px-3 py-2 ${
+            i > 0 ? 'border-t border-gray-100 dark:border-slate-800' : ''
+          } ${r.on ? 'bg-slate-50/70 dark:bg-slate-800/40' : ''}`}
+        >
+          {/* ป้ายกว้างขั้นต่ำเท่ากับของฟอร์มสร้างใบ เลขที่ของทุกแถวจะได้เริ่มตรงกัน
+              และอยู่ติดป้ายของตัวเอง ไม่ใช่ลอยไปชิดขอบขวา */}
+          <span className="flex items-start gap-2.5 sm:min-w-[210px]">
+            {/* ช่องติ๊กหน้าตาเดียวกับฟอร์มสร้างใบ (ดู kind='checkboxes' + optionFields
+                ใน CreateItem.tsx) — สองจอต้องอ่านเป็นของเดียวกัน */}
+            <span
+              className={`mt-[2px] flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded border ${
+                r.on
+                  ? 'border-emerald-600 bg-emerald-600 text-white dark:border-emerald-500 dark:bg-emerald-500'
+                  : 'border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-900'
+              }`}
+            >
+              {r.on && <IconCheck size={13} stroke={3} />}
+            </span>
+            <span
+              className={`text-[13px] ${
+                r.on
+                  ? 'font-bold text-gray-800 dark:text-slate-100'
+                  : 'font-semibold text-slate-400 dark:text-slate-500'
+              }`}
+            >
+              {r.label}
+            </span>
+          </span>
+
+          {/* เลขที่เอกสารยาวได้ถึง 50 ตัวอักษร — ต้องตัดบรรทัดในกรอบตัวเอง ไม่ใช่ดันแถวจนล้น
+              (ทั้ง min-w-0 กับ break-all: เลขเอกสารไม่มีช่องว่างให้เบราว์เซอร์ตัดบรรทัดเอง) */}
+          {r.on && r.hasNo && (
+            <span className="min-w-0 flex-1 break-all">
+              {r.no ? (
+                <span className="mono text-[12.5px] font-semibold text-gray-700 dark:text-slate-200">
+                  {r.no}
+                </span>
+              ) : (
+                // ใบเก่าจากเว็บเดิมติ๊กไว้โดยไม่กรอกเลขที่ได้ (ฝั่งนั้นไม่บังคับ)
+                <span className="text-[11.5px] text-slate-400 dark:text-slate-500">ไม่ได้ระบุเลขที่</span>
+              )}
+            </span>
+          )}
+        </div>
+      ))}
     </div>
   );
 }
@@ -3143,6 +3337,8 @@ function RequestEditPanel({
   onSubmit,
   crMaster,
   crDoc,
+  deptMaster,
+  deptDoc,
 }: {
   item: RequestListItem;
   lines: PlRequestLine[] | null;
@@ -3160,14 +3356,23 @@ function RequestEditPanel({
   onSubmit: (form: RequestEditForm) => void | Promise<void>;
   crMaster: CrMasterData;
   crDoc: { doc: CrRequestDetail | null; loading: boolean; error: string | null };
+  deptMaster: DeptMasterData;
+  deptDoc: DeptRequestDetail | null;
 }) {
   const isPl = item.module === 'PL';
   const isCr = item.module === 'CR';
+  // GA/IM แก้รายการที่ขอได้เหมือน PL (PUT ส่ง lines ไปทั้งชุด)
+  const isDeptReq = isDeptRequestModule(item.module);
+  const hasLinesEditor = isPl || isDeptReq;
   const fields = editFieldsOf(item.module);
   // ตัวเลือกของใบ PL (ประเภท / เรื่องที่แจ้ง / หน่วย) — GET /MasterData/pl
   const { user } = useAuth();
-  const plMaster = usePlMasterData(user?.token, isPl);
-  const [form, setForm] = useState<RequestEditForm>(() => toEditForm(item, lines, crDoc.doc));
+  // หน่วยนับใช้ชุดของ PL ร่วมกันทุกแผนกที่มีรายการที่ขอ (ผู้ใช้สั่ง 6 ก.ย. 2026 —
+  // ฝั่ง backend ก็อ่านจาก Units.xml ไฟล์เดียวกันทั้ง PL / GA / IM)
+  const plMaster = usePlMasterData(user?.token, isPl || isDeptReq);
+  const [form, setForm] = useState<RequestEditForm>(() =>
+    toEditForm(item, lines, crDoc.doc, deptDoc)
+  );
   const [errors, setErrors] = useState<ReturnType<typeof validateEditForm>>({});
   // ล็อกช่องกรอกทั้งหมดเมื่อเข้ามาเพื่อจัดการรูปอย่างเดียว (canEdit ปิดไปแล้ว)
   const lock = pending || !fieldsEditable;
@@ -3177,7 +3382,7 @@ function RequestEditPanel({
   const crRaw = crDoc.doc;
   useEffect(() => {
     if (!isCr || !crRaw) return;
-    setForm((f) => (f.requestType ? f : toEditForm(item, lines, crRaw)));
+    setForm((f) => (f.requestType ? f : toEditForm(item, lines, crRaw, deptDoc)));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isCr, crRaw]);
 
@@ -3195,11 +3400,23 @@ function RequestEditPanel({
         return crMaster.requestTypeOptions(form.section);
       case 'crRequestSubTypes':
         return crMaster.requestSubTypeOptions(form.section, form.requestType);
+      // GA/IM ไม่มีชั้น "ส่วนงาน" — ส่งสตริงว่างไปให้ฮุคคืนทุกแถว
+      case 'deptTypes':
+        return deptMaster.typeOptions('');
+      case 'deptRequestTypes':
+        return deptMaster.requestTypeOptions('');
       default:
         return f.options ?? [];
     }
   };
   const isCrMaster = (m?: MasterListKey) => m === 'crSections' || m === 'crRequestTypes' || m === 'crRequestSubTypes';
+  const isDeptMaster = (m?: MasterListKey) => m === 'deptTypes' || m === 'deptRequestTypes';
+
+  // สถานะโหลด/ปุ่มลองใหม่ ต้องเป็นของ "ลิสต์ที่ช่องนั้นใช้จริง" ไม่ใช่ของ PL เสมอ —
+  // ใบ GA/IM โหลด master ของ PL ไปด้วย (เอาไว้ใช้หน่วยนับ) ถ้าอ่านสถานะผิดตัว
+  // ปุ่ม "ลองใหม่" จะไปโหลดลิสต์ที่ไม่ได้พัง แล้วช่องที่พังก็ยังว่างอยู่เหมือนเดิม
+  const masterStateOf = (m?: MasterListKey) =>
+    isCrMaster(m) ? crMaster : isDeptMaster(m) ? deptMaster : plMaster;
 
   // โหลดค่าดิบไม่สำเร็จ = ฟอร์มไม่รู้ค่าเดิมของส่วนงาน/ประเภทที่แจ้ง ซึ่งต้องส่งกลับไปกับ PUT
   // ด้วยค่าเดิมเสมอ → ปล่อยให้กดบันทึกไม่ได้ (บันทึกทั้งที่ค่าว่าง = เขียนทับประเภทของใบ)
@@ -3317,9 +3534,9 @@ function RequestEditPanel({
                   value={value}
                   options={optionsOf(f)}
                   disabled={fieldLock}
-                  loading={!!f.master && (isCrMaster(f.master) ? crMaster.loading : plMaster.loading)}
-                  error={f.master ? (isCrMaster(f.master) ? crMaster.error : plMaster.error) : null}
-                  onRetry={isCrMaster(f.master) ? crMaster.reload : plMaster.reload}
+                  loading={!!f.master && masterStateOf(f.master).loading}
+                  error={f.master ? masterStateOf(f.master).error : null}
+                  onRetry={masterStateOf(f.master).reload}
                   cls={cls}
                   onChange={(v) => set(f.key, v, f.resets)}
                 />
@@ -3353,9 +3570,9 @@ function RequestEditPanel({
         })}
       </div>
 
-      {/* รายการที่ขอ (เฉพาะ PL) — ส่งขึ้น API พร้อมกับปุ่มบันทึก ไม่ใช่ทีละแถว
+      {/* รายการที่ขอ (PL / GA / IM) — ส่งขึ้น API พร้อมกับปุ่มบันทึก ไม่ใช่ทีละแถว
           แถวเดิมหิ้ว recNo ไว้ใน state ไม่ได้โชว์ให้ผู้ใช้เห็น */}
-      {isPl && (
+      {hasLinesEditor && (
         <div>
           <div className="mb-1.5 flex items-baseline gap-1.5">
             <span className="text-[11.5px] font-semibold text-gray-500 dark:text-slate-400">รายการที่ขอ</span>
@@ -3388,7 +3605,8 @@ function RequestEditPanel({
                       <input
                         type="text"
                         value={l.item}
-                        maxLength={2000}
+                        // คอลัมน์ชื่อรายการของ GA/IM สั้นกว่าของ PL — เกินแล้ว API ตอบ 400
+                        maxLength={isDeptReq ? 1000 : 2000}
                         disabled={lock}
                         placeholder="ชื่อรายการที่ต้องการ"
                         onChange={(e) => setLine(i, { item: e.target.value })}

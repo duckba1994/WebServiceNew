@@ -8,7 +8,14 @@ import {
   PlRequestLine,
   PlRequestUpdatePayload,
 } from '../api/plRequest';
-import { CR_OTHER_TYPE, DETAIL_MAX_LEN, FieldOption, MasterListKey } from './requestForm';
+import { DeptRequestDetail, DeptRequestUpdatePayload } from '../api/deptRequest';
+import {
+  CR_OTHER_TYPE,
+  DEPT_DETAIL_MAX_LEN,
+  DETAIL_MAX_LEN,
+  FieldOption,
+  MasterListKey,
+} from './requestForm';
 
 // ── แก้ไขใบแจ้งเรื่อง "ก่อน Mgr อนุมัติ" เท่านั้น ─────────────────
 // PURE logic (ไม่มี JSX/hooks) — สิทธิ์แก้ไข + ฟิลด์ที่แก้ได้ + validate
@@ -32,6 +39,15 @@ const EDITABLE_WF_STATUS: Record<string, string[]> = {
 // ใครแก้ได้: คนที่หน่วยงานตรงกับหน่วยงานผู้แจ้ง
 // backend ดูแค่ departId ไม่ได้ดู flag ผู้อนุมัติ → Mgr กับลูกทีมสิทธิ์เท่ากัน
 // หน้าเว็บจึงไม่ต้องแยกปุ่มตามตำแหน่ง
+// โมดูลที่ "ยกให้ API ตัดสินสิทธิ์แก้ไขอย่างเดียว" — หน้าเว็บไม่มีกติกาซ้ำ
+// GA/IM: ช่วงที่แก้ได้แคบกว่า PL มากและสลับเจ้าของกลางทาง (ผู้แจ้งก่อนอนุมัติ →
+// ล็อกทั้งใบตอนรอรับเรื่อง → แผนกปลายทางหลังรับเรื่อง) API คิดจากฟังก์ชันเดียวกัน
+// ทั้งตอนตอบ canEdit และตอนกันใน PUT อยู่แล้ว (guide §5.2)
+// → เขียนกติกาซ้ำที่หน้าเว็บมีแต่จะเพี้ยนจากของจริง
+export const API_EDIT_GATED_MODULES = ['GA', 'IM'];
+
+export const isApiEditGated = (module: string): boolean => API_EDIT_GATED_MODULES.includes(module);
+
 export function canEditRequest(item: RequestListItem, user?: User | null): boolean {
   const allowed = EDITABLE_WF_STATUS[item.module];
   if (!allowed) return false;
@@ -187,10 +203,38 @@ const CR_EDIT_FIELDS: EditFieldDef[] = [
   },
 ];
 
+// ใบ GA / IM แก้ได้ 4 ช่อง + รายการที่ขอ — เรียงตามฟอร์มตอนสร้างใบ
+// (ดู supplyForm ใน requestForm.ts: ประเภท → เรื่องที่แจ้ง → วันที่ต้องการ → รายละเอียด)
+//
+// ตัวเลือกมาจาก GET /MasterData/{ga|im} ซึ่งเป็นสัญญาเดียวกับที่ฟอร์มสร้างใบใช้
+// (คีย์ deptTypes / deptRequestTypes — หน้ารายละเอียดเป็นคนโหลดแล้วเติมให้)
+//
+// ⚠️ รายละเอียดที่แจ้งของสองโมดูลนี้ยาวได้ 500 ตัวอักษร ไม่ใช่ 1000 แบบ PL/IT
+// (คอลัมน์ในฐานสั้นกว่า — เกินแล้ว API ตอบ 400)
+//
+// หมายเหตุ (remark) กับเช็คลิสต์เอกสารแนบไม่อยู่ในฟอร์มนี้ (ผู้ใช้สั่ง 9 ก.ย. 2026:
+// เป็นของขั้นเอกสารแนบ/อนุมัติ) — ไม่ส่งไปกับ PUT จึงไม่ถูกแตะ
+const GA_IM_EDIT_FIELDS: EditFieldDef[] = [
+  { key: 'type', label: 'ประเภท', kind: 'select', required: true, master: 'deptTypes' },
+  { key: 'requestType', label: 'เรื่องที่แจ้ง', kind: 'select', required: true, master: 'deptRequestTypes' },
+  { key: 'planDate', label: 'วันที่ต้องการใช้งาน', kind: 'date', required: true },
+  {
+    key: 'requestDetail',
+    label: 'ระบุเรื่องที่แจ้ง',
+    kind: 'textarea',
+    required: true,
+    span2: true,
+    maxLen: DEPT_DETAIL_MAX_LEN,
+    placeholder: 'อธิบายรายละเอียดของเรื่องที่ต้องการแจ้ง',
+  },
+];
+
 const EDIT_FIELDS_BY_MODULE: Record<string, EditFieldDef[]> = {
   IT: IT_EDIT_FIELDS,
   PL: PL_EDIT_FIELDS,
   CR: CR_EDIT_FIELDS,
+  GA: GA_IM_EDIT_FIELDS,
+  IM: GA_IM_EDIT_FIELDS,
 };
 
 export const editFieldsOf = (module: string): EditFieldDef[] => EDIT_FIELDS_BY_MODULE[module] ?? [];
@@ -265,22 +309,30 @@ const toDateInput = (iso?: string | null): string => (iso ? iso.slice(0, 10) : '
 // crDoc = ค่าดิบจาก GET /CRRequest/{docNo} (ใบ CR เท่านั้น) — **ต้องใช้ตัวนี้**
 // ห้ามเอา item.requestType ของเส้นกลางมาผูก dropdown เพราะเป็นข้อความรวมร่าง
 // ("ใบเสนอราคา / แก้ไขเอกสาร") ยังไม่โหลดเสร็จ = ช่องของ CR ว่างไว้ก่อน
+// deptDoc = ค่าดิบจาก GET /{GA|IM}Request/{docNo} — ใช้ด้วยเหตุผลเดียวกับ crDoc:
+// เส้นกลางไม่รับประกันว่าจะส่ง type / requestType / planDate ของสองโมดูลนี้มาครบ
+// ถ้าปล่อยให้ dropdown ว่างแล้วผู้ใช้กดบันทึก จะติด "กรุณากรอกประเภท" ทั้งที่ใบมีค่าอยู่
 export const toEditForm = (
   item: RequestListItem,
   lines?: PlRequestLine[] | null,
-  crDoc?: CrRequestDetail | null
+  crDoc?: CrRequestDetail | null,
+  deptDoc?: DeptRequestDetail | null
 ): RequestEditForm => ({
-  requestDetail: item.module === 'CR' ? crDoc?.requestDetail ?? item.detail ?? '' : item.detail ?? '',
+  requestDetail:
+    item.module === 'CR'
+      ? crDoc?.requestDetail ?? item.detail ?? ''
+      : deptDoc?.requestDetail ?? item.detail ?? '',
   phoneNumber: item.phoneNumber ?? '',
   comName: item.comName ?? '',
   requestDetailRemark: item.remark ?? '',
-  type: item.type ?? '',
+  type: deptDoc?.type ?? item.type ?? '',
   // ใบ CR: section = โค้ดส่วนงาน (HV/FL) · โมดูลอื่นไม่มีฟิลด์ section ในฟอร์มอยู่แล้ว
   section: crDoc?.section ?? (item.module === 'CR' ? item.type ?? '' : ''),
-  requestType: item.module === 'CR' ? crDoc?.requestType ?? '' : item.requestType ?? '',
+  requestType:
+    item.module === 'CR' ? crDoc?.requestType ?? '' : deptDoc?.requestType ?? item.requestType ?? '',
   requestSubType: crDoc?.requestSubType ?? '',
   requestSubOther: crDoc?.requestSubOther ?? '',
-  planDate: toDateInput(item.planDate),
+  planDate: toDateInput(deptDoc?.planDate ?? item.planDate),
   requestDate: toDateInput(item.module === 'CR' ? crDoc?.requestDate ?? item.requestDate : item.requestDate),
   lines: (lines ?? [])
     .filter((l) => !l.cancel)
@@ -445,6 +497,38 @@ export const toPlUpdatePayload = (
       recNo: l.recNo ?? undefined,
       item: l.item.trim(),
       qty: Number(l.qty) || 0,
+      unit: l.unit.trim() || undefined,
+      remark: l.remark.trim() || undefined,
+    })),
+});
+
+// ฟอร์ม → payload ของ PUT /{GA|IM}Request/{docNo}
+// requestBy กับ requestDetail บังคับส่งทุกครั้ง แม้ผู้ใช้ไม่ได้แก้ (API บังคับ)
+// requestBy เอาจากใบ ไม่ใช่จากคนที่กดแก้ — คนแก้อาจเป็นเพื่อนร่วมแผนก ไม่ใช่ผู้แจ้ง
+//
+// ไม่ใส่ departid / docDate / site / remark / เช็คลิสต์เอกสารแนบ ลงไปเลย = ไม่แตะของเดิม
+// (ฟิลด์ที่ไม่ส่ง/เป็น null แปลว่า "ไม่เปลี่ยน" — guide §5.3) โดยเฉพาะ departid ที่ส่งค่าใหม่
+// = ใบย้ายหน่วยงาน แถว workflow ขั้นรออนุมัติย้ายตาม แล้วแผนกเดิมแก้ใบตัวเองไม่ได้อีก
+//
+// ⚠️ lines ส่งครบทุกแถวที่ยังต้องการเก็บไว้เสมอ — แถวที่หายจาก payload ถือว่าถูกลบ
+export const toDeptUpdatePayload = (
+  item: RequestListItem,
+  form: RequestEditForm
+): DeptRequestUpdatePayload => ({
+  requestBy: item.requestBy ?? '',
+  requestDetail: form.requestDetail.trim(),
+  type: form.type || undefined,
+  requestType: form.requestType || undefined,
+  // เวลาท้องถิ่นแบบไม่มี timezone — ถ้าแปลงเป็น ISO UTC จะโดน +07 ดึงวันถอยไป 1 วัน
+  planDate: form.planDate ? `${form.planDate}T00:00:00` : undefined,
+  lines: form.lines
+    .filter((l) => l.item.trim() !== '')
+    .map((l) => ({
+      recNo: l.recNo ?? undefined,
+      item: l.item.trim(),
+      // ส่งเป็นตัวเลขเสมอ ไม่พึ่ง default ฝั่ง API — validateEditForm บังคับจำนวน > 0
+      // ของทุกแถวที่กรอกชื่อแล้วอยู่ก่อนหน้า เลข 1 ตรงนี้จึงเป็นค่ากันเหนียว
+      qty: Number(l.qty) || 1,
       unit: l.unit.trim() || undefined,
       remark: l.remark.trim() || undefined,
     })),

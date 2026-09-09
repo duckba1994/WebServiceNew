@@ -1,6 +1,6 @@
-# CLAUDE.md
+# AGENTS.md
 
-Guidance for Claude Code when working in this repository.
+Guidance for Codex when working in this repository.
 
 ## Project Overview
 **ระบบใบรับเรื่อง** (Request Intake System, package name `businessapp`) — an internal organization app where staff open a "ใบรับเรื่อง" (request ticket) and route it to the responsible department (HR / PL / SV / IT), then track it to completion. React 18 + TypeScript single-page app bootstrapped with Create React App (`react-scripts`). Git repository, default branch `main`. See `PROJECT_STRUCTURE.md` for the system overview (departments + example requests), `API_NAMING.md` for the mandatory API field-naming rule, and `API_SPEC_REQUEST_FLOW.md` / `API_SPEC_REQUESTS_V2.md` / `API_v2_3_DETAIL_GUIDE.md` / `API_SPEC_CR_FLOW.md` (the CR 5-step flow) for what is still pending from backend.
@@ -174,4 +174,4 @@ Two rules that keep it from rotting:
 ## Related Docs
 `MdApi/API_SPEC_DEPT_MASTER.md` is the contract handed to backend for the GA/IM/AF/SV/SQA option lists — it also lists what is still missing for those departments (AF's and SV's create-request endpoints, and SV's attachment endpoint), which is why those forms still end at the summary screen without POSTing. GA and IM are no longer in that group: their endpoints went live 9 Sep 2026 (see `MdApi/API_SPEC_GA_IM_FLOW.md`).
 
-`PROJECT_STRUCTURE.md` at the repo root is a separate Thai-language **template** document for scaffolding *new* React projects in this same style. It still uses older "ticket" terminology (`CreateTicket`, `MyTickets`, `ticket.ts`) that has since been renamed to "item" in this actual codebase — treat this CLAUDE.md file, not the template, as the source of truth for this project's current structure and naming.
+`PROJECT_STRUCTURE.md` at the repo root is a separate Thai-language **template** document for scaffolding *new* React projects in this same style. It still uses older "ticket" terminology (`CreateTicket`, `MyTickets`, `ticket.ts`) that has since been renamed to "item" in this actual codebase — treat this AGENTS.md file, not the template, as the source of truth for this project's current structure and naming.

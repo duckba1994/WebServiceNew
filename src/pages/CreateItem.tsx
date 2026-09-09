@@ -33,6 +33,8 @@ import { checkPlAttachment, createPlRequest, uploadPlAttachment } from '../api/p
 import { toPlRequestPayload } from '../data/plRequestForm';
 import { createCrRequest } from '../api/crRequest';
 import { toCrRequestPayload } from '../data/crRequestForm';
+import { DeptRequestModule, createDeptRequest, isDeptRequestModule } from '../api/deptRequest';
+import { toDeptRequestPayload } from '../data/deptRequestForm';
 import { useAuth } from '../context/AuthContext';
 import {
   FieldDef,
@@ -53,6 +55,7 @@ import {
   fieldVisible,
   checkedValues,
   toggleChecked,
+  optionFieldKeys,
 } from '../data/requestForm';
 
 // จำนวนช่องรูป (ImgPath1/2/3) — ฟอร์มจำกัดที่ max: 3 อยู่แล้ว แต่ต้องกันไว้
@@ -488,6 +491,27 @@ function RequestForm({
     }
   };
 
+  // ── ส่งใบแจ้งเรื่อง GA / IM — POST /GARequest, /IMRequest ───
+  // สอง endpoint ใช้ payload ชุดเดียวกัน ต่างแค่ base path จึงเป็นฟังก์ชันเดียว
+  // ไม่มีขั้นแนบรูป — สองโมดูลนี้ไม่มีคอลัมน์เก็บไฟล์ในฐาน (guide §1)
+  const submitDept = async (module: DeptRequestModule) => {
+    setSending(true);
+    try {
+      const res = await createDeptRequest(
+        module,
+        toDeptRequestPayload(f, f.values.reporterName ?? user?.name ?? '', module),
+        user?.token
+      );
+      setDocNo(res.docNo);
+      setSaved(true);
+    } catch (err) {
+      // ApiError หิ้ว message ภาษาไทยของ API มาให้แล้ว (เช่น "ไม่รู้จักหน่วยนับ ... (แถวที่ 1)")
+      setSendError(err instanceof Error ? err.message : 'บันทึกใบแจ้งเรื่องไม่สำเร็จ');
+    } finally {
+      setSending(false);
+    }
+  };
+
   const submit = async () => {
     const e = validateRequestForm(f, optionlessKeys);
     setErrors(e);
@@ -498,7 +522,7 @@ function RequestForm({
     }
 
     // แผนกที่ยังไม่มี API — คงพฤติกรรมเดิม (UI-first)
-    if (!['IT', 'PL', 'CR'].includes(dep.departmentShort)) {
+    if (!['IT', 'PL', 'CR'].includes(dep.departmentShort) && !isDeptRequestModule(dep.departmentShort)) {
       setSaved(true);
       return;
     }
@@ -511,6 +535,12 @@ function RequestForm({
 
     if (dep.departmentShort === 'PL') {
       await submitPl();
+      return;
+    }
+
+    // GA / IM — ชื่อย่อของแผนกตรงกับชื่อโมดูลพอดี (ต่างจาก HR-PR / SV-HV / SA)
+    if (isDeptRequestModule(dep.departmentShort)) {
+      await submitDept(dep.departmentShort);
       return;
     }
 
@@ -707,6 +737,14 @@ function RequestForm({
     );
   };
 
+  // ฟิลด์ทุกตัวของแผนกนี้ ค้นด้วย key — ใช้ตอนที่ฟิลด์หนึ่งต้องเรนเดอร์อีกฟิลด์ไว้ข้างใน
+  // (ดู FieldDef.optionFields: ช่องเลขที่เอกสารที่อยู่ในแถวของข้อที่ติ๊ก)
+  const fieldByKey = useMemo(() => {
+    const m = new Map<string, FieldDef>();
+    for (const sec of cfg.sections) for (const fd of sec.fields) m.set(fd.key, fd);
+    return m;
+  }, [cfg]);
+
   // เรนเดอร์ช่องกรอกตามชนิดฟิลด์ที่ประกาศไว้ใน schema ของแผนก
   const renderField = (fd: FieldDef) => {
     const err = errors[fd.key];
@@ -860,6 +898,75 @@ function RequestForm({
         const m = masterFor(fd);
         const opts = m?.options ?? fieldOptions(fd.options);
         const picked = checkedValues(f.values[fd.key]);
+
+        // ── แบบมีช่องกรอกประจำข้อ (เช่น "สิ่งที่แนบมาด้วย" ของ GA/IM) ──
+        // เรนเดอร์เป็นรายการแนวตั้งในกรอบเดียว แล้ววางช่องกรอกไว้บรรทัดเดียวกับข้อของมัน
+        // ของเดิมแยกช่องติ๊กไว้ซ้าย เลขที่เอกสารไว้ขวา คนกรอกต้องเดาว่าคู่ไหนคู่กัน
+        if (fd.optionFields) {
+          return (
+            <div
+              className={`overflow-hidden rounded-xl border bg-white dark:bg-slate-900 ${
+                bad ? 'border-red-300 dark:border-red-800' : 'border-gray-200 dark:border-slate-700'
+              }`}
+            >
+              {opts.map((o, i) => {
+                const on = picked.includes(o.value);
+                const child = fieldByKey.get(fd.optionFields![o.value] ?? '');
+                return (
+                  <div
+                    key={o.value}
+                    className={`flex flex-wrap items-center gap-x-3 gap-y-2 px-3 py-2.5 ${
+                      i > 0 ? 'border-t border-gray-100 dark:border-slate-800' : ''
+                    } ${on ? 'bg-slate-50/70 dark:bg-slate-800/40' : ''}`}
+                  >
+                    {/* ป้ายกว้างขั้นต่ำเท่ากันทุกแถว — ช่องกรอกจะได้เริ่มตรงกัน และอยู่
+                        "ติดป้ายของตัวเอง" ไม่ใช่ยืดไปชิดขอบขวาจนต้องลากเมาส์ไกล
+                        (ผู้ใช้ทัก 9 ก.ย. 2026) ป้ายที่ยาวกว่านี้ดันช่องกรอกออกไปเองได้ */}
+                    <button
+                      type="button"
+                      onClick={() => setValue(fd.key, toggleChecked(f.values[fd.key], o.value), fd.resets)}
+                      className="flex items-center gap-2.5 text-left sm:min-w-[210px]"
+                    >
+                      <span
+                        style={on ? { borderColor: accentColor, backgroundColor: accentColor } : undefined}
+                        className={`flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded border text-white ${
+                          on ? '' : 'border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-900'
+                        }`}
+                      >
+                        {on && <IconCheck size={13} stroke={3} />}
+                      </span>
+                      <span
+                        className={`text-[13px] ${
+                          on
+                            ? 'font-bold text-gray-800 dark:text-slate-100'
+                            : 'font-semibold text-gray-600 dark:text-slate-300'
+                        }`}
+                      >
+                        {o.label}
+                      </span>
+                    </button>
+                    {/* ช่องเลขที่เอกสารของข้อนี้ — โผล่เมื่อติ๊กเท่านั้น
+                        (ไม่ติ๊กแล้วโชว์ช่องว่างไว้ ทำให้ดูเหมือนกรอกไม่ครบทั้งที่ไม่ต้องกรอก) */}
+                    {child && on && (
+                      <div
+                        className="w-full sm:w-[260px]"
+                        data-invalid={errors[child.key] ? 'true' : undefined}
+                      >
+                        {renderField(child)}
+                        {errors[child.key] && (
+                          <p className="mt-1 text-[11px] font-medium text-red-500 dark:text-red-400">
+                            {errors[child.key]}
+                          </p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          );
+        }
+
         return (
           <>
             {m?.loading ? (
@@ -1111,11 +1218,14 @@ function RequestForm({
   );
 
   // ส่วนเฉพาะแผนก — มาจาก schema ใน requestForm.ts
-  const deptSections = cfg.sections.map((sec) => (no: number) => (
+  const deptSections = cfg.sections.map((sec) => (no: number) => {
+    // ฟิลด์ที่ถูกยืมไปเรนเดอร์ในแถวของตัวเลือก (optionFields) ไม่ต้องมีแถวของตัวเอง
+    const borrowed = optionFieldKeys(sec.fields);
+    return (
     <SectionCard key={sec.title} no={no} title={sec.title} accentColor={accentColor}>
       {sec.fields
         // ฟิลด์ที่ประกาศ inlineWith ไว้ ไปเรนเดอร์อยู่ในแถวของฟิลด์แม่แล้ว (ไม่มีแถวของตัวเอง)
-        .filter((fd) => !fd.inlineWith && fieldVisible(fd, f.values))
+        .filter((fd) => !fd.inlineWith && !borrowed.has(fd.key) && fieldVisible(fd, f.values))
         .map((fd) => {
           const inlines = sec.fields.filter((c) => c.inlineWith === fd.key && fieldVisible(c, f.values));
           return (
@@ -1179,7 +1289,8 @@ function RequestForm({
       {/* ฟิลด์ส่วนกลางของแผนกที่ให้รวมอยู่ในกล่องนี้ (เช่น "รายละเอียด" ของ CR) */}
       {cfg.commonInto === sec.title && commonFields.length > 0 && commonRows}
     </SectionCard>
-  ));
+    );
+  });
 
   // แทรกส่วนกลางตามลำดับที่ schema กำหนด (IT: ผู้แจ้ง → เรื่องที่แจ้ง → รูปภาพ)
   // แผนกที่ตั้ง commonInto ไว้ ส่วนกลางไปอยู่ในกล่องนั้นแล้ว ไม่ต้องแทรกกล่องใหม่

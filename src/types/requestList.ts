@@ -89,6 +89,7 @@ export interface RequestResolution {
   exContact?: string | null;
   exPlanDate?: string | null;
   exPrNo?: string | null;
+  leadTime?: number | null; // GA service duration, 0–100 days
   // ชุดสำรวจความพึงพอใจ (survey): ServiceScore / ServicePercentage / Survey_By / Survey_Date / Survey_Remark
   serviceScore?: number | null;
   servicePercentage?: number | null;

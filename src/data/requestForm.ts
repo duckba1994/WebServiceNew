@@ -132,7 +132,19 @@ export interface FieldDef {
   maxLen?: number;
   // kind='lineItems' เท่านั้น — ชุดคอลัมน์ของตาราง (ไม่ระบุ = 'purchase')
   variant?: LineItemsVariant;
+  // kind='checkboxes' เท่านั้น — ตัวเลือกข้อไหนมี "ช่องกรอกของตัวเอง" (ค่าตัวเลือก → key
+  // ของฟิลด์พี่น้องในกล่องเดียวกัน) ประกาศแล้วรายการจะเรนเดอร์เป็นแถวแนวตั้ง และช่องกรอก
+  // ไปอยู่ในแถวของข้อนั้นเลย ส่วนฟิลด์พี่น้องจะไม่มีแถวของตัวเอง
+  //
+  // มีไว้เพราะของเดิม (หน้าเว็บ ASPX) แยกช่องติ๊กไว้คอลัมน์ซ้าย เลขที่เอกสารไว้คอลัมน์ขวา
+  // แล้วอ่านไม่ออกว่าเลขที่ช่องไหนคู่กับข้อไหน — คู่กันต้องอยู่บรรทัดเดียวกัน
+  optionFields?: Record<string, string>;
 }
+
+// คีย์ของฟิลด์ที่ถูก "ยืม" ไปเรนเดอร์ในแถวของตัวเลือก (ดู FieldDef.optionFields)
+// ฟิลด์พวกนี้ต้องไม่ถูกเรนเดอร์เป็นแถวของตัวเองซ้ำอีก
+export const optionFieldKeys = (fields: FieldDef[]): Set<string> =>
+  new Set(fields.flatMap((fd) => Object.values(fd.optionFields ?? {})));
 
 export interface DeptSection {
   title: string;
@@ -179,6 +191,11 @@ export const usesMaster = (cfg: DeptFormConfig, key: MasterListKey): boolean =>
 
 // ความยาวสูงสุดของ "รายละเอียดที่แจ้ง" (ตกลงไว้ 17 ส.ค. 2026)
 export const DETAIL_MAX_LEN = 1000;
+
+// GA / IM เก็บรายละเอียดไว้ในคอลัมน์ที่สั้นกว่า — เกินแล้ว API ตอบ 400
+// (GA-IM-create-frontend-guide.md §3) จึงต้องกันที่หน้าเว็บก่อน ไม่ใช่ให้ผู้ใช้
+// พิมพ์จนครบ 1000 ตัวแล้วค่อยโดนปฏิเสธตอนกดส่ง
+export const DEPT_DETAIL_MAX_LEN = 500;
 
 // ── รายการย่อย (line item) — ใช้กับฟิลด์ kind='lineItems' ──
 // ชุดคอลัมน์ของตารางรายการย่อย
@@ -317,14 +334,63 @@ const PHOTOS_SECTION: DeptSection = {
 // (GET /MasterData/ga · /im · /af) — AF ไม่มีชั้น "ประเภท"
 // ช่องข้อความยาวของกลุ่มนี้ — คีย์ topicDetail เหมือนกันทุกแผนกที่มีช่องนี้
 // (ป้ายต่างกันได้ แต่ที่เก็บฝั่ง API เป็นช่องเดียวกัน — ดู MdApi/API_SPEC_CREATE_REQUEST.md)
-const supplyDetailField = (label: string): FieldDef[] => [
+// ── กล่อง "สิ่งที่แนบมาด้วย" ของ GA / IM ───────────────────────
+// เป็นเช็คลิสต์ติ๊กว่าส่งเอกสารอะไรแนบมากับใบ **ไม่ใช่การอัปโหลดไฟล์**
+// (สองโมดูลนี้ไม่มีคอลัมน์เก็บไฟล์ในฐาน จึงไม่มีเส้นอัปโหลด)
+//
+// ข้อความพวกนี้ถูกใช้เทียบใน showWhen และถูกแปลงเป็น boolean ใน deptRequestForm.ts
+// → ประกาศไว้ที่เดียว ห้ามพิมพ์ซ้ำเป็นสตริงดิบที่อื่น
+// ป้ายยึดตามหน้าเว็บเก่าของ IM (BC_IM_Request_Add.aspx) ทั้งสองแผนกตามที่ผู้ใช้สั่ง
+// 9 ก.ย. 2026 — ของ GA เดิมใช้คำว่า "ใบขออนุมัตินอกงบ" ซึ่งคนละคำแต่ช่องเดียวกัน
+export const GA_IM_ATTACH = {
+  budget: 'งบประมาณ',
+  exBudget: 'ใบขออนุมัติงบประมาณ',
+  spec: 'รายละเอียด/Spec',
+  quotation: 'ใบเสนอราคา เปรียบเทียบราคา',
+} as const;
+
+// ⚠️ คีย์ของช่องเลขที่ตั้งชื่อตาม "ความหมายบนป้าย" ไม่ใช่ชื่อคอลัมน์ของ API
+// เพราะ GA เก็บสองค่านี้สลับคอลัมน์กับ IM (ดูคำอธิบายใน data/deptRequestForm.ts)
+// ตั้งชื่อให้เหมือนชื่อฟิลด์ API เมื่อไร คนอ่านจะเผลอคิดว่าส่งต่อตรง ๆ ได้
+const supplyAttachFields = (): FieldDef[] => [
+  {
+    key: 'attachDocs',
+    label: 'สิ่งที่แนบมาด้วย',
+    kind: 'checkboxes',
+    span2: true,
+    hint: '(ติ๊กเอกสารที่ส่งแนบมากับใบนี้ — ไม่บังคับ)',
+    options: [GA_IM_ATTACH.budget, GA_IM_ATTACH.exBudget, GA_IM_ATTACH.spec, GA_IM_ATTACH.quotation],
+    // สองข้อแรกมีช่องเลขที่เอกสารของตัวเอง — โผล่ในแถวของข้อนั้นเมื่อติ๊ก
+    optionFields: { [GA_IM_ATTACH.budget]: 'budgetNo', [GA_IM_ATTACH.exBudget]: 'exBudgetNo' },
+  },
+  {
+    key: 'budgetNo',
+    label: 'งบประมาณเลขที่',
+    kind: 'text',
+    required: true,
+    maxLen: 50,
+    placeholder: 'เลขที่เอกสารงบประมาณ',
+    showWhen: { key: 'attachDocs', includes: GA_IM_ATTACH.budget },
+  },
+  {
+    key: 'exBudgetNo',
+    label: 'ใบขออนุมัติงบประมาณเลขที่',
+    kind: 'text',
+    required: true,
+    maxLen: 50,
+    placeholder: 'เลขที่ใบขออนุมัติงบประมาณ',
+    showWhen: { key: 'attachDocs', includes: GA_IM_ATTACH.exBudget },
+  },
+];
+
+const supplyDetailField = (label: string, maxLen = DETAIL_MAX_LEN): FieldDef[] => [
   {
     key: 'topicDetail',
     label,
     kind: 'textarea',
     required: true,
     span2: true,
-    maxLen: 1000,
+    maxLen,
     placeholder: 'อธิบายรายละเอียดของเรื่องที่ต้องการแจ้ง',
   },
 ];
@@ -336,7 +402,11 @@ const supplyForm = (o: {
   // ช่องข้อความยาวของเรื่องที่แจ้ง — ป้ายกับตำแหน่งไม่เหมือนกันในแต่ละแผนก
   // GA/IM: "ระบุเรื่องที่แจ้ง" อยู่ท้ายกล่อง · AF: "รายละเอียด" ต่อจากเรื่องที่แจ้งทันที
   // (ผู้ใช้สั่ง 8 ก.ย. 2026) ไม่ระบุ = ไม่มีช่องนี้
-  detail?: { label: string; afterTopic?: boolean };
+  // maxLen = ความยาวสูงสุดของช่องนั้น (ไม่ระบุ = DETAIL_MAX_LEN) — GA/IM สั้นกว่าเพราะ
+  // คอลัมน์ในฐานสั้นกว่า ส่วน AF ยังไม่มี API จึงยังใช้ค่ากลางไปก่อน
+  detail?: { label: string; afterTopic?: boolean; maxLen?: number };
+  // มีกลุ่ม "สิ่งที่แนบมาด้วย" ท้ายกล่องเรื่องที่แจ้ง (GA/IM — ผู้ใช้สั่ง 9 ก.ย. 2026)
+  attachDocs?: boolean;
 }): DeptFormConfig => ({
   tagline: o.tagline,
   examples: o.examples,
@@ -362,9 +432,12 @@ const supplyForm = (o: {
             ] as FieldDef[])
           : []),
         { key: 'topic', label: 'เรื่องที่แจ้ง', kind: 'select', required: true, master: 'deptRequestTypes' },
-        ...(o.detail?.afterTopic ? supplyDetailField(o.detail.label) : []),
+        ...(o.detail?.afterTopic ? supplyDetailField(o.detail.label, o.detail.maxLen) : []),
         { key: 'dueDate', label: 'วันที่ต้องการใช้งาน', kind: 'date', required: true, quickPick: true },
-        ...(o.detail && !o.detail.afterTopic ? supplyDetailField(o.detail.label) : []),
+        ...(o.detail && !o.detail.afterTopic ? supplyDetailField(o.detail.label, o.detail.maxLen) : []),
+        // อยู่ท้ายกล่อง "เรื่องที่แจ้ง" ไม่ใช่กล่องของตัวเอง — เป็นของประกอบเรื่องที่แจ้ง
+        // ไม่ใช่หัวข้อใหม่ (ผู้ใช้สั่ง 9 ก.ย. 2026)
+        ...(o.attachDocs ? supplyAttachFields() : []),
       ],
     },
     ITEMS_SECTION,
@@ -698,18 +771,22 @@ export const DEPT_FORMS: Record<string, DeptFormConfig> = {
   },
 
   // ── ใบแจ้งเรื่อง GA / IM / AF — ฟอร์มเดียวกัน คนละชุดตัวเลือก ──
+  // GA/IM ยิงจริงแล้ว (POST /GARequest · /IMRequest) — ช่องรายละเอียดจึงต้องคุมที่ 500
+  // ตัวอักษรตามคอลัมน์ในฐาน ไม่ใช่ 1000 แบบแผนกที่ยังไม่มี API
   GA: supplyForm({
     tagline: 'ธุรการ / อาคารสถานที่ / งานบริการทั่วไป',
     examples: 'ขอวัสดุสำนักงาน, แจ้งซ่อมอาคาร, ขอใช้รถส่วนกลาง',
     withType: true,
-    detail: { label: 'ระบุเรื่องที่แจ้ง' },
+    detail: { label: 'ระบุเรื่องที่แจ้ง', maxLen: DEPT_DETAIL_MAX_LEN },
+    attachDocs: true,
   }),
 
   IM: supplyForm({
     tagline: 'คลังพัสดุ / อะไหล่ / เบิก-จ่ายของ',
     examples: 'ขอเบิกอะไหล่, ขอตรวจสอบสต็อก, ขอโอนย้ายพัสดุ',
     withType: true,
-    detail: { label: 'ระบุเรื่องที่แจ้ง' },
+    detail: { label: 'ระบุเรื่องที่แจ้ง', maxLen: DEPT_DETAIL_MAX_LEN },
+    attachDocs: true,
   }),
 
   AF: supplyForm({

@@ -72,6 +72,7 @@ export function MyItems() {
     const res = await run(item, action, note, fields);
     if (res) applyItem(res.item);
     reload();
+    return res;
   };
 
   // แก้ไขข้อมูลใบสำเร็จ (ก่อนปลายทางรับงาน) → แทนแถวเดิมทันที

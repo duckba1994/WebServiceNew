@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   IconSearch,
   IconFilterOff,
@@ -22,7 +22,7 @@ import {
 import { ColumnFilter } from '../ui/ColumnFilter';
 import { RequestDetailModal } from './RequestDetailModal';
 import { RequestActionDialog } from './RequestActionDialog';
-import { RequestAction, RequestListItem, RequestStatusSummary } from '../../types/requestList';
+import { RequestAction, RequestActionResult, RequestListItem, RequestStatusSummary } from '../../types/requestList';
 import { ActionFieldValues, visibleActionsOf } from '../../data/requestActionFields';
 import {
   RequestColumn,
@@ -100,11 +100,11 @@ export function RequestGrid({
     action: RequestAction,
     note: string,
     fields?: ActionFieldValues
-  ) => void | Promise<void>;
+  ) => void | Promise<void | RequestActionResult | null>;
   // แก้ไขข้อมูลใบสำเร็จ — ไม่ส่งมา = ปิดการแก้ไข (ตารางอ่านอย่างเดียว)
   onEdited?: (item: RequestListItem) => void;
   actionPending?: boolean;
-  notice?: { kind: 'success' | 'error'; text: string } | null;
+  notice?: { kind: 'success' | 'error'; text: string; status?: number } | null;
   onDismissNotice?: () => void;
   searchPlaceholder?: string;
   emptyText?: string;
@@ -123,6 +123,10 @@ export function RequestGrid({
   const view = useMemo(() => data.find((r) => requestKey(r) === viewKey) ?? null, [data, viewKey]);
   // ใบ + ปุ่มที่กำลังรอยืนยัน (การอนุมัติย้อนกลับไม่ได้ จึงต้องถามก่อนเสมอ)
   const [confirm, setConfirm] = useState<{ item: RequestListItem; action: RequestAction } | null>(null);
+
+  useEffect(() => {
+    if (notice?.status === 404) { setViewKey(null); setConfirm(null); }
+  }, [notice]);
 
   // ตั้งใจไม่มีปุ่มดำเนินการในตาราง — ทุก action ต้องเปิดใบเข้าไปกดข้างใน
   // เพื่อบังคับให้คนอนุมัติได้อ่านก่อนว่าลูกน้องขออะไรมา (ตัดสินใจจากแถวเดียวไม่พอ)

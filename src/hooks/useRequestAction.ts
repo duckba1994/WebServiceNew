@@ -8,6 +8,7 @@ export interface ActionNotice {
   text: string;
   // ต้องโหลดลิสต์ใหม่ไหม — 409 แปลว่าสถานะขยับไปแล้ว ข้อมูลบนจอเก่า
   stale?: boolean;
+  status?: number;
 }
 
 // ── กดปุ่มดำเนินการกับใบแจ้งเรื่อง ────────────────────────────
@@ -35,7 +36,7 @@ export function useRequestAction(token?: string) {
         const res = await postRequestAction(
           item.module,
           item.docNo,
-          { action: action.code, note: note.trim() ? note.trim() : null, fields },
+          { action: action.code, ...(note.trim() ? { note: note.trim() } : {}), ...(fields ? { fields } : {}) },
           token
         );
         setNotice({ kind: 'success', text: res.message || 'ทำรายการเรียบร้อย' });
@@ -47,6 +48,7 @@ export function useRequestAction(token?: string) {
           kind: 'error',
           text: e instanceof Error ? e.message : 'ทำรายการไม่สำเร็จ',
           stale: status === 409,
+          status,
         });
         return null;
       } finally {

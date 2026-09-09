@@ -51,6 +51,8 @@ export function useDeptMasterData(dept: string | null, token?: string) {
           requestSubTypes: res?.requestSubTypes ?? [],
           requestDetails: res?.requestDetails ?? [],
           units: res?.units ?? [],
+          actions: res?.actions ?? [],
+          workResults: res?.workResults ?? [],
         });
       })
       .catch(() => {
@@ -104,12 +106,20 @@ export function useDeptMasterData(dept: string | null, token?: string) {
 
   const unitNames = useMemo(() => (data.units ?? []).map((u) => u.name), [data.units]);
 
+  // ── ตัวเลือกของขั้นดำเนินการ (GA/IM) ──────────────────────────
+  // ยังไม่มาจาก API — คืนรายการว่างไว้ก่อน หน้าจอเป็นคนบอกผู้ใช้ว่ายังเลือกไม่ได้
+  // (ห้ามใส่รายการสำรอง — ค่าที่เก็บลง DB ต้องตรงกับที่ระบบเก่าใช้เป๊ะ)
+  const actionOptions = useMemo(() => toNameOptions(data.actions ?? []), [data.actions]);
+  const workResultOptions = useMemo(() => toNameOptions(data.workResults ?? []), [data.workResults]);
+
   return {
     master: data,
     typeOptions,
     requestTypeOptions,
     subTypeOptions,
     unitNames,
+    actionOptions,
+    workResultOptions,
     loading,
     error,
     reload,
