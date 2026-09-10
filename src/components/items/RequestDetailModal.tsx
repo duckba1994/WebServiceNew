@@ -460,6 +460,13 @@ export function RequestDetailModal({
     }
   };
 
+  const submitSqaStep = async (action: RequestAction, fields: ActionFieldValues) => {
+    const result = await onStepSubmit?.(action, fields);
+    setRefreshTick((tick) => tick + 1);
+    if (result) applyDetailItem(result.item);
+    return result;
+  };
+
   // item เต็มจาก detail (คำนวณสำหรับคนที่เปิดดู) — ถ้ายังโหลดไม่เสร็จใช้ตัวจากลิสต์ไปก่อน
   const full = detail?.item ?? item;
   // เช็คลิสต์เอกสารแนบ / รายการย่อย / canEdit ของ PL ไม่ได้มากับ /Requests/PL/{docNo}
@@ -1112,22 +1119,14 @@ export function RequestDetailModal({
                 doc={sqaDoc.doc}
                 actions={detailError ? [] : actions}
                 pending={!!actionPending || detailLoading}
-                onSubmit={onStepSubmit ? async (action, fields) => {
-                  const result = await onStepSubmit(action, fields);
-                  if (result) applyDetailItem(result.item);
-                  return result;
-                } : undefined}
+                onSubmit={onStepSubmit ? submitSqaStep : undefined}
               />
             ) : activeTab.key === 'sqaService' ? (
               <SqaServicePanel
                 doc={sqaDoc.doc}
                 actions={detailError ? [] : actions}
                 pending={!!actionPending || detailLoading}
-                onSubmit={onStepSubmit ? async (action, fields) => {
-                  const result = await onStepSubmit(action, fields);
-                  if (result) applyDetailItem(result.item);
-                  return result;
-                } : undefined}
+                onSubmit={onStepSubmit ? submitSqaStep : undefined}
               />
             ) : activeTab.key === 'afService' ? (
               <AfServicePanel
