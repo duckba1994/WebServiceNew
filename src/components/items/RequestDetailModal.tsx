@@ -27,6 +27,7 @@ import {
   RequestWorkflow,
 } from '../../types/requestList';
 import { GaImServicePanel } from './GaImServicePanel';
+import { AfServicePanel } from './AfServicePanel';
 import { fmtDate, fmtDateTime } from '../../data/requestListData';
 import { phaseLabel, phaseMetaOf } from '../../data/requestPhase';
 import { actionBtnClass } from './RequestActionDialog';
@@ -63,6 +64,7 @@ import {
   isApiEditGated,
   toCrUpdatePayload,
   toDeptUpdatePayload,
+  toAfUpdatePayload,
   toEditForm,
   toPlUpdatePayload,
   toUpdatePayload,
@@ -70,6 +72,8 @@ import {
 } from '../../data/requestEdit';
 import { DeptRequestDetail, isDeptRequestModule } from '../../api/deptRequest';
 import { useDeptRequest } from '../../hooks/useDeptRequest';
+import { useAfRequest } from '../../hooks/useAfRequest';
+import { AfRequestDetail } from '../../api/afRequest';
 import { DeptMasterData, useDeptMasterData } from '../../hooks/useDeptMasterData';
 import {
   PL_CHECKLIST_MAX,
@@ -266,12 +270,21 @@ const GA_IM_STEP_TABS: StepTab[] = [
   },
 ];
 
+const AF_STEP_TABS: StepTab[] = [
+  { key: 'general', label: 'General', reachedStep: 0, logAction: 'create', actionCodes: [] },
+  { key: 'afReceive', label: 'รับเรื่อง', reachedStep: 2, logAction: 'receive', actionCodes: ['receive'], wfCodes: ['Receive-Request'] },
+  { key: 'afService', label: 'ดำเนินการ', reachedStep: 3, logAction: 'service', actionCodes: [], panelCodes: ['saveService', 'service'], wfCodes: ['Service And Close-Job'] },
+  { key: 'afMgrClose', label: 'ตรวจสอบปิดเรื่อง', reachedStep: 4, logAction: 'mgrClose', actionCodes: ['mgrClose'], wfCodes: ['Mgr Close-Job'] },
+  { key: 'afClose', label: 'ปิดงาน', reachedStep: 5, logAction: 'close', actionCodes: ['close'], wfCodes: ['Request-Close-Job'] },
+];
+
 const STEP_TABS_BY_MODULE: Record<string, StepTab[]> = {
   IT: IT_STEP_TABS,
   PL: PL_STEP_TABS,
   CR: CR_STEP_TABS,
   GA: GA_IM_STEP_TABS,
   IM: GA_IM_STEP_TABS,
+  AF: AF_STEP_TABS,
 };
 
 // แผนกที่ยังไม่ได้ทำหน้าจอเฉพาะ ใช้ชุดของ IT ไปก่อน (ของเดิมก่อนแยกรายโมดูล)
@@ -360,11 +373,11 @@ export function RequestDetailModal({
   );
 
   useEffect(() => {
-    if (isDeptRequestModule(item.module) && detailError === 'ไม่พบใบแจ้งเรื่องนี้ในระบบ') onClose();
+    if ((isDeptRequestModule(item.module) || item.module === 'AF') && detailError === 'ไม่พบใบแจ้งเรื่องนี้ในระบบ') onClose();
   }, [item.module, detailError, onClose]);
 
   useEffect(() => {
-    if (isDeptRequestModule(item.module) && notice?.status === 409) setRefreshTick((tick) => tick + 1);
+    if ((isDeptRequestModule(item.module) || item.module === 'AF') && notice?.status === 409) setRefreshTick((tick) => tick + 1);
   }, [item.module, notice]);
 
   // ชุดแท็บของโมดูลนี้ — จำนวน/ชื่อขั้นต่างกันต่อแผนก (IT 6 แท็บ, PL 5 แท็บ, CR 6 แท็บ)
@@ -428,15 +441,27 @@ export function RequestDetailModal({
     user?.token,
     `${item.updatedDate ?? ''}|${refreshTick}`
   );
+  const afDoc = useAfRequest(
+    item.module === 'AF' ? item.docNo : null,
+    user?.token,
+    `${item.updatedDate ?? ''}|${refreshTick}`
+  );
   // ตัวเลือกของฟอร์มแก้ไขใบ GA/IM (ประเภท / เรื่องที่แจ้ง) — GET /MasterData/{ga|im}
   // ชื่อ endpoint = ชื่อโมดูลตัวเล็ก (ต่างจาก HR-PR/SV-HV/SA ที่ต้องมีตารางแปลงชื่อ)
-  const deptMaster = useDeptMasterData(deptModule ? deptModule.toLowerCase() : null, user?.token);
+  const deptMaster = useDeptMasterData(
+    deptModule ? deptModule.toLowerCase() : item.module === 'AF' ? 'af' : null,
+    user?.token
+  );
   // รายการย่อยในรูปแบบที่ตารางใช้ (loading/error ใช้ก้อนเดียวกับใบ)
   // ใบ PL กับ GA/IM มีรายการย่อยเหมือนกันและหน้าตาแถวเดียวกัน — ใช้ตารางตัวเดียวกัน
   const plLines = {
-    lines: plDoc.doc?.lines ?? deptDoc.doc?.lines ?? null,
-    loading: plDoc.loading || deptDoc.loading,
-    error: plDoc.error ?? deptDoc.error,
+    lines:
+      plDoc.doc?.lines ??
+      deptDoc.doc?.lines ??
+      afDoc.doc?.lines?.map((line) => ({ ...line, received: 0 })) ??
+      null,
+    loading: plDoc.loading || deptDoc.loading || afDoc.loading,
+    error: plDoc.error ?? deptDoc.error ?? afDoc.error,
   };
   // ⚠️ ต้องอ่านจาก full (= detail.item) ไม่ใช่ item ของลิสต์:
   // /Requests/{module}/{docNo} คำนวณ availableActions ให้ "คนที่เปิดดูใบนี้"
@@ -553,7 +578,7 @@ export function RequestDetailModal({
   //    แต่ผู้ใช้สั่งว่า "อนุมัติแล้วห้ามแก้" (1 ก.ย. 2026) กติกาหน้าเว็บจึงเข้มกว่า
   //    → ตอนนี้เป็นแค่การซ่อนปุ่ม ไม่ใช่การบังคับ ใครยิง PUT ตรงยังแก้ได้อยู่
   //    ต้องให้ backend ใส่เงื่อนไขเดียวกันด้วย (เขาเสนอไว้เองใน guide §7)
-  const apiCanEdit = plDoc.doc?.canEdit ?? crDoc.doc?.canEdit ?? deptDoc.doc?.canEdit;
+  const apiCanEdit = plDoc.doc?.canEdit ?? crDoc.doc?.canEdit ?? deptDoc.doc?.canEdit ?? afDoc.doc?.canEdit;
   // สิทธิ์แก้ "ฟิลด์หัวใบ + รายการที่ขอ" (PUT /{module}/{docNo})
   //
   // GA/IM ยกให้ API ตัดสินอย่างเดียว (isApiEditGated) — จึงต้องเป็น true "เป๊ะ ๆ"
@@ -624,7 +649,7 @@ export function RequestDetailModal({
     const attSlots = Object.keys(attRef.current).length;
     const fieldsChanged =
       canEditFields &&
-      hasFormChanges(toEditForm(full, plLines.lines, crDoc.doc, deptDoc.doc), form);
+      hasFormChanges(toEditForm(full, plLines.lines, crDoc.doc, deptDoc.doc, afDoc.doc), form);
     // ไม่ได้แก้อะไรเลย → ไม่ต้องยิง API ให้เปลืองรอบ
     if (!fieldsChanged && attSlots === 0) {
       setEditing(false);
@@ -639,6 +664,8 @@ export function RequestDetailModal({
           ? toCrUpdatePayload(form)
           : isDeptRequestModule(full.module)
           ? toDeptUpdatePayload(full, form)
+          : full.module === 'AF'
+          ? toAfUpdatePayload(full, form)
           : toUpdatePayload(full, form);
       const res = await saveEdit(full, payload);
       if (res.item) onEdited?.(res.item);
@@ -896,6 +923,7 @@ export function RequestDetailModal({
                   onEdited && !editable
                     ? plDoc.doc?.editBlockedReason ||
                       deptDoc.doc?.editBlockedReason ||
+                      afDoc.doc?.editBlockedReason ||
                       editBlockedReason(full, user)
                     : null
                 }
@@ -905,6 +933,7 @@ export function RequestDetailModal({
                 crDoc={crDoc}
                 deptMaster={deptMaster}
                 deptDoc={deptDoc.doc}
+                afDoc={afDoc.doc}
                 canEditFields={canEditFields}
                 canAttachFiles={canAttachFiles}
                 attachBlockedReason={attachBlockedReason}
@@ -985,6 +1014,13 @@ export function RequestDetailModal({
                   if (result) applyDetailItem(result.item);
                   return result;
                 } : undefined}
+              />
+            ) : activeTab.key === 'afService' ? (
+              <AfServicePanel
+                actions={detailError ? [] : actions}
+                resolution={r}
+                pending={!!actionPending || detailLoading}
+                onSubmit={onStepSubmit ? submitStep : undefined}
               />
             ) : activeTab.key === 'service' ? (
               <ServicePanel
@@ -1921,6 +1957,7 @@ function GeneralPanel({
   crDoc,
   deptMaster,
   deptDoc,
+  afDoc,
 }: {
   item: RequestListItem;
   full: RequestListItem;
@@ -1949,12 +1986,14 @@ function GeneralPanel({
   deptMaster: DeptMasterData;
   // ค่าดิบของใบ GA/IM — เส้นกลางไม่รับประกันว่าจะส่ง ประเภท/เรื่องที่แจ้ง/วันที่ต้องการ มาครบ
   deptDoc: DeptRequestDetail | null;
+  afDoc: AfRequestDetail | null;
 }) {
   const imgs = attachments ?? [];
   const isPl = full.module === 'PL';
   // ใบ GA/IM กรอกชุดเดียวกับ PL (ประเภท → เรื่องที่แจ้ง → วันที่ต้องการ → รายละเอียด
   // + รายการที่ขอ) จึงใช้แผงอ่าน/แผงแก้ไขชุดเดียวกัน
   const isDeptReq = isDeptRequestModule(full.module);
+  const isAf = full.module === 'AF';
   // ใบ CR กรอกคนละชุดกับ IT/PL (ส่วนงาน → ประเภทที่แจ้ง → รายละเอียดที่แจ้ง)
   // ถ้าไม่แยกออกมา ใบ CR จะไปโชว์ช่องของ IT (เบอร์ติดต่อ/ชื่อคอมพิวเตอร์) ซึ่งว่างเปล่าทุกใบ
   const isCr = full.module === 'CR';
@@ -1982,6 +2021,7 @@ function GeneralPanel({
         crDoc={crDoc}
         deptMaster={deptMaster}
         deptDoc={deptDoc}
+        afDoc={afDoc}
       />
     );
   }
@@ -2068,7 +2108,7 @@ function GeneralPanel({
         )}
         {/* ใบ PL: วันที่แจ้งเรื่อง = requestDate (ผู้ใช้สั่ง 2 ก.ย. 2026)
             ⚠️ เฉพาะ PL — ใบ CR ใช้คอลัมน์เดียวกันนี้เก็บ "วันที่ต้องการ" ไม่ใช่วันที่แจ้ง */}
-        {(isPl || isDeptReq) && (
+        {(isPl || isDeptReq || isAf) && (
           <DetailRow label="วันที่แจ้งเรื่อง">
             {full.requestDate ? <span className="mono">{fmtDate(full.requestDate)}</span> : '—'}
           </DetailRow>
@@ -2076,14 +2116,14 @@ function GeneralPanel({
       </InfoCard>
 
       <InfoCard title="เรื่องที่แจ้ง" icon={IconFileText}>
-        {(isPl || isDeptReq) && (
+        {(isPl || isDeptReq || isAf) && (
           <>
-            <DetailRow label="ประเภท">{full.type || '—'}</DetailRow>
+            {!isAf && <DetailRow label="ประเภท">{full.type || '—'}</DetailRow>}
             {/* ป้ายต่างกันตามแบบฟอร์มของแต่ละแผนก: PL เรียก "หัวข้อเรื่อง" · GA/IM เรียก "เรื่องที่แจ้ง" */}
-            <DetailRow label={isDeptReq ? 'เรื่องที่แจ้ง' : 'หัวข้อเรื่อง'}>{full.requestType || '—'}</DetailRow>
+            <DetailRow label={isDeptReq || isAf ? 'เรื่องที่แจ้ง' : 'หัวข้อเรื่อง'}>{full.requestType || '—'}</DetailRow>
             {/* วันที่ต้องการใช้งาน = สิ่งที่ขอ ไม่ใช่ข้อมูลตัวผู้แจ้ง จึงอยู่การ์ดนี้
                 (ผู้ใช้สั่ง 2 ก.ย. 2026 — ย้ายมาจากการ์ด "ข้อมูลผู้แจ้ง" พร้อมกับหน้าสร้างใบ) */}
-            <DetailRow label="วันที่ต้องการใช้งาน">
+            <DetailRow label={isAf ? 'วันที่ต้องการให้ดำเนินการ' : 'วันที่ต้องการใช้งาน'}>
               {full.planDate ? <span className="mono">{fmtDate(full.planDate)}</span> : '—'}
             </DetailRow>
           </>
@@ -2149,7 +2189,7 @@ function GeneralPanel({
       </InfoCard>
 
       {/* มีเฉพาะโมดูลที่ผู้แจ้งกรอกรายการมาด้วย (PL / GA / IM) */}
-      {(isPl || isDeptReq) && (
+      {(isPl || isDeptReq || isAf) && (
         <InfoCard title="รายการที่ขอ" icon={IconList}>
           <div className="col-span-2">
             <PlLinesTable {...plLines} />
@@ -3339,6 +3379,7 @@ function RequestEditPanel({
   crDoc,
   deptMaster,
   deptDoc,
+  afDoc,
 }: {
   item: RequestListItem;
   lines: PlRequestLine[] | null;
@@ -3358,20 +3399,23 @@ function RequestEditPanel({
   crDoc: { doc: CrRequestDetail | null; loading: boolean; error: string | null };
   deptMaster: DeptMasterData;
   deptDoc: DeptRequestDetail | null;
+  afDoc: AfRequestDetail | null;
 }) {
   const isPl = item.module === 'PL';
   const isCr = item.module === 'CR';
   // GA/IM แก้รายการที่ขอได้เหมือน PL (PUT ส่ง lines ไปทั้งชุด)
   const isDeptReq = isDeptRequestModule(item.module);
-  const hasLinesEditor = isPl || isDeptReq;
+  const isAf = item.module === 'AF';
+  const hasLinesEditor = isPl || isDeptReq || isAf;
   const fields = editFieldsOf(item.module);
   // ตัวเลือกของใบ PL (ประเภท / เรื่องที่แจ้ง / หน่วย) — GET /MasterData/pl
   const { user } = useAuth();
   // หน่วยนับใช้ชุดของ PL ร่วมกันทุกแผนกที่มีรายการที่ขอ (ผู้ใช้สั่ง 6 ก.ย. 2026 —
   // ฝั่ง backend ก็อ่านจาก Units.xml ไฟล์เดียวกันทั้ง PL / GA / IM)
   const plMaster = usePlMasterData(user?.token, isPl || isDeptReq);
+  const unitNames = isAf ? deptMaster.unitNames : plMaster.unitNames;
   const [form, setForm] = useState<RequestEditForm>(() =>
-    toEditForm(item, lines, crDoc.doc, deptDoc)
+    toEditForm(item, lines, crDoc.doc, deptDoc, afDoc)
   );
   const [errors, setErrors] = useState<ReturnType<typeof validateEditForm>>({});
   // ล็อกช่องกรอกทั้งหมดเมื่อเข้ามาเพื่อจัดการรูปอย่างเดียว (canEdit ปิดไปแล้ว)
@@ -3382,7 +3426,7 @@ function RequestEditPanel({
   const crRaw = crDoc.doc;
   useEffect(() => {
     if (!isCr || !crRaw) return;
-    setForm((f) => (f.requestType ? f : toEditForm(item, lines, crRaw, deptDoc)));
+    setForm((f) => (f.requestType ? f : toEditForm(item, lines, crRaw, deptDoc, afDoc)));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isCr, crRaw]);
 
@@ -3606,7 +3650,7 @@ function RequestEditPanel({
                         type="text"
                         value={l.item}
                         // คอลัมน์ชื่อรายการของ GA/IM สั้นกว่าของ PL — เกินแล้ว API ตอบ 400
-                        maxLength={isDeptReq ? 1000 : 2000}
+                        maxLength={isDeptReq || isAf ? 1000 : 2000}
                         disabled={lock}
                         placeholder="ชื่อรายการที่ต้องการ"
                         onChange={(e) => setLine(i, { item: e.target.value })}
@@ -3633,9 +3677,9 @@ function RequestEditPanel({
                         className={`${LINE_INPUT_CLS} cursor-pointer text-center`}
                       >
                         <option value="">{plMaster.loading ? '…' : 'หน่วย'}</option>
-                        {(l.unit && !plMaster.unitNames.includes(l.unit)
-                          ? [l.unit, ...plMaster.unitNames]
-                          : plMaster.unitNames
+                        {(l.unit && !unitNames.includes(l.unit)
+                          ? [l.unit, ...unitNames]
+                          : unitNames
                         ).map((u) => (
                           <option key={u} value={u}>
                             {u}

@@ -8,6 +8,7 @@ import {
   updateDeptRequest,
 } from '../api/deptRequest';
 import { fetchRequestDetail } from '../api/requests';
+import { AfRequestUpdatePayload, updateAfRequest } from '../api/afRequest';
 import { RequestListItem } from '../types/requestList';
 
 // ok = บันทึกขึ้น DB แล้วจริง · item = แถวล่าสุด (null ได้ทั้งตอนพังและตอนโหลดใหม่ไม่ติด)
@@ -44,6 +45,7 @@ export function useRequestEdit(token?: string) {
         | PlRequestUpdatePayload
         | CrRequestUpdatePayload
         | DeptRequestUpdatePayload
+        | AfRequestUpdatePayload
     ): Promise<EditResult> => {
       setPending(true);
       setNotice(null);
@@ -58,6 +60,8 @@ export function useRequestEdit(token?: string) {
         } else if (isDeptRequestModule(item.module)) {
           // GA / IM — payload ชุดเดียวกัน ต่างแค่ base path
           await updateDeptRequest(item.module, item.docNo, payload as DeptRequestUpdatePayload, token);
+        } else if (item.module === 'AF') {
+          await updateAfRequest(item.docNo, payload as AfRequestUpdatePayload, token);
         } else {
           await updateItRequest(item.docNo, payload as ItRequestUpdatePayload, token);
         }

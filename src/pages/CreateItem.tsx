@@ -35,6 +35,8 @@ import { createCrRequest } from '../api/crRequest';
 import { toCrRequestPayload } from '../data/crRequestForm';
 import { DeptRequestModule, createDeptRequest, isDeptRequestModule } from '../api/deptRequest';
 import { toDeptRequestPayload } from '../data/deptRequestForm';
+import { createAfRequest } from '../api/afRequest';
+import { toAfRequestPayload } from '../data/afRequestForm';
 import { useAuth } from '../context/AuthContext';
 import {
   FieldDef,
@@ -512,6 +514,22 @@ function RequestForm({
     }
   };
 
+  const submitAf = async () => {
+    setSending(true);
+    try {
+      const res = await createAfRequest(
+        toAfRequestPayload(f, f.values.reporterName ?? user?.name ?? ''),
+        user?.token
+      );
+      setDocNo(res.docNo);
+      setSaved(true);
+    } catch (err) {
+      setSendError(err instanceof Error ? err.message : 'บันทึกใบแจ้งเรื่องไม่สำเร็จ');
+    } finally {
+      setSending(false);
+    }
+  };
+
   const submit = async () => {
     const e = validateRequestForm(f, optionlessKeys);
     setErrors(e);
@@ -522,7 +540,7 @@ function RequestForm({
     }
 
     // แผนกที่ยังไม่มี API — คงพฤติกรรมเดิม (UI-first)
-    if (!['IT', 'PL', 'CR'].includes(dep.departmentShort) && !isDeptRequestModule(dep.departmentShort)) {
+    if (!['IT', 'PL', 'CR', 'AF'].includes(dep.departmentShort) && !isDeptRequestModule(dep.departmentShort)) {
       setSaved(true);
       return;
     }
@@ -541,6 +559,11 @@ function RequestForm({
     // GA / IM — ชื่อย่อของแผนกตรงกับชื่อโมดูลพอดี (ต่างจาก HR-PR / SV-HV / SA)
     if (isDeptRequestModule(dep.departmentShort)) {
       await submitDept(dep.departmentShort);
+      return;
+    }
+
+    if (dep.departmentShort === 'AF') {
+      await submitAf();
       return;
     }
 
@@ -801,7 +824,7 @@ function RequestForm({
               variant={fd.variant}
               // หน่วยมาจาก GET /MasterData/pl ชุดเดียวสำหรับทุกแผนกที่มีกล่องนี้
               // (ไม่ใช้ units ของ master รายแผนกแล้ว — คนละชุดทำให้หน่วยของใบไม่ตรงกัน)
-              units={plMaster.unitNames}
+              units={dep.departmentShort === 'AF' ? deptMaster.unitNames : plMaster.unitNames}
               value={f.lineItems}
               onChange={(items) => {
                 setF((prev) => ({ ...prev, lineItems: items }));

@@ -104,6 +104,7 @@ export interface RequestResolution {
   //   (backend คำนวณให้ ส่งขึ้นไปก็ถูกเมิน)
   requestService?: string | null;
   planCompleteDate?: string | null;
+  attachRef?: string | null; // AF: เอกสารอ้างอิงของขั้นดำเนินการ
   // ชุด "รับงาน" (action `acceptWork`) — ขั้นที่วนกลับมาหาผู้แจ้ง
   // ⚠️ คนละคู่กับ receivedBy/receivedDate ซึ่งเป็นของขั้น "รับเรื่อง" ฝั่งปลายทาง
   // acceptedDate เก็บเป็น date ใน DB (ตัดเวลาทิ้ง) — อย่าโชว์เวลาให้ผู้ใช้เข้าใจผิด

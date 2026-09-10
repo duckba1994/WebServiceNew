@@ -155,7 +155,7 @@ export const OPTIONAL_GROUPS: Record<string, OptionalGroup[]> = {
 // CR: ปิดงานรับ actionDetail ได้ 1 ช่อง (ไม่บังคับ) แต่ไม่มี KPI — ช่องนั้นอยู่ในแผง
 //     ปิดงานของ CR เอง (CrClosePanel) ไม่ได้ผ่านกล่องนี้ · ใส่ไว้กัน KPI ของ IT
 //     หลุดไปโผล่กับใบ CR ถ้าวันหนึ่ง action close ตกมาที่กล่องยืนยัน
-const NO_CLOSE_FIELDS = new Set(['PL', 'CR']);
+const NO_CLOSE_FIELDS = new Set(['PL', 'CR', 'AF']);
 
 export const optionalGroupsOf = (actionCode: string, module?: string): OptionalGroup[] => {
   if (actionCode === 'close' && module && NO_CLOSE_FIELDS.has(module)) return [];

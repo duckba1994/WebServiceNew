@@ -9,6 +9,7 @@ import {
   PlRequestUpdatePayload,
 } from '../api/plRequest';
 import { DeptRequestDetail, DeptRequestUpdatePayload } from '../api/deptRequest';
+import { AfRequestDetail, AfRequestUpdatePayload } from '../api/afRequest';
 import {
   CR_OTHER_TYPE,
   DEPT_DETAIL_MAX_LEN,
@@ -44,7 +45,7 @@ const EDITABLE_WF_STATUS: Record<string, string[]> = {
 // ล็อกทั้งใบตอนรอรับเรื่อง → แผนกปลายทางหลังรับเรื่อง) API คิดจากฟังก์ชันเดียวกัน
 // ทั้งตอนตอบ canEdit และตอนกันใน PUT อยู่แล้ว (guide §5.2)
 // → เขียนกติกาซ้ำที่หน้าเว็บมีแต่จะเพี้ยนจากของจริง
-export const API_EDIT_GATED_MODULES = ['GA', 'IM'];
+export const API_EDIT_GATED_MODULES = ['GA', 'IM', 'AF'];
 
 export const isApiEditGated = (module: string): boolean => API_EDIT_GATED_MODULES.includes(module);
 
@@ -229,12 +230,27 @@ const GA_IM_EDIT_FIELDS: EditFieldDef[] = [
   },
 ];
 
+const AF_EDIT_FIELDS: EditFieldDef[] = [
+  { key: 'requestType', label: 'เรื่องที่แจ้ง', kind: 'select', required: true, master: 'deptRequestTypes' },
+  { key: 'planDate', label: 'วันที่ต้องการให้ดำเนินการ', kind: 'date' },
+  {
+    key: 'requestDetail',
+    label: 'รายละเอียดที่แจ้ง',
+    kind: 'textarea',
+    required: true,
+    span2: true,
+    maxLen: DETAIL_MAX_LEN,
+    placeholder: 'อธิบายรายละเอียดของเรื่องที่ต้องการแจ้ง',
+  },
+];
+
 const EDIT_FIELDS_BY_MODULE: Record<string, EditFieldDef[]> = {
   IT: IT_EDIT_FIELDS,
   PL: PL_EDIT_FIELDS,
   CR: CR_EDIT_FIELDS,
   GA: GA_IM_EDIT_FIELDS,
   IM: GA_IM_EDIT_FIELDS,
+  AF: AF_EDIT_FIELDS,
 };
 
 export const editFieldsOf = (module: string): EditFieldDef[] => EDIT_FIELDS_BY_MODULE[module] ?? [];
@@ -316,12 +332,13 @@ export const toEditForm = (
   item: RequestListItem,
   lines?: PlRequestLine[] | null,
   crDoc?: CrRequestDetail | null,
-  deptDoc?: DeptRequestDetail | null
+  deptDoc?: DeptRequestDetail | null,
+  afDoc?: AfRequestDetail | null
 ): RequestEditForm => ({
   requestDetail:
     item.module === 'CR'
       ? crDoc?.requestDetail ?? item.detail ?? ''
-      : deptDoc?.requestDetail ?? item.detail ?? '',
+      : afDoc?.requestDetail ?? deptDoc?.requestDetail ?? item.detail ?? '',
   phoneNumber: item.phoneNumber ?? '',
   comName: item.comName ?? '',
   requestDetailRemark: item.remark ?? '',
@@ -329,10 +346,12 @@ export const toEditForm = (
   // ใบ CR: section = โค้ดส่วนงาน (HV/FL) · โมดูลอื่นไม่มีฟิลด์ section ในฟอร์มอยู่แล้ว
   section: crDoc?.section ?? (item.module === 'CR' ? item.type ?? '' : ''),
   requestType:
-    item.module === 'CR' ? crDoc?.requestType ?? '' : deptDoc?.requestType ?? item.requestType ?? '',
+    item.module === 'CR'
+      ? crDoc?.requestType ?? ''
+      : afDoc?.requestType ?? deptDoc?.requestType ?? item.requestType ?? '',
   requestSubType: crDoc?.requestSubType ?? '',
   requestSubOther: crDoc?.requestSubOther ?? '',
-  planDate: toDateInput(deptDoc?.planDate ?? item.planDate),
+  planDate: toDateInput(afDoc?.planDate ?? deptDoc?.planDate ?? item.planDate),
   requestDate: toDateInput(item.module === 'CR' ? crDoc?.requestDate ?? item.requestDate : item.requestDate),
   lines: (lines ?? [])
     .filter((l) => !l.cancel)
@@ -531,5 +550,24 @@ export const toDeptUpdatePayload = (
       qty: Number(l.qty) || 1,
       unit: l.unit.trim() || undefined,
       remark: l.remark.trim() || undefined,
+    })),
+});
+
+export const toAfUpdatePayload = (
+  item: RequestListItem,
+  form: RequestEditForm
+): AfRequestUpdatePayload => ({
+  requestBy: item.requestBy ?? '',
+  requestDetail: form.requestDetail.trim(),
+  requestType: form.requestType || undefined,
+  planDate: form.planDate ? `${form.planDate}T00:00:00` : undefined,
+  lines: form.lines
+    .filter((line) => line.item.trim() !== '')
+    .map((line) => ({
+      recNo: line.recNo ?? undefined,
+      item: line.item.trim(),
+      qty: Number(line.qty) || 1,
+      unit: line.unit.trim() || undefined,
+      remark: line.remark.trim() || undefined,
     })),
 });
