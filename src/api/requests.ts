@@ -91,7 +91,9 @@ export const postRequestAction = (
   token?: string
 ): Promise<RequestActionResult> =>
   apiSend<RequestActionResult>(
-    `/Requests/${encodeURIComponent(module)}/${encodeURIComponent(docNo)}/action`,
+    module === 'SQA'
+      ? `/SQARequest/${encodeURIComponent(docNo)}/action`
+      : `/Requests/${encodeURIComponent(module)}/${encodeURIComponent(docNo)}/action`,
     'POST',
     body,
     token

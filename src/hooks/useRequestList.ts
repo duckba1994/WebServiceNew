@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { apiErrorText } from '../api/client';
 import { fetchRequestList, RequestListQuery } from '../api/requests';
 import {
   RequestDirection,
@@ -84,7 +85,7 @@ export function useRequestList(
         setWorkflow(null);
         setPaging(null);
         setTotalCount(0);
-        setError(e instanceof Error ? e.message : 'โหลดรายการใบแจ้งเรื่องไม่สำเร็จ');
+        setError(apiErrorText(e, 'โหลดรายการใบแจ้งเรื่องไม่สำเร็จ'));
       })
       .finally(() => {
         if (alive) setLoading(false);

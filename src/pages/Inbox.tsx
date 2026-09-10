@@ -4,7 +4,7 @@ import { IconBell } from '@tabler/icons-react';
 import { Layout } from '../components/layout/Layout';
 import { RequestGrid, SummaryCardSpec } from '../components/items/RequestGrid';
 import { StatusTabs } from './MyItems';
-import { INCOMING_COLUMNS } from '../data/requestListData';
+import { INCOMING_COLUMNS, moduleOfDepartment } from '../data/requestListData';
 import { PHASE_META, phaseIndex } from '../data/requestPhase';
 import { RequestAction, RequestListItem, RequestPhase, StatusFilter } from '../types/requestList';
 import { useRequestList } from '../hooks/useRequestList';
@@ -30,8 +30,9 @@ export function Inbox() {
 
   // โมดูลของคิวนี้ = แผนกของคนที่ล็อกอิน ไม่ใช่ค่าคงที่ — ห้ามฮาร์ดโค้ด 'IT'
   // ไม่งั้นผู้ใช้แผนกอื่น (PL/HR/SV) จะเห็นคิวของ IT แล้วนึกว่าไม่มีงานเข้า
-  // departmentShort ใช้ vocabulary เดียวกับ module ('IT'/'PL'/'HR'/'SV')
-  const myModule = user?.departmentShort?.trim() ?? '';
+  // departmentShort ใช้ vocabulary เดียวกับ module เกือบทุกแผนก — ยกเว้น HR ที่ master
+  // ส่ง 'HR-PR' แต่เส้นกลางรับ 'HR_PR' (ดู moduleOfDepartment)
+  const myModule = moduleOfDepartment(user?.departmentShort ?? '');
 
   const { items, phaseSummary, totalCount, departId, loading, error, reload, applyItem } =
     useRequestList(

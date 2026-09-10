@@ -17,7 +17,7 @@ import { useRequestModules } from '../hooks/useRequestModules';
 import { useRequestAction } from '../hooks/useRequestAction';
 import { PHASE_META, phaseIndex, phaseLabel, phaseOf } from '../data/requestPhase';
 import { TODO_ORIGIN_META, TodoRow, buildTodoRows, totalOf } from '../data/dashboardData';
-import { fmtDate } from '../data/requestListData';
+import { fmtDate, moduleOfDepartment } from '../data/requestListData';
 import { ActionFieldValues } from '../data/requestActionFields';
 import { rangeOf, rangeText } from '../data/dateRange';
 import { RequestAction, RequestListItem, RequestPhase, RequestPhaseSummary } from '../types/requestList';
@@ -48,7 +48,8 @@ export function Dashboard() {
 
   // โมดูลของแผนกตัวเอง — vocabulary เดียวกับ module ('IT'/'PL'/'CR'…)
   // ห้ามฮาร์ดโค้ด ไม่งั้นทุกแผนกจะเห็นคิวของ IT (เหมือนที่ Inbox.tsx ทำ)
-  const myModule = user?.departmentShort?.trim() ?? '';
+  // ชื่อย่อแผนกกับ code ของโมดูลไม่ตรงกันทุกแผนก (HR-PR → HR_PR) จึงต้องแปลงก่อน
+  const myModule = moduleOfDepartment(user?.departmentShort ?? '');
   const {
     has: hasModule,
     loading: modulesLoading,

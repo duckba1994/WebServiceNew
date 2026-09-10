@@ -5,6 +5,18 @@ import { PHASE_META, phaseIndex, phaseLabel, phaseOf, isRequesterSide } from './
 // (แต่ละแผนกออกเลขของตัวเอง เลข "2600043" มีได้ทั้งของ IT และ AF)
 export const requestKey = (row: RequestListItem): string => `${row.module}::${row.docNo}`;
 
+// ── ชื่อย่อแผนก → code ของโมดูลในเส้น /Requests ────────────────
+// ปกติสองอย่างนี้เป็นสตริงเดียวกัน (IT / PL / GA / IM / AF …) แต่ HR ไม่ใช่:
+// /MasterData/departments ส่ง departmentShort = 'HR-PR' (ขีด)
+// ส่วนเส้นกลางใช้ module = 'HR_PR' (ขีดล่าง) — ส่งผิดตัว incoming ตอบ 400
+// ทำเป็นตารางแทนการ replace '-' → '_' เพราะ 'SV-HV' ยังใช้ขีดตามเดิม
+const MODULE_OF_DEPARTMENT: Record<string, string> = { 'HR-PR': 'HR_PR', SA: 'SQA' };
+
+export const moduleOfDepartment = (departmentShort: string): string => {
+  const code = (departmentShort ?? '').trim();
+  return MODULE_OF_DEPARTMENT[code.toUpperCase()] ?? code;
+};
+
 // ── ป้ายสถานะงาน ─────────────────────────────────────────────
 // ชื่อ  ← jobStatusName จาก API (แต่ละแผนกเรียกไม่เหมือนกัน — API แปลมาให้แล้ว)
 // สี   ← จังหวะงาน (phase) ไม่ใช่รหัส jobStatus

@@ -172,6 +172,11 @@ export interface DeptFormConfig {
   // ช่อง "รายละเอียด" ส่วนกลางยังกรอกไม่ได้จนกว่าฟิลด์นี้จะมีค่า (SQA: ต้องเลือกส่วนงานก่อน
   // เหมือนสองช่องที่เป็นลูกโซ่ ไม่งั้นผู้ใช้พิมพ์รายละเอียดของส่วนงานที่ยังไม่ได้เลือก)
   detailDependsOn?: string;
+  // ช่อง "รายละเอียด" ส่วนกลางบังคับกรอกเฉพาะตอนฟิลด์ที่ระบุมีค่าอยู่ในลิสต์นี้
+  // (HR-PR: บังคับเฉพาะ "สแกนลายนิ้วมือ" กับ "หนังสือรับรองการทำงาน" — เรื่องอื่น
+  //  API ไม่บังคับ บังคับที่หน้าเว็บฝ่ายเดียวก็มีแต่จะกันใบที่ส่งได้ออกไปเฉย ๆ)
+  // ไม่ระบุ = บังคับเสมอเหมือนเดิม
+  detailRequiredWhen?: { key: string; in: string[] };
   // แผนกที่ไม่ใช้ฟิลด์ส่วนกลาง subject/detail — ใช้ค่าฟิลด์นี้เป็นชื่อเรื่องในหน้าสรุป
   summaryKey?: string;
 }
@@ -191,6 +196,10 @@ export const usesMaster = (cfg: DeptFormConfig, key: MasterListKey): boolean =>
 
 // ความยาวสูงสุดของ "รายละเอียดที่แจ้ง" (ตกลงไว้ 17 ส.ค. 2026)
 export const DETAIL_MAX_LEN = 1000;
+
+// HR-PR: API บังคับ requestDetail เฉพาะ 2 เรื่องนี้ (HR-PR-frontend-guide.md §สร้างใบ)
+// ค่าต้องตรงกับชื่อใน requestTypes ของ GET /MasterData/hr เป๊ะ ๆ
+export const HR_PR_DETAIL_REQUIRED_TOPICS = ['สแกนลายนิ้วมือ', 'หนังสือรับรองการทำงาน'];
 
 // GA / IM เก็บรายละเอียดไว้ในคอลัมน์ที่สั้นกว่า — เกินแล้ว API ตอบ 400
 // (GA-IM-create-frontend-guide.md §3) จึงต้องกันที่หน้าเว็บก่อน ไม่ใช่ให้ผู้ใช้
@@ -460,6 +469,9 @@ export const DEPT_FORMS: Record<string, DeptFormConfig> = {
     // "เรื่องที่แจ้ง" เพราะเป็นเนื้อของเรื่อง ไม่ใช่กล่องของตัวเอง
     common: ['detail'],
     commonInto: 'เรื่องที่แจ้ง',
+    // API บังคับ requestDetail แค่ 2 เรื่องนี้ (HR-PR-frontend-guide.md §สร้างใบ)
+    // เรื่องอื่นกรอกหรือไม่ก็ได้ — บังคับที่หน้าเว็บฝ่ายเดียวจะกันใบที่ส่งได้ออกไปเปล่า ๆ
+    detailRequiredWhen: { key: 'topic', in: HR_PR_DETAIL_REQUIRED_TOPICS },
     summaryKey: 'topic',
     sections: [
       {
@@ -685,7 +697,6 @@ export const DEPT_FORMS: Record<string, DeptFormConfig> = {
             master: 'deptRequestSubTypes',
             dependsOn: 'requestType',
           },
-          { key: 'dueDate', label: 'วันที่ต้องการใช้งาน', kind: 'date', required: true, quickPick: true },
         ],
       },
     ],
@@ -975,7 +986,10 @@ export function validateRequestForm(f: RequestFormState, optionless?: Set<string
   if (common.includes('category') && !f.category) e.category = 'กรุณาเลือกประเภทเรื่อง';
   if (common.includes('subject') && !f.subject.trim()) e.subject = 'กรุณาระบุเรื่อง';
   if (common.includes('detail')) {
-    if (!f.detail.trim()) e.detail = 'กรุณากรอกรายละเอียด';
+    // บังคับเสมอ เว้นแต่แผนกประกาศเงื่อนไขไว้ (ดู detailRequiredWhen)
+    const when = cfg.detailRequiredWhen;
+    const detailRequired = !when || when.in.includes((f.values[when.key] ?? '').trim());
+    if (detailRequired && !f.detail.trim()) e.detail = 'กรุณากรอกรายละเอียด';
     else if (f.detail.length > DETAIL_MAX_LEN)
       e.detail = `รายละเอียดยาวเกิน ${DETAIL_MAX_LEN} ตัวอักษร (ตอนนี้ ${f.detail.length})`;
   }

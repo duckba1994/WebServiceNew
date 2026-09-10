@@ -9,6 +9,8 @@ import {
 } from '../api/deptRequest';
 import { fetchRequestDetail } from '../api/requests';
 import { AfRequestUpdatePayload, updateAfRequest } from '../api/afRequest';
+import { HR_PR_MODULE, HrPrRequestUpdatePayload, updateHrPrRequest } from '../api/hrPrRequest';
+import { SQA_MODULE, SqaRequestUpdatePayload, updateSqaRequest } from '../api/sqaRequest';
 import { RequestListItem } from '../types/requestList';
 
 // ok = บันทึกขึ้น DB แล้วจริง · item = แถวล่าสุด (null ได้ทั้งตอนพังและตอนโหลดใหม่ไม่ติด)
@@ -46,6 +48,8 @@ export function useRequestEdit(token?: string) {
         | CrRequestUpdatePayload
         | DeptRequestUpdatePayload
         | AfRequestUpdatePayload
+        | HrPrRequestUpdatePayload
+        | SqaRequestUpdatePayload
     ): Promise<EditResult> => {
       setPending(true);
       setNotice(null);
@@ -62,6 +66,10 @@ export function useRequestEdit(token?: string) {
           await updateDeptRequest(item.module, item.docNo, payload as DeptRequestUpdatePayload, token);
         } else if (item.module === 'AF') {
           await updateAfRequest(item.docNo, payload as AfRequestUpdatePayload, token);
+        } else if (item.module === HR_PR_MODULE) {
+          await updateHrPrRequest(item.docNo, payload as HrPrRequestUpdatePayload, token);
+        } else if (item.module === SQA_MODULE) {
+          await updateSqaRequest(item.docNo, payload as SqaRequestUpdatePayload, token);
         } else {
           await updateItRequest(item.docNo, payload as ItRequestUpdatePayload, token);
         }

@@ -10,11 +10,14 @@ import {
 } from '../api/plRequest';
 import { DeptRequestDetail, DeptRequestUpdatePayload } from '../api/deptRequest';
 import { AfRequestDetail, AfRequestUpdatePayload } from '../api/afRequest';
+import { HrPrRequestDetail, HrPrRequestUpdatePayload } from '../api/hrPrRequest';
+import { SqaRequestDetail, SqaRequestUpdatePayload } from '../api/sqaRequest';
 import {
   CR_OTHER_TYPE,
   DEPT_DETAIL_MAX_LEN,
   DETAIL_MAX_LEN,
   FieldOption,
+  HR_PR_DETAIL_REQUIRED_TOPICS,
   MasterListKey,
 } from './requestForm';
 
@@ -45,7 +48,10 @@ const EDITABLE_WF_STATUS: Record<string, string[]> = {
 // ล็อกทั้งใบตอนรอรับเรื่อง → แผนกปลายทางหลังรับเรื่อง) API คิดจากฟังก์ชันเดียวกัน
 // ทั้งตอนตอบ canEdit และตอนกันใน PUT อยู่แล้ว (guide §5.2)
 // → เขียนกติกาซ้ำที่หน้าเว็บมีแต่จะเพี้ยนจากของจริง
-export const API_EDIT_GATED_MODULES = ['GA', 'IM', 'AF'];
+// HR_PR ก็อยู่กลุ่มนี้: ช่วงที่แก้ได้สลับเจ้าของกลางทางเหมือนกัน (ผู้แจ้งแก้ได้ระหว่าง
+// ค้าง Approved-Request → พ้นขั้นนี้ canEdit เป็น false → ขั้นดำเนินการหน่วยงาน
+// ผู้ถือคิวแก้ได้) — guide §เปิดและแก้ไขก่อน MGR อนุมัติ
+export const API_EDIT_GATED_MODULES = ['GA', 'IM', 'AF', 'HR_PR', 'SQA'];
 
 export const isApiEditGated = (module: string): boolean => API_EDIT_GATED_MODULES.includes(module);
 
@@ -89,7 +95,10 @@ export type EditFieldKey =
   // (ส่วนงานเก็บเป็น "โค้ด" HV/FL ไม่ใช่ชื่อ — เป็นคีย์ที่อีก 2 ชั้นใช้อ้างถึง)
   | 'section'
   | 'requestSubType'
-  | 'requestSubOther';
+  | 'requestSubOther'
+  | 'details'
+  // HR-PR: ตำแหน่งของผู้แจ้ง (อยู่ในใบ ไม่ใช่ข้อมูลจาก login — ยังต้องกรอกเอง)
+  | 'position';
 
 export interface EditFieldDef {
   key: EditFieldKey;
@@ -115,6 +124,9 @@ export interface EditFieldDef {
   // ตอนประเภทที่แจ้ง = "อื่นๆ") — ต้องใช้ทั้งตอนเรนเดอร์และตอน validate
   // ไม่งั้นจะติด "กรุณากรอก…" ของช่องที่ผู้ใช้มองไม่เห็น
   showWhen?: { key: EditFieldKey; equals: string };
+  // บังคับกรอกเฉพาะตอนฟิลด์ที่ระบุมีค่าอยู่ในลิสต์ (HR-PR: รายละเอียดบังคับแค่ 2 เรื่อง)
+  // ใช้คู่กับ required ไม่ได้ — ระบุอันนี้แล้วให้ปล่อย required ว่างไว้
+  requiredWhen?: { key: EditFieldKey; in: string[] };
 }
 
 // ช่องนี้ต้องแสดงไหม — ใช้ร่วมกันระหว่างการเรนเดอร์กับ validate
@@ -244,6 +256,34 @@ const AF_EDIT_FIELDS: EditFieldDef[] = [
   },
 ];
 
+// ใบ HR-PR แก้ได้เฉพาะตำแหน่งและรายละเอียด
+// เรื่องที่แจ้งเป็นตัวกำหนดชุดเลข running จึงแสดงให้อ่านใน General แต่ไม่เปิดให้แก้
+// ไม่มีรายการที่ขอในฟอร์มนี้ (ฟอร์มสร้างใบก็ไม่มี — ผู้ใช้สั่งไว้ 6 ก.ย. 2026)
+// PUT จึงไม่ส่ง lines ไปเลย = ไม่แตะรายการย่อยของใบเดิม
+//
+// ⚠️ ใบเก่าที่ requestType = "ใบเตือน" ถูกถอดออกจาก requestTypes แล้ว (legacyRequestTypes)
+//    ส่งค่าเดิมกลับได้แต่ห้ามใช้สร้างใบใหม่ — SelectWithMaster เติมค่าเดิมเป็นตัวเลือกให้อยู่แล้ว
+const HR_PR_EDIT_FIELDS: EditFieldDef[] = [
+  { key: 'position', label: 'ตำแหน่ง', kind: 'text', required: true, maxLen: 100, placeholder: 'เช่น พนักงานขับรถ / เจ้าหน้าที่ธุรการ' },
+  {
+    key: 'requestDetail',
+    label: 'รายละเอียด',
+    kind: 'textarea',
+    span2: true,
+    maxLen: DETAIL_MAX_LEN,
+    // API บังคับแค่ 2 เรื่องนี้ — เรื่องอื่นเว้นว่างได้
+    requiredWhen: { key: 'requestType', in: HR_PR_DETAIL_REQUIRED_TOPICS },
+    placeholder: 'อธิบายรายละเอียดของเรื่องที่ต้องการแจ้ง',
+  },
+];
+
+const SQA_EDIT_FIELDS: EditFieldDef[] = [
+  { key: 'section', label: 'ส่วนงาน', kind: 'select', required: true, master: 'crSections', resets: ['requestType', 'requestDetail'] },
+  { key: 'requestType', label: 'ประเภทเรื่องที่แจ้ง', kind: 'select', required: true, master: 'deptRequestTypes', dependsOn: 'section', resets: ['requestDetail'] },
+  { key: 'requestDetail', label: 'รายละเอียดที่แจ้ง', kind: 'select', master: 'deptRequestSubTypes', dependsOn: 'requestType' },
+  { key: 'details', label: 'รายละเอียด', kind: 'textarea', required: true, span2: true, maxLen: DETAIL_MAX_LEN },
+];
+
 const EDIT_FIELDS_BY_MODULE: Record<string, EditFieldDef[]> = {
   IT: IT_EDIT_FIELDS,
   PL: PL_EDIT_FIELDS,
@@ -251,6 +291,8 @@ const EDIT_FIELDS_BY_MODULE: Record<string, EditFieldDef[]> = {
   GA: GA_IM_EDIT_FIELDS,
   IM: GA_IM_EDIT_FIELDS,
   AF: AF_EDIT_FIELDS,
+  HR_PR: HR_PR_EDIT_FIELDS,
+  SQA: SQA_EDIT_FIELDS,
 };
 
 export const editFieldsOf = (module: string): EditFieldDef[] => EDIT_FIELDS_BY_MODULE[module] ?? [];
@@ -333,22 +375,29 @@ export const toEditForm = (
   lines?: PlRequestLine[] | null,
   crDoc?: CrRequestDetail | null,
   deptDoc?: DeptRequestDetail | null,
-  afDoc?: AfRequestDetail | null
+  afDoc?: AfRequestDetail | null,
+  hrDoc?: HrPrRequestDetail | null,
+  sqaDoc?: SqaRequestDetail | null
 ): RequestEditForm => ({
   requestDetail:
-    item.module === 'CR'
+    item.module === 'SQA'
+      ? sqaDoc?.requestDetail ?? ''
+      : item.module === 'CR'
       ? crDoc?.requestDetail ?? item.detail ?? ''
-      : afDoc?.requestDetail ?? deptDoc?.requestDetail ?? item.detail ?? '',
+      : hrDoc?.requestDetail ?? afDoc?.requestDetail ?? deptDoc?.requestDetail ?? item.detail ?? '',
+  details: sqaDoc?.details ?? (item.module === 'SQA' ? item.detail ?? '' : ''),
   phoneNumber: item.phoneNumber ?? '',
   comName: item.comName ?? '',
   requestDetailRemark: item.remark ?? '',
   type: deptDoc?.type ?? item.type ?? '',
   // ใบ CR: section = โค้ดส่วนงาน (HV/FL) · โมดูลอื่นไม่มีฟิลด์ section ในฟอร์มอยู่แล้ว
-  section: crDoc?.section ?? (item.module === 'CR' ? item.type ?? '' : ''),
+  section: sqaDoc?.section ?? crDoc?.section ?? (item.module === 'CR' ? item.type ?? '' : ''),
   requestType:
     item.module === 'CR'
       ? crDoc?.requestType ?? ''
-      : afDoc?.requestType ?? deptDoc?.requestType ?? item.requestType ?? '',
+      : sqaDoc?.requestType ?? hrDoc?.requestType ?? afDoc?.requestType ?? deptDoc?.requestType ?? item.requestType ?? '',
+  // ตำแหน่งมีเฉพาะใบ HR-PR และมาจากเส้นของมันเอง (เส้นกลางไม่ได้ส่งมา)
+  position: hrDoc?.position ?? '',
   requestSubType: crDoc?.requestSubType ?? '',
   requestSubOther: crDoc?.requestSubOther ?? '',
   planDate: toDateInput(afDoc?.planDate ?? deptDoc?.planDate ?? item.planDate),
@@ -372,7 +421,10 @@ export function validateEditForm(module: string, form: RequestEditForm): EditErr
     // ช่องที่ซ่อนอยู่ไม่ต้องตรวจ — ไม่งั้นติด "กรุณากรอก…" ของช่องที่ผู้ใช้มองไม่เห็น
     if (!editFieldVisible(f, form)) continue;
     const v = (form[f.key] ?? '').trim();
-    if (f.required && !v) errors[f.key] = `กรุณากรอก${f.label}`;
+    // requiredWhen = บังคับเฉพาะบางค่าของฟิลด์แม่ (HR-PR: รายละเอียดบังคับแค่ 2 เรื่อง)
+    const required =
+      f.required || (!!f.requiredWhen && f.requiredWhen.in.includes((form[f.requiredWhen.key] ?? '').trim()));
+    if (required && !v) errors[f.key] = `กรุณากรอก${f.label}`;
     else if (f.maxLen && v.length > f.maxLen) errors[f.key] = `${f.label}ยาวเกิน ${f.maxLen} ตัวอักษร`;
   }
   // แถวว่างทั้งแถว = ผู้ใช้ยังไม่ได้กรอก ไม่ใช่ error (ตัดทิ้งตอนสร้าง payload)
@@ -570,4 +622,43 @@ export const toAfUpdatePayload = (
       unit: line.unit.trim() || undefined,
       remark: line.remark.trim() || undefined,
     })),
+});
+
+// ฟอร์ม → payload ของ PUT /HRPRRequest/{docNo}
+//
+// requestBy / requestType บังคับส่งทุกครั้ง แม้ไม่ได้แก้ (guide §เปิดและแก้ไข…)
+//
+// ⚠️ reference ไม่มีช่องให้แก้ในหน้านี้ จึงส่งค่าเดิมจาก GET /HRPRRequest กลับไปตรง ๆ
+//    (doc โหลดไม่สำเร็จ = ไม่ส่งช่องนี้ — ปุ่มบันทึกก็ถูกปิดอยู่แล้วเพราะ canEdit ไม่เป็น true)
+// ⚠️ ไม่ส่ง lines — ฟอร์ม HR ไม่มีรายการที่ขอ ไม่ส่ง = ไม่แตะแถวเดิมของใบ
+//    (ส่ง [] จะกลายเป็นลบรายการย่อยทั้งหมดทิ้ง)
+export const toHrPrUpdatePayload = (
+  item: RequestListItem,
+  form: RequestEditForm,
+  doc?: HrPrRequestDetail | null
+): HrPrRequestUpdatePayload => ({
+  requestBy: item.requestBy ?? '',
+  // requestType กำหนดชุดเลข running — ส่งค่าเดิมจากใบกลับไปเสมอ ห้ามรับค่าที่แก้จากฟอร์ม
+  requestType: doc?.requestType?.trim() || form.requestType.trim(),
+  requestDetail: form.requestDetail.trim(),
+  position: form.position.trim(),
+  ...(doc?.reference != null ? { reference: doc.reference } : {}),
+});
+
+export const toSqaUpdatePayload = (
+  item: RequestListItem,
+  form: RequestEditForm,
+  doc?: SqaRequestDetail | null
+): SqaRequestUpdatePayload => ({
+  requestBy: item.requestBy ?? doc?.requestBy ?? '',
+  section: form.section.trim(),
+  requestType: form.requestType.trim(),
+  requestDetail: form.requestDetail.trim() || null,
+  details: form.details.trim(),
+  ...(doc?.departid ? { departid: doc.departid } : {}),
+  ...(doc?.docDate ? { docDate: doc.docDate } : {}),
+  ...(doc?.requestDate ? { requestDate: doc.requestDate } : {}),
+  ...(doc?.requestByName ? { requestByName: doc.requestByName } : {}),
+  ...(doc?.requestByPosition ? { requestByPosition: doc.requestByPosition } : {}),
+  ...(doc?.requestByDate ? { requestByDate: doc.requestByDate } : {}),
 });

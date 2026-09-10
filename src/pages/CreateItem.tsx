@@ -37,6 +37,10 @@ import { DeptRequestModule, createDeptRequest, isDeptRequestModule } from '../ap
 import { toDeptRequestPayload } from '../data/deptRequestForm';
 import { createAfRequest } from '../api/afRequest';
 import { toAfRequestPayload } from '../data/afRequestForm';
+import { createHrPrRequest } from '../api/hrPrRequest';
+import { toHrPrRequestPayload } from '../data/hrPrRequestForm';
+import { createSqaRequest } from '../api/sqaRequest';
+import { toSqaRequestPayload } from '../data/sqaRequestForm';
 import { useAuth } from '../context/AuthContext';
 import {
   FieldDef,
@@ -530,6 +534,38 @@ function RequestForm({
     }
   };
 
+  const submitHrPr = async () => {
+    setSending(true);
+    try {
+      const res = await createHrPrRequest(
+        toHrPrRequestPayload(f, f.values.reporterName ?? user?.name ?? ''),
+        user?.token
+      );
+      setDocNo(res.docNo);
+      setSaved(true);
+    } catch (err) {
+      setSendError(err instanceof Error ? err.message : 'บันทึกใบแจ้งเรื่องไม่สำเร็จ');
+    } finally {
+      setSending(false);
+    }
+  };
+
+  const submitSqa = async () => {
+    setSending(true);
+    try {
+      const res = await createSqaRequest(
+        toSqaRequestPayload(f, f.values.reporterName ?? user?.name ?? ''),
+        user?.token
+      );
+      setDocNo(res.docNo);
+      setSaved(true);
+    } catch (err) {
+      setSendError(err instanceof Error ? err.message : 'บันทึกใบแจ้งเรื่องไม่สำเร็จ');
+    } finally {
+      setSending(false);
+    }
+  };
+
   const submit = async () => {
     const e = validateRequestForm(f, optionlessKeys);
     setErrors(e);
@@ -540,7 +576,10 @@ function RequestForm({
     }
 
     // แผนกที่ยังไม่มี API — คงพฤติกรรมเดิม (UI-first)
-    if (!['IT', 'PL', 'CR', 'AF'].includes(dep.departmentShort) && !isDeptRequestModule(dep.departmentShort)) {
+    if (
+      !['IT', 'PL', 'CR', 'AF', 'HR-PR', 'SA'].includes(dep.departmentShort) &&
+      !isDeptRequestModule(dep.departmentShort)
+    ) {
       setSaved(true);
       return;
     }
@@ -564,6 +603,17 @@ function RequestForm({
 
     if (dep.departmentShort === 'AF') {
       await submitAf();
+      return;
+    }
+
+    // ชื่อย่อในฟอร์มคือ 'HR-PR' (ตาม master) ส่วนโมดูลของเส้นกลางคือ 'HR_PR'
+    if (dep.departmentShort === 'HR-PR') {
+      await submitHrPr();
+      return;
+    }
+
+    if (dep.departmentShort === 'SA') {
+      await submitSqa();
       return;
     }
 
@@ -1138,6 +1188,9 @@ function RequestForm({
   const detailLockLabel = detailLockedBy
     ? cfg.sections.flatMap((s) => s.fields).find((x) => x.key === detailLockedBy)?.label ?? ''
     : '';
+  // บางแผนกบังคับ "รายละเอียด" เฉพาะบางเรื่อง (HR-PR) — ดาวแดงต้องตรงกับที่ validate ใช้จริง
+  const detailWhen = cfg.detailRequiredWhen;
+  const detailRequired = !detailWhen || detailWhen.in.includes((f.values[detailWhen.key] ?? '').trim());
 
   // ── ส่วนกลาง: เรนเดอร์เฉพาะฟิลด์ที่แผนกนี้ใช้ (cfg.common) ──
   // เป็น "แถว" ล้วน ๆ เพราะบางแผนกให้ไปอยู่ในกล่องของแผนกเอง (cfg.commonInto)
@@ -1207,7 +1260,13 @@ function RequestForm({
       )}
 
       {commonFields.includes('detail') && (
-        <FormRow label="รายละเอียด" required span2 error={errors.detail}>
+        <FormRow
+          label="รายละเอียด"
+          required={detailRequired}
+          hint={detailRequired ? undefined : '(ไม่บังคับสำหรับเรื่องนี้)'}
+          span2
+          error={errors.detail}
+        >
           <textarea
             value={f.detail}
             // ตัดที่ 1000 ตัวอักษร (maxLength ไม่กันการวางข้อความยาวในบางเบราว์เซอร์)

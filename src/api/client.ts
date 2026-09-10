@@ -27,6 +27,10 @@ export async function apiFetch(path: string, opts: ApiOptions = {}): Promise<Res
     body: opts.body,
   });
 
+  // แถบ error ที่ผู้ใช้เห็นบอกได้แค่ "เหตุผล" ไม่ได้บอกว่าเส้นไหนพัง — หน้าหนึ่งยิงหลายเส้น
+  // จึงทิ้งบรรทัดเดียวไว้ใน console ให้ตามรอยได้ (ไม่ log token/body)
+  if (!res.ok) console.error(`[api] ${opts.method ?? 'GET'} ${apiUrl(path)} → HTTP ${res.status}`);
+
   if (res.status === 401 && !opts.noAuthEvent) {
     window.dispatchEvent(new Event(AUTH_UNAUTHORIZED_EVENT));
     throw new Error('เซสชันหมดอายุ กรุณาเข้าสู่ระบบใหม่');
@@ -34,10 +38,12 @@ export async function apiFetch(path: string, opts: ApiOptions = {}): Promise<Res
   return res;
 }
 
-// helper สำหรับ GET + parse JSON (โยน error พร้อม HTTP status)
+// helper สำหรับ GET + parse JSON
+// ดึง message/traceId จาก body มาด้วยเหมือน apiSend — 500 ที่บอกแค่ "HTTP 500"
+// เอาไปแจ้ง backend ต่อไม่ได้เลย ต้องมีเหตุผลกับรหัสอ้างอิงติดมา
 export async function apiGet<T>(path: string, token?: string): Promise<T> {
   const res = await apiFetch(path, { token });
-  if (!res.ok) throw new Error(`โหลดข้อมูลไม่สำเร็จ (HTTP ${res.status})`);
+  if (!res.ok) await throwApiError(res, `โหลดข้อมูลไม่สำเร็จ (HTTP ${res.status})`);
   return res.json();
 }
 
@@ -81,8 +87,8 @@ export async function apiSend<T>(
 }
 
 // ดึง message ไทยจาก body มาโยนเป็น ApiError — ใช้ร่วมกันทั้ง apiSend/apiSendForm
-async function throwApiError(res: Response): Promise<never> {
-  let message = `ทำรายการไม่สำเร็จ (HTTP ${res.status})`;
+async function throwApiError(res: Response, fallback?: string): Promise<never> {
+  let message = fallback ?? `ทำรายการไม่สำเร็จ (HTTP ${res.status})`;
   let traceId: string | undefined;
   try {
     const body = (await res.json()) as ApiErrorBody;
@@ -95,8 +101,19 @@ async function throwApiError(res: Response): Promise<never> {
   // ("Entity 'CR Request' with key (BHV-SER01%2F26-0010) was not found.")
   // — ผู้ใช้ไม่ได้ประโยชน์อะไรจากมัน แปลก่อนโยนต่อ
   if (/was not found/i.test(message)) message = 'ไม่พบใบแจ้งเรื่องนี้ในระบบ';
+  // 500 ของ API กลืนรายละเอียดไว้ ส่งมาแค่ประโยคอังกฤษกลาง ๆ ประโยคเดียว
+  // — ผู้ใช้แก้เองไม่ได้ บอกให้ชัดว่าเป็นฝั่งระบบ แล้วให้ส่ง traceId ต่อ (ดู apiErrorText)
+  if (/^an unexpected error occurred/i.test(message.trim()))
+    message = 'ระบบฝั่งเซิร์ฟเวอร์ทำงานผิดพลาด กรุณาแจ้งผู้ดูแลระบบพร้อมรหัสอ้างอิงด้านล่าง';
   throw new ApiError(message, res.status, traceId);
 }
+
+// ข้อความ error ที่เอาไปโชว์ได้ — พ่วงรหัสอ้างอิงมาด้วยถ้า API ส่งมา
+// (500 ของฝั่ง server ผู้ใช้แก้เองไม่ได้ สิ่งเดียวที่ทำได้คือส่งรหัสนี้ให้คนดูแลระบบ)
+export const apiErrorText = (e: unknown, fallback: string): string => {
+  if (e instanceof ApiError) return e.traceId ? `${e.message} · รหัสอ้างอิง ${e.traceId}` : e.message;
+  return e instanceof Error ? e.message : fallback;
+};
 
 // เหมือน apiSend แต่ไม่สนใจ body ที่ตอบกลับ — ใช้กับ endpoint ที่ตอบ 200 เปล่า ๆ
 // (เรียก res.json() กับ body ว่างจะ throw แล้วกลายเป็น "ล้มเหลว" ทั้งที่สำเร็จ)

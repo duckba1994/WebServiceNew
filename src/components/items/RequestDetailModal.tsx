@@ -28,6 +28,8 @@ import {
 } from '../../types/requestList';
 import { GaImServicePanel } from './GaImServicePanel';
 import { AfServicePanel } from './AfServicePanel';
+import { HrServicePanel } from './HrServicePanel';
+import { SqaReceivePanel, SqaServicePanel } from './SqaWorkflowPanel';
 import { fmtDate, fmtDateTime } from '../../data/requestListData';
 import { phaseLabel, phaseMetaOf } from '../../data/requestPhase';
 import { actionBtnClass } from './RequestActionDialog';
@@ -65,6 +67,8 @@ import {
   toCrUpdatePayload,
   toDeptUpdatePayload,
   toAfUpdatePayload,
+  toHrPrUpdatePayload,
+  toSqaUpdatePayload,
   toEditForm,
   toPlUpdatePayload,
   toUpdatePayload,
@@ -74,6 +78,10 @@ import { DeptRequestDetail, isDeptRequestModule } from '../../api/deptRequest';
 import { useDeptRequest } from '../../hooks/useDeptRequest';
 import { useAfRequest } from '../../hooks/useAfRequest';
 import { AfRequestDetail } from '../../api/afRequest';
+import { useHrPrRequest } from '../../hooks/useHrPrRequest';
+import { HR_PR_MODULE, HrPrRequestDetail } from '../../api/hrPrRequest';
+import { SQA_MODULE, SqaRequestDetail } from '../../api/sqaRequest';
+import { useSqaRequest } from '../../hooks/useSqaRequest';
 import { DeptMasterData, useDeptMasterData } from '../../hooks/useDeptMasterData';
 import {
   PL_CHECKLIST_MAX,
@@ -278,6 +286,48 @@ const AF_STEP_TABS: StepTab[] = [
   { key: 'afClose', label: 'ปิดงาน', reachedStep: 5, logAction: 'close', actionCodes: ['close'], wfCodes: ['Request-Close-Job'] },
 ];
 
+// HR-PR: 4 ขั้นสำหรับใบแบบเก่า (อนุมัติ → รับเรื่อง → ดำเนินการ → ผู้แจ้งรับงาน)
+// ส่วนใบแบบใหม่มี 3 ขั้น — กด `service` แล้วปิดทันที ไม่มีขั้นรับงาน
+// (HR-PR-frontend-guide.md §Workflow actions) แท็บ "รับงาน" จึงค้างเป็นขั้นที่ไม่มีวันถึง
+// ในใบแบบใหม่ ซึ่งไม่เป็นไร เพราะปุ่มขึ้นจาก availableActions ที่ API ส่งมาเท่านั้น
+//
+// ⚠️ ขั้นอนุมัติไม่มีแท็บของตัวเองเหมือนทุกโมดูล — ห้ามใส่ 'approve' ลง actionCodes
+const HR_PR_STEP_TABS: StepTab[] = [
+  { key: 'general', label: 'General', reachedStep: 0, logAction: 'create', actionCodes: [] },
+  {
+    key: 'hrReceive',
+    label: 'รับเรื่อง',
+    reachedStep: 2,
+    logAction: 'receive',
+    actionCodes: ['receive'], // ไม่มีฟิลด์ → ใช้ปุ่ม+กล่องยืนยันมาตรฐาน
+    wfCodes: ['Receive-Request'],
+  },
+  {
+    key: 'hrService',
+    label: 'ดำเนินการ',
+    reachedStep: 3,
+    logAction: 'service',
+    actionCodes: [],
+    panelCodes: ['saveService', 'service'],
+    wfCodes: ['Service And Close-Job'],
+  },
+  {
+    key: 'hrAcceptWork',
+    label: 'รับงาน',
+    reachedStep: 4,
+    logAction: 'acceptWork',
+    logAliases: ['receiveJob', 'receive_job', 'Received-Service'],
+    actionCodes: ['acceptWork'],
+    wfCodes: ['Received-Service'],
+  },
+];
+
+const SQA_STEP_TABS: StepTab[] = [
+  { key: 'general', label: 'General', reachedStep: 0, logAction: 'create', actionCodes: [] },
+  { key: 'sqaReceive', label: 'รับเรื่อง', reachedStep: 1, logAction: 'receive', actionCodes: [], panelCodes: ['receive'], wfCodes: ['Receive-Request'] },
+  { key: 'sqaService', label: 'ดำเนินการและปิดงาน', reachedStep: 2, logAction: 'service', actionCodes: [], panelCodes: ['saveService', 'service'], wfCodes: ['Service And Close-Job'] },
+];
+
 const STEP_TABS_BY_MODULE: Record<string, StepTab[]> = {
   IT: IT_STEP_TABS,
   PL: PL_STEP_TABS,
@@ -285,11 +335,18 @@ const STEP_TABS_BY_MODULE: Record<string, StepTab[]> = {
   GA: GA_IM_STEP_TABS,
   IM: GA_IM_STEP_TABS,
   AF: AF_STEP_TABS,
+  HR_PR: HR_PR_STEP_TABS,
+  SQA: SQA_STEP_TABS,
 };
 
 // แผนกที่ยังไม่ได้ทำหน้าจอเฉพาะ ใช้ชุดของ IT ไปก่อน (ของเดิมก่อนแยกรายโมดูล)
 // — เปิดแผนกใหม่เมื่อไรให้เพิ่มชุดของแผนกนั้นในตารางข้างบน อย่าปล่อยให้ตกมาที่นี่
 const stepTabsOf = (module: string): StepTab[] => STEP_TABS_BY_MODULE[module] ?? IT_STEP_TABS;
+
+// โมดูลที่มีเส้นเปิดใบของตัวเอง (GET /{module}Request/{docNo}) และยกสิทธิ์แก้ไขให้ API
+// ตัดสิน — ใบหาย/ชนกันกลางทางต้องปิดหน้าต่างหรือโหลดค่าดิบใหม่ ไม่ใช่แค่ค่าจากเส้นกลาง
+const isApiDocModule = (module: string): boolean =>
+  isDeptRequestModule(module) || module === 'AF' || module === HR_PR_MODULE || module === SQA_MODULE;
 
 // เลขขั้นจริงของแท็บ — ยึด workflow ที่ API ส่งมาก่อนเสมอ (workflow เป็นข้อมูล ไม่ใช่โค้ด)
 // เลข reachedStep ที่ฝังไว้เป็นแค่ค่าสำรองตอน detail ยังโหลดไม่เสร็จ/โหลดไม่ได้
@@ -373,11 +430,11 @@ export function RequestDetailModal({
   );
 
   useEffect(() => {
-    if ((isDeptRequestModule(item.module) || item.module === 'AF') && detailError === 'ไม่พบใบแจ้งเรื่องนี้ในระบบ') onClose();
+    if (isApiDocModule(item.module) && detailError === 'ไม่พบใบแจ้งเรื่องนี้ในระบบ') onClose();
   }, [item.module, detailError, onClose]);
 
   useEffect(() => {
-    if ((isDeptRequestModule(item.module) || item.module === 'AF') && notice?.status === 409) setRefreshTick((tick) => tick + 1);
+    if (isApiDocModule(item.module) && notice?.status === 409) setRefreshTick((tick) => tick + 1);
   }, [item.module, notice]);
 
   // ชุดแท็บของโมดูลนี้ — จำนวน/ชื่อขั้นต่างกันต่อแผนก (IT 6 แท็บ, PL 5 แท็บ, CR 6 แท็บ)
@@ -423,7 +480,7 @@ export function RequestDetailModal({
   );
   // ตัวเลือกของฟอร์มแก้ไขใบ CR (ส่วนงาน → ประเภทที่แจ้ง → รายละเอียดที่แจ้ง)
   const isCrItem = item.module === 'CR';
-  const crMaster = useCrMasterData(user?.token, isCrItem);
+  const crMaster = useCrMasterData(user?.token, isCrItem || item.module === SQA_MODULE);
   // ค่าดิบของใบ CR — ต้องใช้เส้นนี้เติมฟอร์มแก้ไข ไม่ใช่ item ของเส้นกลาง
   // (เส้นกลางรวม requestType กับ requestSubType เป็นข้อความเดียว ผูก dropdown ไม่ได้)
   // โหลดที่นี่ไม่ใช่ในแผง เพราะทั้งหน้าอ่าน ฟอร์มแก้ไข และ submitEdit ต้องใช้ชุดเดียวกัน
@@ -446,10 +503,29 @@ export function RequestDetailModal({
     user?.token,
     `${item.updatedDate ?? ''}|${refreshTick}`
   );
-  // ตัวเลือกของฟอร์มแก้ไขใบ GA/IM (ประเภท / เรื่องที่แจ้ง) — GET /MasterData/{ga|im}
-  // ชื่อ endpoint = ชื่อโมดูลตัวเล็ก (ต่างจาก HR-PR/SV-HV/SA ที่ต้องมีตารางแปลงชื่อ)
+  // ค่าดิบของใบ HR-PR — แหล่งเดียวที่ให้ canEdit / ตำแหน่ง / เอกสารอ้างอิง
+  const hrDoc = useHrPrRequest(
+    item.module === HR_PR_MODULE ? item.docNo : null,
+    user?.token,
+    `${item.updatedDate ?? ''}|${refreshTick}`
+  );
+  const sqaDoc = useSqaRequest(
+    item.module === SQA_MODULE ? item.docNo : null,
+    user?.token,
+    `${item.updatedDate ?? ''}|${refreshTick}`
+  );
+  // ตัวเลือกของฟอร์มแก้ไข (ประเภท / เรื่องที่แจ้ง) — GET /MasterData/{ga|im|af|hr}
+  // ชื่อ endpoint = ชื่อโมดูลตัวเล็ก ยกเว้น HR ที่โมดูลชื่อ HR_PR แต่เส้นคือ /MasterData/hr
   const deptMaster = useDeptMasterData(
-    deptModule ? deptModule.toLowerCase() : item.module === 'AF' ? 'af' : null,
+    deptModule
+      ? deptModule.toLowerCase()
+      : item.module === 'AF'
+      ? 'af'
+      : item.module === HR_PR_MODULE
+      ? 'hr'
+      : item.module === SQA_MODULE
+      ? 'sqa'
+      : null,
     user?.token
   );
   // รายการย่อยในรูปแบบที่ตารางใช้ (loading/error ใช้ก้อนเดียวกับใบ)
@@ -578,7 +654,8 @@ export function RequestDetailModal({
   //    แต่ผู้ใช้สั่งว่า "อนุมัติแล้วห้ามแก้" (1 ก.ย. 2026) กติกาหน้าเว็บจึงเข้มกว่า
   //    → ตอนนี้เป็นแค่การซ่อนปุ่ม ไม่ใช่การบังคับ ใครยิง PUT ตรงยังแก้ได้อยู่
   //    ต้องให้ backend ใส่เงื่อนไขเดียวกันด้วย (เขาเสนอไว้เองใน guide §7)
-  const apiCanEdit = plDoc.doc?.canEdit ?? crDoc.doc?.canEdit ?? deptDoc.doc?.canEdit ?? afDoc.doc?.canEdit;
+  const apiCanEdit =
+    plDoc.doc?.canEdit ?? crDoc.doc?.canEdit ?? deptDoc.doc?.canEdit ?? afDoc.doc?.canEdit ?? hrDoc.doc?.canEdit ?? sqaDoc.doc?.canEdit;
   // สิทธิ์แก้ "ฟิลด์หัวใบ + รายการที่ขอ" (PUT /{module}/{docNo})
   //
   // GA/IM ยกให้ API ตัดสินอย่างเดียว (isApiEditGated) — จึงต้องเป็น true "เป๊ะ ๆ"
@@ -649,7 +726,7 @@ export function RequestDetailModal({
     const attSlots = Object.keys(attRef.current).length;
     const fieldsChanged =
       canEditFields &&
-      hasFormChanges(toEditForm(full, plLines.lines, crDoc.doc, deptDoc.doc, afDoc.doc), form);
+      hasFormChanges(toEditForm(full, plLines.lines, crDoc.doc, deptDoc.doc, afDoc.doc, hrDoc.doc, sqaDoc.doc), form);
     // ไม่ได้แก้อะไรเลย → ไม่ต้องยิง API ให้เปลืองรอบ
     if (!fieldsChanged && attSlots === 0) {
       setEditing(false);
@@ -666,6 +743,10 @@ export function RequestDetailModal({
           ? toDeptUpdatePayload(full, form)
           : full.module === 'AF'
           ? toAfUpdatePayload(full, form)
+          : full.module === HR_PR_MODULE
+          ? toHrPrUpdatePayload(full, form, hrDoc.doc)
+          : full.module === SQA_MODULE
+          ? toSqaUpdatePayload(full, form, sqaDoc.doc)
           : toUpdatePayload(full, form);
       const res = await saveEdit(full, payload);
       if (res.item) onEdited?.(res.item);
@@ -924,6 +1005,8 @@ export function RequestDetailModal({
                     ? plDoc.doc?.editBlockedReason ||
                       deptDoc.doc?.editBlockedReason ||
                       afDoc.doc?.editBlockedReason ||
+                      hrDoc.doc?.editBlockedReason ||
+                      sqaDoc.doc?.editBlockedReason ||
                       editBlockedReason(full, user)
                     : null
                 }
@@ -934,6 +1017,8 @@ export function RequestDetailModal({
                 deptMaster={deptMaster}
                 deptDoc={deptDoc.doc}
                 afDoc={afDoc.doc}
+                hrDoc={hrDoc.doc}
+                sqaDoc={sqaDoc.doc}
                 canEditFields={canEditFields}
                 canAttachFiles={canAttachFiles}
                 attachBlockedReason={attachBlockedReason}
@@ -1007,6 +1092,35 @@ export function RequestDetailModal({
               <GaImServicePanel
                 key={`${item.module}::${item.docNo}`}
                 item={full}
+                actions={detailError ? [] : actions}
+                pending={!!actionPending || detailLoading}
+                onSubmit={onStepSubmit ? async (action, fields) => {
+                  const result = await onStepSubmit(action, fields);
+                  if (result) applyDetailItem(result.item);
+                  return result;
+                } : undefined}
+              />
+            ) : activeTab.key === 'hrService' ? (
+              <HrServicePanel
+                item={full}
+                actions={detailError ? [] : actions}
+                pending={!!actionPending || detailLoading}
+                onSubmit={onStepSubmit ? submitStep : undefined}
+              />
+            ) : activeTab.key === 'sqaReceive' ? (
+              <SqaReceivePanel
+                doc={sqaDoc.doc}
+                actions={detailError ? [] : actions}
+                pending={!!actionPending || detailLoading}
+                onSubmit={onStepSubmit ? async (action, fields) => {
+                  const result = await onStepSubmit(action, fields);
+                  if (result) applyDetailItem(result.item);
+                  return result;
+                } : undefined}
+              />
+            ) : activeTab.key === 'sqaService' ? (
+              <SqaServicePanel
+                doc={sqaDoc.doc}
                 actions={detailError ? [] : actions}
                 pending={!!actionPending || detailLoading}
                 onSubmit={onStepSubmit ? async (action, fields) => {
@@ -1958,6 +2072,8 @@ function GeneralPanel({
   deptMaster,
   deptDoc,
   afDoc,
+  hrDoc,
+  sqaDoc,
 }: {
   item: RequestListItem;
   full: RequestListItem;
@@ -1987,6 +2103,9 @@ function GeneralPanel({
   // ค่าดิบของใบ GA/IM — เส้นกลางไม่รับประกันว่าจะส่ง ประเภท/เรื่องที่แจ้ง/วันที่ต้องการ มาครบ
   deptDoc: DeptRequestDetail | null;
   afDoc: AfRequestDetail | null;
+  // ค่าดิบของใบ HR-PR — ตำแหน่ง/เอกสารอ้างอิงมีที่นี่ที่เดียว
+  hrDoc: HrPrRequestDetail | null;
+  sqaDoc: SqaRequestDetail | null;
 }) {
   const imgs = attachments ?? [];
   const isPl = full.module === 'PL';
@@ -1994,6 +2113,9 @@ function GeneralPanel({
   // + รายการที่ขอ) จึงใช้แผงอ่าน/แผงแก้ไขชุดเดียวกัน
   const isDeptReq = isDeptRequestModule(full.module);
   const isAf = full.module === 'AF';
+  // ใบ HR-PR: เรื่องที่แจ้งชั้นเดียว + ตำแหน่งผู้แจ้ง ไม่มีประเภท/วันที่ต้องการ/รายการที่ขอ
+  const isHr = full.module === HR_PR_MODULE;
+  const isSqa = full.module === SQA_MODULE;
   // ใบ CR กรอกคนละชุดกับ IT/PL (ส่วนงาน → ประเภทที่แจ้ง → รายละเอียดที่แจ้ง)
   // ถ้าไม่แยกออกมา ใบ CR จะไปโชว์ช่องของ IT (เบอร์ติดต่อ/ชื่อคอมพิวเตอร์) ซึ่งว่างเปล่าทุกใบ
   const isCr = full.module === 'CR';
@@ -2022,6 +2144,8 @@ function GeneralPanel({
         deptMaster={deptMaster}
         deptDoc={deptDoc}
         afDoc={afDoc}
+        hrDoc={hrDoc}
+        sqaDoc={sqaDoc}
       />
     );
   }
@@ -2100,15 +2224,18 @@ function GeneralPanel({
         <DetailRow label="หน่วยงาน">{full.departmentName || '—'}</DetailRow>
         {/* เบอร์ติดต่อ/ชื่อเครื่อง เป็นช่องของ IT — โมดูลอื่นที่ยังไม่มีแท็บของตัวเอง
             ก็ตกมาชุดนี้เหมือนเดิม (ของเดิมเป็น else ของ PL/CR ไม่ใช่ isIt) */}
-        {!isPl && !isCr && !isDeptReq && (
+        {!isPl && !isCr && !isDeptReq && !isHr && !isSqa && (
           <>
             <DetailRow label="เบอร์ติดต่อ">{full.phoneNumber || '—'}</DetailRow>
             <DetailRow label="ชื่อคอมพิวเตอร์">{full.comName || '—'}</DetailRow>
           </>
         )}
+        {/* ตำแหน่งเป็นช่องของใบ HR-PR โดยเฉพาะ (ยังไม่มีใน login จึงกรอกเองตอนสร้างใบ)
+            ค่าดิบมาจาก GET /HRPRRequest — เส้นกลางไม่ได้ส่งช่องนี้มา */}
+        {isHr && <DetailRow label="ตำแหน่ง">{hrDoc?.position || '—'}</DetailRow>}
         {/* ใบ PL: วันที่แจ้งเรื่อง = requestDate (ผู้ใช้สั่ง 2 ก.ย. 2026)
             ⚠️ เฉพาะ PL — ใบ CR ใช้คอลัมน์เดียวกันนี้เก็บ "วันที่ต้องการ" ไม่ใช่วันที่แจ้ง */}
-        {(isPl || isDeptReq || isAf) && (
+        {(isPl || isDeptReq || isAf || isHr || isSqa) && (
           <DetailRow label="วันที่แจ้งเรื่อง">
             {full.requestDate ? <span className="mono">{fmtDate(full.requestDate)}</span> : '—'}
           </DetailRow>
@@ -2116,16 +2243,30 @@ function GeneralPanel({
       </InfoCard>
 
       <InfoCard title="เรื่องที่แจ้ง" icon={IconFileText}>
-        {(isPl || isDeptReq || isAf) && (
+        {isSqa && (
           <>
-            {!isAf && <DetailRow label="ประเภท">{full.type || '—'}</DetailRow>}
-            {/* ป้ายต่างกันตามแบบฟอร์มของแต่ละแผนก: PL เรียก "หัวข้อเรื่อง" · GA/IM เรียก "เรื่องที่แจ้ง" */}
-            <DetailRow label={isDeptReq || isAf ? 'เรื่องที่แจ้ง' : 'หัวข้อเรื่อง'}>{full.requestType || '—'}</DetailRow>
+            <DetailRow label="ส่วนงาน"><span className="mono font-semibold">{sqaDoc?.section || '—'}</span></DetailRow>
+            <DetailRow label="ประเภทเรื่องที่แจ้ง">{sqaDoc?.requestType || full.requestType || '—'}</DetailRow>
+            <DetailRow label="รายละเอียดที่แจ้ง">{sqaDoc?.requestDetail || '—'}</DetailRow>
+          </>
+        )}
+        {(isPl || isDeptReq || isAf || isHr) && (
+          <>
+            {/* AF กับ HR-PR ไม่มีชั้น "ประเภท" ในฟอร์ม (มีแค่เรื่องที่แจ้งชั้นเดียว) */}
+            {!isAf && !isHr && <DetailRow label="ประเภท">{full.type || '—'}</DetailRow>}
+            {/* ป้ายต่างกันตามแบบฟอร์มของแต่ละแผนก: PL เรียก "หัวข้อเรื่อง" · แผนกอื่นเรียก "เรื่องที่แจ้ง" */}
+            <DetailRow label={isPl ? 'หัวข้อเรื่อง' : 'เรื่องที่แจ้ง'}>{full.requestType || '—'}</DetailRow>
             {/* วันที่ต้องการใช้งาน = สิ่งที่ขอ ไม่ใช่ข้อมูลตัวผู้แจ้ง จึงอยู่การ์ดนี้
-                (ผู้ใช้สั่ง 2 ก.ย. 2026 — ย้ายมาจากการ์ด "ข้อมูลผู้แจ้ง" พร้อมกับหน้าสร้างใบ) */}
-            <DetailRow label={isAf ? 'วันที่ต้องการให้ดำเนินการ' : 'วันที่ต้องการใช้งาน'}>
-              {full.planDate ? <span className="mono">{fmtDate(full.planDate)}</span> : '—'}
-            </DetailRow>
+                (ผู้ใช้สั่ง 2 ก.ย. 2026 — ย้ายมาจากการ์ด "ข้อมูลผู้แจ้ง" พร้อมกับหน้าสร้างใบ)
+                ⚠️ ใบ HR-PR ไม่มีช่องนี้เลย — ฟอร์มไม่ได้ถาม และ payload ก็ไม่มี planDate */}
+            {!isHr && (
+              <DetailRow label={isAf ? 'วันที่ต้องการให้ดำเนินการ' : 'วันที่ต้องการใช้งาน'}>
+                {full.planDate ? <span className="mono">{fmtDate(full.planDate)}</span> : '—'}
+              </DetailRow>
+            )}
+            {/* เอกสารอ้างอิงมีเฉพาะใบ HR-PR — ยังไม่มีช่องกรอกในหน้าสร้างใบ
+                แต่ใบที่ระบบอื่นสร้างไว้อาจมีค่า จึงโชว์เมื่อมีเท่านั้น */}
+            {isHr && hrDoc?.reference && <DetailRow label="เอกสารอ้างอิง">{hrDoc.reference}</DetailRow>}
           </>
         )}
 
@@ -2202,9 +2343,11 @@ function GeneralPanel({
         <InfoCard title="รูปภาพ" icon={IconPaperclip}>{attachmentsBlock}</InfoCard>
       )}
 
-      <InfoCard title="การอนุมัติ" icon={IconShieldCheck}>
-        <div className="col-span-2">{approverList}</div>
-      </InfoCard>
+      {!isSqa && (
+        <InfoCard title="การอนุมัติ" icon={IconShieldCheck}>
+          <div className="col-span-2">{approverList}</div>
+        </InfoCard>
+      )}
 
       {hintBlock}
     </div>
@@ -3380,6 +3523,8 @@ function RequestEditPanel({
   deptMaster,
   deptDoc,
   afDoc,
+  hrDoc,
+  sqaDoc,
 }: {
   item: RequestListItem;
   lines: PlRequestLine[] | null;
@@ -3400,12 +3545,15 @@ function RequestEditPanel({
   deptMaster: DeptMasterData;
   deptDoc: DeptRequestDetail | null;
   afDoc: AfRequestDetail | null;
+  hrDoc: HrPrRequestDetail | null;
+  sqaDoc: SqaRequestDetail | null;
 }) {
   const isPl = item.module === 'PL';
   const isCr = item.module === 'CR';
   // GA/IM แก้รายการที่ขอได้เหมือน PL (PUT ส่ง lines ไปทั้งชุด)
   const isDeptReq = isDeptRequestModule(item.module);
   const isAf = item.module === 'AF';
+  const isSqa = item.module === SQA_MODULE;
   const hasLinesEditor = isPl || isDeptReq || isAf;
   const fields = editFieldsOf(item.module);
   // ตัวเลือกของใบ PL (ประเภท / เรื่องที่แจ้ง / หน่วย) — GET /MasterData/pl
@@ -3415,7 +3563,7 @@ function RequestEditPanel({
   const plMaster = usePlMasterData(user?.token, isPl || isDeptReq);
   const unitNames = isAf ? deptMaster.unitNames : plMaster.unitNames;
   const [form, setForm] = useState<RequestEditForm>(() =>
-    toEditForm(item, lines, crDoc.doc, deptDoc, afDoc)
+    toEditForm(item, lines, crDoc.doc, deptDoc, afDoc, hrDoc, sqaDoc)
   );
   const [errors, setErrors] = useState<ReturnType<typeof validateEditForm>>({});
   // ล็อกช่องกรอกทั้งหมดเมื่อเข้ามาเพื่อจัดการรูปอย่างเดียว (canEdit ปิดไปแล้ว)
@@ -3426,7 +3574,7 @@ function RequestEditPanel({
   const crRaw = crDoc.doc;
   useEffect(() => {
     if (!isCr || !crRaw) return;
-    setForm((f) => (f.requestType ? f : toEditForm(item, lines, crRaw, deptDoc, afDoc)));
+    setForm((f) => (f.requestType ? f : toEditForm(item, lines, crRaw, deptDoc, afDoc, hrDoc, sqaDoc)));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isCr, crRaw]);
 
@@ -3448,13 +3596,15 @@ function RequestEditPanel({
       case 'deptTypes':
         return deptMaster.typeOptions('');
       case 'deptRequestTypes':
-        return deptMaster.requestTypeOptions('');
+        return deptMaster.requestTypeOptions(isSqa ? form.section : '');
+      case 'deptRequestSubTypes':
+        return deptMaster.subTypeOptions(form.section, form.requestType);
       default:
         return f.options ?? [];
     }
   };
   const isCrMaster = (m?: MasterListKey) => m === 'crSections' || m === 'crRequestTypes' || m === 'crRequestSubTypes';
-  const isDeptMaster = (m?: MasterListKey) => m === 'deptTypes' || m === 'deptRequestTypes';
+  const isDeptMaster = (m?: MasterListKey) => m === 'deptTypes' || m === 'deptRequestTypes' || m === 'deptRequestSubTypes';
 
   // สถานะโหลด/ปุ่มลองใหม่ ต้องเป็นของ "ลิสต์ที่ช่องนั้นใช้จริง" ไม่ใช่ของ PL เสมอ —
   // ใบ GA/IM โหลด master ของ PL ไปด้วย (เอาไว้ใช้หน่วยนับ) ถ้าอ่านสถานะผิดตัว
@@ -3492,6 +3642,15 @@ function RequestEditPanel({
     // ฟิลด์ถูกล็อกอยู่ = ไม่มีอะไรให้ตรวจ (บันทึกรอบนี้เป็นเรื่องรูปแนบล้วน)
     if (fieldsEditable) {
       const errs = validateEditForm(item.module, form);
+      const sqaDetailField = fields.find((field) => field.key === 'requestDetail');
+      if (
+        isSqa &&
+        sqaDetailField &&
+        optionsOf(sqaDetailField).length > 0 &&
+        !form.requestDetail.trim()
+      ) {
+        errs.requestDetail = 'กรุณากรอกรายละเอียดที่แจ้ง';
+      }
       setErrors(errs);
       if (Object.keys(errs).length > 0) return;
     }
@@ -3549,6 +3708,7 @@ function RequestEditPanel({
           // ลูกโซ่: ยังไม่เลือกฟิลด์แม่ = ช่องนี้ยังไม่มีตัวเลือกให้เลือก
           const waitingParent = !!f.dependsOn && !form[f.dependsOn];
           const fieldLock = lock || waitingParent;
+          const required = !!f.required || (isSqa && f.key === 'requestDetail' && optionsOf(f).length > 0);
           const cls = `w-full rounded-lg border bg-white dark:bg-slate-900 px-3 py-2 text-[13px] text-gray-800 dark:text-slate-100 outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/20 disabled:bg-slate-50 ${
             err ? 'border-red-300 dark:border-red-800' : 'border-gray-200 dark:border-slate-700'
           }`;
@@ -3556,7 +3716,7 @@ function RequestEditPanel({
             <div key={f.key} className={f.span2 ? 'col-span-2' : ''}>
               <div className="mb-1 flex items-baseline gap-1.5">
                 <span className="text-[11.5px] font-semibold text-gray-500 dark:text-slate-400">{f.label}</span>
-                {f.required && <span className="text-[11.5px] font-bold text-red-500 dark:text-red-400">*</span>}
+                {required && <span className="text-[11.5px] font-bold text-red-500 dark:text-red-400">*</span>}
                 {f.maxLen && (
                   <span className="mono ml-auto text-[10.5px] text-slate-400 dark:text-slate-500">
                     {value.length}/{f.maxLen}
