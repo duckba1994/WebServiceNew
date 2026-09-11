@@ -17,7 +17,8 @@ export type FieldKind =
   | 'number'
   | 'auto' // ดึงมาให้อัตโนมัติ (จาก login / AD) — ผู้ใช้ไม่ต้องกรอก
   | 'images' // อัปโหลดรูป + พรีวิว
-  | 'lineItems'; // ตารางรายการย่อย (เช่น รายการอะไหล่ + ราคา)
+  | 'lineItems' // ตารางรายการย่อย (เช่น รายการอะไหล่ + ราคา)
+  | 'psQuoteAttachments'; // ตารางเอกสารแนบการขอราคาของ PS (ผูกกับรายการที่ขอ)
 
 // แหล่งข้อมูลของฟิลด์ kind='auto'
 // reporter/department = จากการ login ครั้งแรก, computer = ชื่อเครื่องจาก AD,
@@ -210,7 +211,7 @@ export const DEPT_DETAIL_MAX_LEN = 500;
 // ชุดคอลัมน์ของตารางรายการย่อย
 // purchase = รายการ/จำนวน/หน่วย/ราคา/ผู้ขาย/รวม (ใช้กับจัดซื้อ)
 // simple   = รายการ/จำนวน/หน่วย/หมายเหตุ (ไม่มีราคา)
-export type LineItemsVariant = 'purchase' | 'simple';
+export type LineItemsVariant = 'purchase' | 'simple' | 'sv';
 
 export interface LineItem {
   id: string;
@@ -220,6 +221,8 @@ export interface LineItem {
   price: string; // ราคา/หน่วย (เฉพาะ variant='purchase')
   vendor: string; // ผู้ขาย / ร้านค้า (เฉพาะ variant='purchase')
   note: string; // หมายเหตุ (เฉพาะ variant='simple')
+  carId: string; // เบอร์รถ (เฉพาะ variant='sv')
+  requestDate: string; // วันที่ต้องการ (เฉพาะ variant='sv', YYYY-MM-DD)
 }
 
 export const emptyLineItem = (): LineItem => ({
@@ -230,6 +233,8 @@ export const emptyLineItem = (): LineItem => ({
   price: '',
   vendor: '',
   note: '',
+  carId: '',
+  requestDate: '',
 });
 
 export const lineTotal = (li: LineItem): number => (Number(li.qty) || 0) * (Number(li.price) || 0);
@@ -260,6 +265,13 @@ export const checkedText = (v?: string): string => checkedValues(v).join(', ');
 export const SV_EXTERNAL = 'ลูกค้าภายนอก';
 export const SV_INTERNAL = 'หน่วยงานภายในองค์กร';
 export const OTHER_ATTACHMENT = 'อื่นๆ';
+
+// ป้ายภาษาไทยของกล่องสิ่งที่แนบมาด้วยของ PS — ใช้ค่าเดียวกันทั้ง options,
+// showWhen และ optionFields เพื่อไม่ให้เงื่อนไขหลุดเมื่อแก้ข้อความที่แสดง
+export const PS_ATTACH = {
+  spec: 'รายละเอียด/Spec',
+  quotation: 'Quotation เปรียเทียบราคา',
+} as const;
 
 // ประเภทที่แจ้งของ CR ที่เปิดช่อง "ระบุเพิ่มเติม" (ชื่อตรงตาม master ของ API)
 export const CR_OTHER_TYPE = 'อื่นๆ';
@@ -627,6 +639,15 @@ export const DEPT_FORMS: Record<string, DeptFormConfig> = {
             master: 'deptRequestTypes',
             dependsOn: 'section',
           },
+          {
+            key: 'other',
+            label: 'ระบุเรื่องอื่นๆ',
+            kind: 'text',
+            span2: true,
+            maxLen: 500,
+            placeholder: 'ระบุเรื่องที่ต้องการแจ้งเพิ่มเติม',
+            showWhen: { key: 'topic', equals: 'อื่นๆ' },
+          },
           // ไม่บังคับติ๊ก — แต่ติ๊ก "อื่นๆ" แล้วต้องระบุข้อความ (ช่องด้านล่างจะโผล่มาเอง)
           {
             key: 'attachedDocs',
@@ -647,7 +668,19 @@ export const DEPT_FORMS: Record<string, DeptFormConfig> = {
           },
         ],
       },
-      ITEMS_SECTION,
+      {
+        title: 'รายการที่ขอ',
+        fields: [
+          {
+            key: 'items',
+            label: 'รายการ',
+            kind: 'lineItems',
+            variant: 'sv',
+            hint: '(ไม่บังคับ — เพิ่มได้มากกว่า 1 แถว)',
+            span2: true,
+          },
+        ],
+      },
       PHOTOS_SECTION,
     ],
   },
@@ -738,6 +771,47 @@ export const DEPT_FORMS: Record<string, DeptFormConfig> = {
             span2: true,
             maxLen: 1000,
             placeholder: 'อธิบายรายละเอียดของเรื่องที่ต้องการแจ้ง',
+          },
+        ],
+      },
+      {
+        title: 'สิ่งที่แนบมาด้วย',
+        fields: [
+          {
+            key: 'psAttachDocs',
+            label: 'เอกสารแนบ',
+            kind: 'checkboxes',
+            span2: true,
+            hint: '(ติ๊กเฉพาะเอกสารที่แนบมากับใบนี้)',
+            options: [PS_ATTACH.spec, PS_ATTACH.quotation],
+            optionFields: {
+              [PS_ATTACH.spec]: 'psSpecNo',
+              [PS_ATTACH.quotation]: 'psQuotationNo',
+            },
+          },
+          {
+            key: 'psSpecNo',
+            label: 'เลขที่รายละเอียด/Spec',
+            kind: 'text',
+            required: true,
+            maxLen: 100,
+            placeholder: 'ระบุเลขที่รายละเอียด/Spec',
+            showWhen: { key: 'psAttachDocs', includes: PS_ATTACH.spec },
+          },
+          {
+            key: 'psQuotationNo',
+            label: 'เลขที่ Quotation',
+            kind: 'text',
+            required: true,
+            maxLen: 100,
+            placeholder: 'เลขที่ Quotation',
+            showWhen: { key: 'psAttachDocs', includes: PS_ATTACH.quotation },
+          },
+          {
+            key: 'psQuoteAttachments',
+            label: 'เอกสารแนบการขอราคา',
+            kind: 'psQuoteAttachments',
+            span2: true,
           },
         ],
       },
@@ -967,7 +1041,7 @@ export const getDeptForm = (departmentShort: string): DeptFormConfig =>
   DEPT_FORMS[departmentShort] ?? DEFAULT_FORM;
 
 // แผนกที่ใช้กล่อง "รายการที่ขอ" แบบ PL (ไม่มีราคา — บังคับแค่จำนวนของแถวที่กรอกชื่อ)
-const LINE_ITEM_QTY_DEPTS = ['PL', 'GA', 'IM', 'AF', 'SV-HV', 'PS'];
+const LINE_ITEM_QTY_DEPTS = ['PL', 'GA', 'IM', 'AF', 'PS'];
 
 // ── ตรวจสอบความถูกต้อง (คืน map ของ error — ไม่มี React) ──────
 export type FormErrors = Record<string, string>;
@@ -1043,6 +1117,14 @@ export function validateRequestForm(f: RequestFormState, optionless?: Set<string
   if (LINE_ITEM_QTY_DEPTS.includes(f.departmentShort)) {
     const filled = f.lineItems.filter((li) => li.name.trim() !== '');
     if (filled.some((li) => !li.qty || Number(li.qty) <= 0)) e.items = 'กรุณาระบุจำนวนของทุกรายการ';
+  }
+
+  // SV ใช้คอลัมน์ details/carId/requestDate ไม่ใช่จำนวน/หน่วยแบบใบขอของ
+  if (f.departmentShort === 'SV-HV') {
+    const partial = f.lineItems.findIndex(
+      (li) => !li.name.trim() && (!!li.carId.trim() || !!li.requestDate)
+    );
+    if (partial !== -1) e.items = `รายการที่ ${partial + 1}: กรุณากรอกรายละเอียด`;
   }
 
   // จัดซื้อ: รายการที่กรอกชื่อแล้วต้องมีจำนวนและราคา

@@ -13,6 +13,7 @@ import {
 // ใช้กับฟอร์มที่ต้องกรอกหลายรายการ — คอลัมน์ขึ้นกับ variant:
 //   purchase = รายการ/จำนวน/หน่วย/ราคา/ผู้ขาย/รวม (จัดซื้อ — สืบราคาหลายรายการ)
 //   simple   = รายการ/จำนวน/หน่วย/หมายเหตุ (PL — ขอของ/ขอบริการ ไม่มีราคา)
+//   sv       = รายละเอียด/เบอร์รถ/วันที่ต้องการ (ใบ SV)
 const CELL_CLS =
   'w-full rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-2.5 py-1.5 text-[12.5px] text-gray-800 dark:text-slate-100 outline-none transition focus:border-accent';
 
@@ -34,6 +35,7 @@ export function LineItemsTable({
   units: string[];
 }) {
   const withPrice = variant === 'purchase';
+  const isSv = variant === 'sv';
   const update = (id: string, patch: Partial<LineItem>) =>
     onChange(value.map((li) => (li.id === id ? { ...li, ...patch } : li)));
 
@@ -51,18 +53,20 @@ export function LineItemsTable({
           <thead>
             <tr className="bg-[#0b1220] text-[11.5px] font-semibold text-slate-300 dark:text-slate-600">
               <th className="w-10 px-2 py-2 text-center">#</th>
-              <th className="px-2 py-2 text-left">{withPrice ? 'รายการ / อะไหล่' : 'รายการ'}</th>
-              <th className="w-20 px-2 py-2 text-center">จำนวน</th>
-              <th className="w-24 px-2 py-2 text-center">หน่วย</th>
+              <th className="px-2 py-2 text-left">{isSv ? 'รายละเอียด' : withPrice ? 'รายการ / อะไหล่' : 'รายการ'}</th>
+              {!isSv && <th className="w-20 px-2 py-2 text-center">จำนวน</th>}
+              {!isSv && <th className="w-24 px-2 py-2 text-center">หน่วย</th>}
+              {isSv && <th className="w-36 px-2 py-2 text-left">เบอร์รถ</th>}
+              {isSv && <th className="w-40 px-2 py-2 text-center">วันที่ต้องการ</th>}
               {withPrice ? (
                 <>
                   <th className="w-28 px-2 py-2 text-right">ราคา/หน่วย</th>
                   <th className="w-40 px-2 py-2 text-left">ผู้ขาย / ร้านค้า</th>
                   <th className="w-28 px-2 py-2 text-right">รวม</th>
                 </>
-              ) : (
+              ) : !isSv ? (
                 <th className="px-2 py-2 text-left">หมายเหตุ</th>
-              )}
+              ) : null}
               <th className="w-10 px-2 py-2" />
             </tr>
           </thead>
@@ -74,11 +78,11 @@ export function LineItemsTable({
                   <input
                     value={li.name}
                     onChange={(e) => update(li.id, { name: e.target.value })}
-                    placeholder={withPrice ? 'ชื่ออะไหล่ / วัสดุ' : 'ชื่อรายการที่ต้องการ'}
+                    placeholder={isSv ? 'รายละเอียดงานที่ต้องการ' : withPrice ? 'ชื่ออะไหล่ / วัสดุ' : 'ชื่อรายการที่ต้องการ'}
                     className={CELL_CLS}
                   />
                 </td>
-                <td className="px-2 py-1.5">
+                {!isSv && <td className="px-2 py-1.5">
                   <input
                     value={li.qty}
                     onChange={(e) => update(li.id, { qty: e.target.value.replace(/[^0-9.]/g, '') })}
@@ -86,8 +90,8 @@ export function LineItemsTable({
                     placeholder="0"
                     className={`${CELL_CLS} mono text-right`}
                   />
-                </td>
-                <td className="px-2 py-1.5">
+                </td>}
+                {!isSv && <td className="px-2 py-1.5">
                   <select
                     value={li.unit}
                     onChange={(e) => update(li.id, { unit: e.target.value })}
@@ -101,7 +105,27 @@ export function LineItemsTable({
                       </option>
                     ))}
                   </select>
-                </td>
+                </td>}
+                {isSv && (
+                  <>
+                    <td className="px-2 py-1.5">
+                      <input
+                        value={li.carId}
+                        onChange={(e) => update(li.id, { carId: e.target.value })}
+                        placeholder="เช่น HV-001"
+                        className={CELL_CLS}
+                      />
+                    </td>
+                    <td className="px-2 py-1.5">
+                      <input
+                        type="date"
+                        value={li.requestDate}
+                        onChange={(e) => update(li.id, { requestDate: e.target.value })}
+                        className={`${CELL_CLS} mono`}
+                      />
+                    </td>
+                  </>
+                )}
                 {withPrice ? (
                   <>
                     <td className="px-2 py-1.5">
@@ -125,7 +149,7 @@ export function LineItemsTable({
                       {formatBaht(lineTotal(li))}
                     </td>
                   </>
-                ) : (
+                ) : !isSv ? (
                   <td className="px-2 py-1.5">
                     <input
                       value={li.note}
@@ -134,7 +158,7 @@ export function LineItemsTable({
                       className={CELL_CLS}
                     />
                   </td>
-                )}
+                ) : null}
                 <td className="px-2 py-1.5 text-center">
                   <button
                     type="button"

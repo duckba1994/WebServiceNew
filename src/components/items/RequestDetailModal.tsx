@@ -30,6 +30,12 @@ import { GaImServicePanel } from './GaImServicePanel';
 import { AfServicePanel } from './AfServicePanel';
 import { HrServicePanel } from './HrServicePanel';
 import { SqaReceivePanel, SqaServicePanel } from './SqaWorkflowPanel';
+import {
+  SvMgrRequestClosePanel,
+  SvMgrReviewPanel,
+  SvRequesterReviewPanel,
+  SvServicePanel,
+} from './SvServicePanel';
 import { fmtDate, fmtDateTime } from '../../data/requestListData';
 import { phaseLabel, phaseMetaOf } from '../../data/requestPhase';
 import { actionBtnClass } from './RequestActionDialog';
@@ -324,8 +330,51 @@ const HR_PR_STEP_TABS: StepTab[] = [
 
 const SQA_STEP_TABS: StepTab[] = [
   { key: 'general', label: 'General', reachedStep: 0, logAction: 'create', actionCodes: [] },
-  { key: 'sqaReceive', label: 'รับเรื่อง', reachedStep: 1, logAction: 'receive', actionCodes: [], panelCodes: ['receive'], wfCodes: ['Receive-Request'] },
+  { key: 'sqaReceive', label: 'รับเรื่อง', reachedStep: 1, logAction: 'receive', actionCodes: [], panelCodes: ['saveReceive', 'receive'], wfCodes: ['Receive-Request'] },
   { key: 'sqaService', label: 'ดำเนินการและปิดงาน', reachedStep: 2, logAction: 'service', actionCodes: [], panelCodes: ['saveService', 'service'], wfCodes: ['Service And Close-Job'] },
+];
+
+// SV-HV / SV-FL ใช้โมดูล SV ชุดเดียวกัน ต่างกันที่ section ซึ่งแก้หลังสร้างไม่ได้
+// ขั้นอนุมัติอยู่ท้าย General ตามกติกากลางของทุกโมดูล
+const SV_STEP_TABS: StepTab[] = [
+  { key: 'general', label: 'General', reachedStep: 0, logAction: 'create', actionCodes: [] },
+  {
+    key: 'svService',
+    label: 'รับเรื่อง / ดำเนินการ',
+    reachedStep: 2,
+    logAction: 'receive',
+    logAliases: ['saveService'],
+    actionCodes: [],
+    panelCodes: ['saveService', 'receive'],
+    wfCodes: ['Receive-Request', 'Service And Close-Job'],
+  },
+  {
+    key: 'svMgrClose',
+    label: 'Mgr SV ตรวจสอบ',
+    reachedStep: 3,
+    logAction: 'mgrClose',
+    actionCodes: [],
+    panelCodes: ['mgrClose'],
+    wfCodes: ['Mgr Close-Job'],
+  },
+  {
+    key: 'svClose',
+    label: 'ผู้แจ้งพิจารณา',
+    reachedStep: 4,
+    logAction: 'close',
+    actionCodes: [],
+    panelCodes: ['saveReview', 'close'],
+    wfCodes: ['Request-Close-Job', 'Received-Service'],
+  },
+  {
+    key: 'svMgrRequestClose',
+    label: 'Mgr ผู้แจ้งปิดงาน',
+    reachedStep: 5,
+    logAction: 'mgrRequestClose',
+    actionCodes: [],
+    panelCodes: ['mgrRequestClose'],
+    wfCodes: ['Mgr Request-Close-Job'],
+  },
 ];
 
 const STEP_TABS_BY_MODULE: Record<string, StepTab[]> = {
@@ -337,6 +386,7 @@ const STEP_TABS_BY_MODULE: Record<string, StepTab[]> = {
   AF: AF_STEP_TABS,
   HR_PR: HR_PR_STEP_TABS,
   SQA: SQA_STEP_TABS,
+  SV: SV_STEP_TABS,
 };
 
 // แผนกที่ยังไม่ได้ทำหน้าจอเฉพาะ ใช้ชุดของ IT ไปก่อน (ของเดิมก่อนแยกรายโมดูล)
@@ -1130,6 +1180,38 @@ export function RequestDetailModal({
               />
             ) : activeTab.key === 'afService' ? (
               <AfServicePanel
+                actions={detailError ? [] : actions}
+                resolution={r}
+                pending={!!actionPending || detailLoading}
+                onSubmit={onStepSubmit ? submitStep : undefined}
+              />
+            ) : activeTab.key === 'svService' ? (
+              <SvServicePanel
+                state={activeState}
+                actions={detailError ? [] : actions}
+                resolution={r}
+                pending={!!actionPending || detailLoading}
+                onSubmit={onStepSubmit ? submitStep : undefined}
+              />
+            ) : activeTab.key === 'svMgrClose' ? (
+              <SvMgrReviewPanel
+                state={activeState}
+                actions={detailError ? [] : actions}
+                resolution={r}
+                pending={!!actionPending || detailLoading}
+                onSubmit={onStepSubmit ? submitStep : undefined}
+              />
+            ) : activeTab.key === 'svClose' ? (
+              <SvRequesterReviewPanel
+                state={activeState}
+                actions={detailError ? [] : actions}
+                resolution={r}
+                pending={!!actionPending || detailLoading}
+                onSubmit={onStepSubmit ? submitStep : undefined}
+              />
+            ) : activeTab.key === 'svMgrRequestClose' ? (
+              <SvMgrRequestClosePanel
+                state={activeState}
                 actions={detailError ? [] : actions}
                 resolution={r}
                 pending={!!actionPending || detailLoading}

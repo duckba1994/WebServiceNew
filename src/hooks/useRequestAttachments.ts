@@ -14,6 +14,13 @@ import {
   deletePlAttachment,
   uploadPlAttachment,
 } from '../api/plRequest';
+import {
+  SV_ATTACHMENT_SLOTS,
+  SV_ATTACH_EXTENSIONS,
+  checkSvAttachment,
+  deleteSvAttachment,
+  uploadSvAttachment,
+} from '../api/svRequest';
 
 // ── รูปแนบใบแจ้งเรื่อง (3 ช่อง) ─────────────────────────────────
 // แต่ละโมดูลมี endpoint ของตัวเอง (/ITRequest/… , /PLRequest/…) แต่สัญญาเหมือนกัน
@@ -74,6 +81,13 @@ const ATTACHMENT_API: Record<string, AttachmentApi> = {
     check: checkPlAttachment,
     upload: uploadPlAttachment,
     remove: deletePlAttachment,
+  },
+  SV: {
+    slots: SV_ATTACHMENT_SLOTS,
+    extensions: SV_ATTACH_EXTENSIONS,
+    check: checkSvAttachment,
+    upload: uploadSvAttachment,
+    remove: deleteSvAttachment,
   },
 };
 

@@ -104,6 +104,12 @@ export interface RequestResolution {
   //   (backend คำนวณให้ ส่งขึ้นไปก็ถูกเมิน)
   requestService?: string | null;
   planCompleteDate?: string | null;
+  // ผู้จัดการแผนกปลายทางตรวจสอบงาน (SV: S2_SV_NameMgr / S2_SV_DateMgr)
+  mgrClosedBy?: string | null;
+  mgrClosedDate?: string | null;
+  // ผลพิจารณาของผู้แจ้งในใบ SV (S3_chkAccept / S3_chkDontAccept)
+  accepted?: boolean | null;
+  notAcceptedDetail?: string | null;
   attachRef?: string | null; // AF: เอกสารอ้างอิงของขั้นดำเนินการ
   // ชุด "รับงาน" (action `acceptWork`) — ขั้นที่วนกลับมาหาผู้แจ้ง
   // ⚠️ คนละคู่กับ receivedBy/receivedDate ซึ่งเป็นของขั้น "รับเรื่อง" ฝั่งปลายทาง

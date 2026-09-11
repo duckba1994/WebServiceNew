@@ -27,8 +27,8 @@ const INPUT_CLS =
   'w-full rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-[13px] text-gray-800 dark:text-slate-100 outline-none transition focus:border-accent';
 
 // ฟอร์มในกล่องนี้มีแต่ช่องค่าเดี่ยว — ฟิลด์แบบกลุ่ม (เช่น surveyRatings) วาดในแท็บของมันเอง
-const scalar = (v: ActionFieldValue | undefined): string | number | undefined =>
-  typeof v === 'string' || typeof v === 'number' ? v : undefined;
+const scalar = (v: ActionFieldValue | undefined): string | number | boolean | undefined =>
+  typeof v === 'string' || typeof v === 'number' || typeof v === 'boolean' ? v : undefined;
 
 // ── คะแนนความพึงพอใจ 1–25 ────────────────────────────────────
 // API รับเป็นตัวเลขเดียว 1–25 (เต็ม 25 = 5 หัวข้อ × 5 ระดับ) แต่ยังไม่ได้บอกว่า
@@ -46,7 +46,7 @@ function ScoreInput({
   onChange,
   spec,
 }: {
-  value: string | number | undefined;
+  value: string | number | boolean | undefined;
   onChange: (v: number) => void;
   spec: ActionField;
 }) {
@@ -101,9 +101,9 @@ function FieldInput({
 }: {
   spec: ActionField;
   required: boolean;
-  value: string | number | undefined;
+  value: string | number | boolean | undefined;
   invalid: boolean;
-  onChange: (v: string | number) => void;
+  onChange: (v: string | number | boolean) => void;
 }) {
   const cls = `${INPUT_CLS} ${invalid ? 'border-rose-300 dark:border-rose-800 bg-rose-50/40' : ''}`;
   return (
@@ -123,6 +123,16 @@ function FieldInput({
           onChange={(e) => onChange(e.target.value)}
           className={`${cls} resize-none`}
         />
+      ) : spec.type === 'boolean' ? (
+        <select
+          value={typeof value === 'boolean' ? String(value) : ''}
+          onChange={(e) => onChange(e.target.value === '' ? '' : e.target.value === 'true')}
+          className={`${cls} cursor-pointer`}
+        >
+          <option value="">— เลือกผล —</option>
+          <option value="true">ยอมรับงาน</option>
+          <option value="false">ไม่ยอมรับงาน</option>
+        </select>
       ) : spec.type === 'select' ? (
         <select
           value={(value as string) ?? ''}
@@ -171,7 +181,14 @@ export function RequestActionDialog({
   const [showOptional, setShowOptional] = useState(false);
   const [touched, setTouched] = useState(false);
 
-  const required = useMemo(() => action.requiredFields ?? [], [action.requiredFields]);
+  const required = useMemo(() => {
+    const fields = action.requiredFields ?? [];
+    // SV บังคับเหตุผลเฉพาะเมื่อเลือกไม่ยอมรับงาน ไม่ใช่ทุกครั้งที่ปิดขั้น
+    const visible = values.accepted === false
+      ? [...fields, 'notAcceptedDetail']
+      : fields.filter((name) => name !== 'notAcceptedDetail');
+    return Array.from(new Set(visible));
+  }, [action.requiredFields, values.accepted]);
 
   // ฟิลด์ที่บังคับอยู่แล้ว ไม่ต้องโผล่ซ้ำในกลุ่มไม่บังคับ
   const optionalGroups = useMemo(
@@ -186,7 +203,13 @@ export function RequestActionDialog({
   const noteMissing = action.requireNote && note.trim() === '';
   const blocked = missing.length > 0 || noteMissing;
 
-  const set = (name: string) => (v: string | number) => setValues((prev) => ({ ...prev, [name]: v }));
+  const set = (name: string) => (v: string | number | boolean) =>
+    setValues((prev) => {
+      const next = { ...prev, [name]: v };
+      // เปลี่ยนกลับมายอมรับงานแล้ว ไม่ส่งเหตุผลเก่าที่เคยกรอกตอนเลือก "ไม่ยอมรับ"
+      if (name === 'accepted' && v === true) delete next.notAcceptedDetail;
+      return next;
+    });
 
   // ฟอร์มที่มีฟิลด์ให้กรอกต้องกว้างกว่ากล่องยืนยันเปล่า ๆ
   const wide = required.length > 0 || optionalGroups.length > 0;

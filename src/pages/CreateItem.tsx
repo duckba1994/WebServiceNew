@@ -13,6 +13,7 @@ import {
 import { Layout } from '../components/layout/Layout';
 import { ImageUpload } from '../components/ui/ImageUpload';
 import { LineItemsTable } from '../components/ui/LineItemsTable';
+import { PsQuoteAttachmentTable } from '../components/ui/PsQuoteAttachmentTable';
 import { DateQuickButtons, DateQuickPick, thaiDateLabel } from '../components/ui/DateQuickPick';
 import { SearchSelect, SearchOption } from '../components/ui/SearchSelect';
 import { RequestPriority } from '../types/request';
@@ -41,6 +42,8 @@ import { createHrPrRequest } from '../api/hrPrRequest';
 import { toHrPrRequestPayload } from '../data/hrPrRequestForm';
 import { createSqaRequest } from '../api/sqaRequest';
 import { toSqaRequestPayload } from '../data/sqaRequestForm';
+import { checkSvAttachment, createSvRequest, uploadSvAttachment } from '../api/svRequest';
+import { toSvRequestPayload } from '../data/svRequestForm';
 import { useAuth } from '../context/AuthContext';
 import {
   FieldDef,
@@ -76,6 +79,7 @@ interface ImageUploader {
 }
 const IT_UPLOADER: ImageUploader = { check: checkItAttachment, upload: uploadItAttachment };
 const PL_UPLOADER: ImageUploader = { check: checkPlAttachment, upload: uploadPlAttachment };
+const SV_UPLOADER: ImageUploader = { check: checkSvAttachment, upload: uploadSvAttachment };
 
 
 // แผนกที่ตัวเลือกมาจาก GET /MasterData/{ชื่อ endpoint} (ดู useDeptMasterData)
@@ -566,6 +570,24 @@ function RequestForm({
     }
   };
 
+  const submitSv = async () => {
+    setSending(true);
+    setUploadFailed([]);
+    try {
+      const res = await createSvRequest(
+        toSvRequestPayload(f, f.values.reporterName ?? user?.name ?? ''),
+        user?.token
+      );
+      setDocNo(res.docNo);
+      setSaved(true);
+      await uploadImages(res.docNo, SV_UPLOADER);
+    } catch (err) {
+      setSendError(err instanceof Error ? err.message : 'บันทึกใบแจ้งเรื่อง SV ไม่สำเร็จ');
+    } finally {
+      setSending(false);
+    }
+  };
+
   const submit = async () => {
     const e = validateRequestForm(f, optionlessKeys);
     setErrors(e);
@@ -577,7 +599,7 @@ function RequestForm({
 
     // แผนกที่ยังไม่มี API — คงพฤติกรรมเดิม (UI-first)
     if (
-      !['IT', 'PL', 'CR', 'AF', 'HR-PR', 'SA'].includes(dep.departmentShort) &&
+      !['IT', 'PL', 'CR', 'AF', 'HR-PR', 'SA', 'SV-HV'].includes(dep.departmentShort) &&
       !isDeptRequestModule(dep.departmentShort)
     ) {
       setSaved(true);
@@ -614,6 +636,11 @@ function RequestForm({
 
     if (dep.departmentShort === 'SA') {
       await submitSqa();
+      return;
+    }
+
+    if (dep.departmentShort === 'SV-HV') {
+      await submitSv();
       return;
     }
 
@@ -888,6 +915,13 @@ function RequestForm({
             )}
             {masterError(plMaster)}
           </>
+        );
+      case 'psQuoteAttachments':
+        return (
+          <PsQuoteAttachmentTable
+            value={f.values[fd.key]}
+            onChange={(value) => setValue(fd.key, value)}
+          />
         );
       case 'textarea': {
         const v = f.values[fd.key] ?? '';
@@ -1329,6 +1363,7 @@ function RequestForm({
                 fd.span2 ||
                 inlines.length > 0 ||
                 fd.kind === 'lineItems' ||
+                fd.kind === 'psQuoteAttachments' ||
                 fd.kind === 'images' ||
                 fd.kind === 'textarea' ||
                 fd.kind === 'checkboxes'

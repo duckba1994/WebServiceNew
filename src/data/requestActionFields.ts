@@ -13,7 +13,7 @@
 //  ที่มาของรายการ: API_v2_2 §3 (ฟิลด์ทั้งหมดที่ endpoint action รับได้)
 // ───────────────────────────────────────────────────────────────
 
-export type ActionFieldType = 'text' | 'textarea' | 'date' | 'select' | 'score';
+export type ActionFieldType = 'text' | 'textarea' | 'date' | 'select' | 'score' | 'boolean';
 
 export interface ActionField {
   name: string;
@@ -57,6 +57,23 @@ export const ACTION_FIELDS: Record<string, ActionField> = {
     type: 'textarea',
     wide: true,
     placeholder: 'สรุปสิ่งที่ทำไป / ความคืบหน้า',
+  },
+  planCompleteDate: {
+    name: 'planCompleteDate',
+    label: 'วันที่คาดว่าจะแล้วเสร็จ',
+    type: 'date',
+  },
+  accepted: {
+    name: 'accepted',
+    label: 'ผลการพิจารณางาน',
+    type: 'boolean',
+  },
+  notAcceptedDetail: {
+    name: 'notAcceptedDetail',
+    label: 'เหตุผลที่ไม่ยอมรับงาน',
+    type: 'textarea',
+    wide: true,
+    placeholder: 'ระบุสิ่งที่ยังต้องแก้ไขหรือดำเนินการเพิ่ม',
   },
   // PL: ผลการดำเนินงาน (คนละช่องกับ solve ของฝั่ง IT)
   actionDetail: {
@@ -155,7 +172,7 @@ export const OPTIONAL_GROUPS: Record<string, OptionalGroup[]> = {
 // CR: ปิดงานรับ actionDetail ได้ 1 ช่อง (ไม่บังคับ) แต่ไม่มี KPI — ช่องนั้นอยู่ในแผง
 //     ปิดงานของ CR เอง (CrClosePanel) ไม่ได้ผ่านกล่องนี้ · ใส่ไว้กัน KPI ของ IT
 //     หลุดไปโผล่กับใบ CR ถ้าวันหนึ่ง action close ตกมาที่กล่องยืนยัน
-const NO_CLOSE_FIELDS = new Set(['PL', 'CR', 'AF']);
+const NO_CLOSE_FIELDS = new Set(['PL', 'CR', 'AF', 'SV']);
 
 export const optionalGroupsOf = (actionCode: string, module?: string): OptionalGroup[] => {
   if (actionCode === 'close' && module && NO_CLOSE_FIELDS.has(module)) return [];
@@ -164,7 +181,7 @@ export const optionalGroupsOf = (actionCode: string, module?: string): OptionalG
 
 // ── ค่าที่ส่งกลับไปให้ API ─────────────────────────────────────
 // ค่าเป็น object ได้ด้วย — บาง action ส่งกลุ่มค่ารายข้อ (survey: surveyRatings)
-export type ActionFieldValue = string | number | Record<string, number>;
+export type ActionFieldValue = string | number | boolean | Record<string, number>;
 export type ActionFieldValues = Record<string, ActionFieldValue>;
 
 // ตัดช่องว่าง ทิ้งค่าว่าง (API: "ฟิลด์ที่ไม่ส่งมา = คงค่าเดิมใน DB ไว้"
@@ -173,6 +190,8 @@ export function cleanFieldValues(values: ActionFieldValues): ActionFieldValues |
   const out: ActionFieldValues = {};
   for (const [k, v] of Object.entries(values)) {
     if (typeof v === 'number') {
+      out[k] = v;
+    } else if (typeof v === 'boolean') {
       out[k] = v;
     } else if (typeof v === 'string') {
       if (v.trim() !== '') out[k] = v.trim();
@@ -213,6 +232,7 @@ export function missingRequired(required: string[], values: ActionFieldValues): 
   return required.filter((name) => {
     const v = values[name];
     if (typeof v === 'number') return Number.isNaN(v);
+    if (typeof v === 'boolean') return false;
     return !v || String(v).trim() === '';
   });
 }
