@@ -10,6 +10,18 @@ const Wrapper = () => {
 
 const button = (name: string) => screen.getByRole('button', { name });
 
+test('read-only detail shows saved checks without applying defaults and cannot change any row', () => {
+  const change = jest.fn();
+  render(<PsQuoteAttachmentTable disabled value={JSON.stringify({ '1': { selected: true, documents: { other: true } }, '8': { selected: true, province: 'สงขลา' } })} onChange={change} />);
+  expect(button('เลือกลำดับ 1 อะไหล่แท้ มือ 1')).toBeDisabled();
+  expect(button('ใบประเมิน — ลำดับ 1 อะไหล่แท้ มือ 1')).toHaveAttribute('aria-pressed', 'false');
+  expect(button('อื่น ๆ — ลำดับ 1 อะไหล่แท้ มือ 1')).toHaveAttribute('aria-pressed', 'true');
+  expect(screen.getByLabelText('จังหวัด — ลำดับ 8')).toHaveValue('สงขลา');
+  expect(screen.getByLabelText('จังหวัด — ลำดับ 8')).toBeDisabled();
+  fireEvent.click(button('เลือกลำดับ 1 อะไหล่แท้ มือ 1'));
+  expect(change).not.toHaveBeenCalled();
+});
+
 test('ต้องเลือกลำดับก่อน และลำดับ 1 ใช้ default ที่กำหนด', () => {
   render(<Wrapper />);
 

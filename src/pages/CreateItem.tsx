@@ -38,6 +38,9 @@ import { DeptRequestModule, createDeptRequest, isDeptRequestModule } from '../ap
 import { toDeptRequestPayload } from '../data/deptRequestForm';
 import { createAfRequest } from '../api/afRequest';
 import { toAfRequestPayload } from '../data/afRequestForm';
+import { createPsRequest } from '../api/psRequest';
+import { toPsRequestPayload } from '../data/psRequestForm';
+import { apiErrorText } from '../api/client';
 import { createHrPrRequest } from '../api/hrPrRequest';
 import { toHrPrRequestPayload } from '../data/hrPrRequestForm';
 import { createSqaRequest } from '../api/sqaRequest';
@@ -350,10 +353,10 @@ function RequestForm({
 
   const { user, isAuthenticated, sessionExpired } = useAuth();
   // ตัวเลือกของแผนก PL (ประเภท / เรื่องที่แจ้ง / หน่วย) — มาจาก GET /MasterData/pl
-  // ทุกแผนกที่มีกล่อง "รายการที่ขอ" ใช้ชุด "หน่วย" ของ PL ร่วมกัน จึงต้องโหลดเส้นนี้ด้วย
-  // แม้จะไม่ใช่ใบของ PL (per user decision, 6 ก.ย. 2026)
+  // AF/PS ใช้หน่วยจาก endpoint ของแผนกตัวเองตาม write contract
+  // แผนกอื่นที่มีรายการย่อยยังใช้ชุดหน่วยของ PL ร่วมกัน
   const isPl = dep.departmentShort === 'PL';
-  const needsUnits = hasLineItems(cfg);
+  const needsUnits = hasLineItems(cfg) && !['AF', 'PS'].includes(dep.departmentShort);
   const plMaster = usePlMasterData(user?.token, isPl || needsUnits);
   // ตัวเลือกของแผนก CR (ส่วนงาน → ประเภทที่แจ้ง → รายละเอียดที่แจ้ง) — GET /MasterData/cr
   // ทุกฟอร์มที่มีช่อง "ส่วนงาน" ใช้รายการ HV/FL ชุดนี้ด้วย (ผู้ใช้สั่ง 6 ก.ย. 2026)
@@ -589,6 +592,7 @@ function RequestForm({
   };
 
   const submit = async () => {
+    if (sending) return;
     const e = validateRequestForm(f, optionlessKeys);
     setErrors(e);
     setSendError(null);
@@ -599,7 +603,7 @@ function RequestForm({
 
     // แผนกที่ยังไม่มี API — คงพฤติกรรมเดิม (UI-first)
     if (
-      !['IT', 'PL', 'CR', 'AF', 'HR-PR', 'SA', 'SV-HV'].includes(dep.departmentShort) &&
+      !['IT', 'PL', 'CR', 'AF', 'HR-PR', 'SA', 'SV-HV', 'PS'].includes(dep.departmentShort) &&
       !isDeptRequestModule(dep.departmentShort)
     ) {
       setSaved(true);
@@ -609,6 +613,27 @@ function RequestForm({
     // ฟอร์มยาว: เซสชันอาจหมดอายุระหว่างกรอก → เช็คก่อนยิง
     if (!isAuthenticated) {
       sessionExpired();
+      return;
+    }
+
+    if (dep.departmentShort === 'PS') {
+      setSending(true);
+      try {
+        const result = await createPsRequest(
+          toPsRequestPayload(f, f.values.reporterName ?? user?.name ?? ''),
+          user?.token
+        );
+        if (!result?.docNo?.trim()) {
+          setSendError('API ตอบกลับโดยไม่มีเลขที่ใบ PS กรุณาตรวจสอบกับผู้ดูแลก่อนส่งซ้ำ เพราะใบอาจถูกบันทึกแล้ว');
+          return;
+        }
+        setDocNo(result.docNo);
+        setSaved(true);
+      } catch (error) {
+        setSendError(apiErrorText(error, 'บันทึกใบแจ้งเรื่อง PS ไม่สำเร็จ'));
+      } finally {
+        setSending(false);
+      }
       return;
     }
 
@@ -899,9 +924,8 @@ function RequestForm({
           <>
             <LineItemsTable
               variant={fd.variant}
-              // หน่วยมาจาก GET /MasterData/pl ชุดเดียวสำหรับทุกแผนกที่มีกล่องนี้
-              // (ไม่ใช้ units ของ master รายแผนกแล้ว — คนละชุดทำให้หน่วยของใบไม่ตรงกัน)
-              units={dep.departmentShort === 'AF' ? deptMaster.unitNames : plMaster.unitNames}
+              // AF/PS ใช้ master ของตนเอง; แผนกอื่นใช้ชุดหน่วย PL
+              units={['AF', 'PS'].includes(dep.departmentShort) ? deptMaster.unitNames : plMaster.unitNames}
               value={f.lineItems}
               onChange={(items) => {
                 setF((prev) => ({ ...prev, lineItems: items }));
@@ -910,10 +934,10 @@ function RequestForm({
               accentColor={accentColor}
               invalid={bad}
             />
-            {plMaster.loading && (
+            {(['AF', 'PS'].includes(dep.departmentShort) ? deptMaster.loading : plMaster.loading) && (
               <span className="text-[11.5px] text-gray-400 dark:text-slate-500">กำลังโหลดหน่วย…</span>
             )}
-            {masterError(plMaster)}
+            {masterError(['AF', 'PS'].includes(dep.departmentShort) ? deptMaster : plMaster)}
           </>
         );
       case 'psQuoteAttachments':

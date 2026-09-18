@@ -104,6 +104,11 @@ import {
 } from '../../hooks/useRequestAttachments';
 import { useAuthedImage } from '../../hooks/useAuthedImage';
 import { useAuth } from '../../context/AuthContext';
+import { PsRequestPanel } from './PsRequestPanel';
+import { fetchRequestDetail } from '../../api/requests';
+import { DetailRow, InfoCard } from './RequestInfoCard';
+import { RequestLinesTable as PlLinesTable } from './RequestLinesTable';
+import { psWorkflowTabs } from '../../data/psWorkflowTabs';
 
 type Meta = { label: string; color: string; bg: string; border: string };
 
@@ -119,40 +124,11 @@ function Pill({ meta, dot }: { meta: Meta; dot?: boolean }) {
   );
 }
 
-function DetailRow({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div className="flex flex-col gap-1">
-      <span className="text-[11.5px] font-semibold text-gray-500 dark:text-slate-400">{label}</span>
-      <span className="text-[13px] text-gray-800 dark:text-slate-100">{children}</span>
-    </div>
-  );
-}
-
 // ── การ์ดกลุ่มข้อมูลในแท็บ General ────────────────────────────
 // แผง General เดิมเป็นตารางแบน ๆ ก้อนเดียว คนอ่านแยกไม่ออกว่าอะไรคือข้อมูล
 // "ผู้แจ้ง" อะไรคือ "เรื่องที่แจ้ง" — แบ่งเป็นการ์ดหัวข้อเหมือนหน้าสร้างใบ
 // (SectionCard ใน ui/FormControls) แต่ย่อส่วนลงให้พอดีความกว้างของ modal
 // ตัวการ์ดเป็น grid 2 คอลัมน์ในตัวเอง ของเดิมที่ใช้ col-span-2 จึงยกมาวางได้เลย
-function InfoCard({
-  title,
-  icon: Icon,
-  children,
-}: {
-  title: string;
-  icon: React.ElementType;
-  children: React.ReactNode;
-}) {
-  return (
-    <section className="overflow-hidden rounded-xl border border-gray-200 dark:border-slate-700">
-      <div className="flex items-center gap-2 border-b border-gray-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 px-4 py-2">
-        <Icon size={15} className="text-slate-400 dark:text-slate-500" />
-        <h5 className="text-[12.5px] font-bold text-gray-700 dark:text-slate-200">{title}</h5>
-      </div>
-      <div className="grid grid-cols-2 gap-x-5 gap-y-4 px-4 py-4">{children}</div>
-    </section>
-  );
-}
-
 // ── นิยาม 5 ขั้นของ stepper (อิงงานฝั่ง IT ตาม WinForms) ────────
 // reachedStep = wfStep ที่ขั้นนี้กลายเป็น "ขั้นปัจจุบัน"
 //   (IT: 1 อนุมัติ → 2 รับเรื่อง → 3 ดำเนินการ/ปิดงานรับเรื่อง → 4 สำรวจ → 5 ปิดงาน)
@@ -387,6 +363,7 @@ const STEP_TABS_BY_MODULE: Record<string, StepTab[]> = {
   HR_PR: HR_PR_STEP_TABS,
   SQA: SQA_STEP_TABS,
   SV: SV_STEP_TABS,
+  PS: psWorkflowTabs(),
 };
 
 // แผนกที่ยังไม่ได้ทำหน้าจอเฉพาะ ใช้ชุดของ IT ไปก่อน (ของเดิมก่อนแยกรายโมดูล)
@@ -396,7 +373,7 @@ const stepTabsOf = (module: string): StepTab[] => STEP_TABS_BY_MODULE[module] ??
 // โมดูลที่มีเส้นเปิดใบของตัวเอง (GET /{module}Request/{docNo}) และยกสิทธิ์แก้ไขให้ API
 // ตัดสิน — ใบหาย/ชนกันกลางทางต้องปิดหน้าต่างหรือโหลดค่าดิบใหม่ ไม่ใช่แค่ค่าจากเส้นกลาง
 const isApiDocModule = (module: string): boolean =>
-  isDeptRequestModule(module) || module === 'AF' || module === HR_PR_MODULE || module === SQA_MODULE;
+  isDeptRequestModule(module) || module === 'PS' || module === 'AF' || module === HR_PR_MODULE || module === SQA_MODULE;
 
 // เลขขั้นจริงของแท็บ — ยึด workflow ที่ API ส่งมาก่อนเสมอ (workflow เป็นข้อมูล ไม่ใช่โค้ด)
 // เลข reachedStep ที่ฝังไว้เป็นแค่ค่าสำรองตอน detail ยังโหลดไม่เสร็จ/โหลดไม่ได้
@@ -491,13 +468,15 @@ export function RequestDetailModal({
   // เลขขั้นของแต่ละแท็บยึดจาก workflow ที่ API ส่งมาก่อน (ค่าในโค้ดเป็นแค่ตัวสำรอง)
   const tabs = useMemo(
     () =>
-      stepTabsOf(item.module).map((t) => ({
+      item.module === 'PS' ? psWorkflowTabs(detail?.workflow) : stepTabsOf(item.module).map((t) => ({
         ...t,
         reachedStep: resolveReachedStep(t, detail?.workflow),
       })),
     [item.module, detail?.workflow]
   );
-  const claimedCodes = useMemo(() => claimedCodesOf(item.module), [item.module]);
+  const claimedCodes = useMemo(() => item.module === 'PS'
+    ? new Set(tabs.flatMap(tab => tab.actionCodes ?? []))
+    : claimedCodesOf(item.module), [item.module, tabs]);
 
   // ยิง action จากฟอร์มในแท็บ แล้วบังคับโหลดใบใหม่เพื่อดึงค่าที่เพิ่งบันทึกกลับมา
   const submitStep = async (action: RequestAction, fields: ActionFieldValues) => {
@@ -673,9 +652,10 @@ export function RequestDetailModal({
   // เดิน stepper ไปขั้นปัจจุบันเมื่อ wfStep เปลี่ยน (เช่นหลังกดรับเรื่อง → ไปแท็บดำเนินการ)
   // ไม่ override ตอนผู้ใช้กดดูแท็บอื่นเอง เพราะ wfStep ไม่เปลี่ยน effect จึงไม่ยิง
   const currentIndex = useMemo(
-    () => tabs.findIndex((t) => tabState(t) === 'current'),
+    () => item.module === 'PS' && actions.some(action => action.code === 'approve')
+      ? 0 : tabs.findIndex((t) => tabState(t) === 'current'),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [tabs, full.wfStep, closed, serviceDone]
+    [tabs, full.wfStep, closed, serviceDone, item.module, actions]
   );
   useEffect(() => {
     if (currentIndex !== -1) setSelected(currentIndex);
@@ -704,6 +684,8 @@ export function RequestDetailModal({
     dismissNotice: dismissEditNotice,
   } = useRequestEdit(user?.token);
   const [editing, setEditing] = useState(false);
+  const [psEditing, setPsEditing] = useState(false);
+  const [psToolbar, setPsToolbar] = useState<HTMLDivElement | null>(null);
   // สิทธิ์แก้ไข = กติกาหน้าเว็บ AND canEdit ที่ API ส่งมา (PL/CR ส่งมาแล้ว, IT ยังไม่ส่ง
   // → undefined ถือว่าไม่คัดค้าน) backend ตรวจซ้ำตอน PUT อยู่ดี ปุ่มเป็นแค่ UX
   //
@@ -733,7 +715,7 @@ export function RequestDetailModal({
   const checklistBlockedReason = plDoc.doc?.checklistBlockedReason ?? null;
   // เปิดฟอร์มแก้ไขได้ถ้าแก้อะไรได้สักอย่าง — ปลายทางเปิดเข้ามาเพื่อจัดการรูปอย่างเดียวได้
   // (ฟิลด์หัวใบจะถูกล็อกไว้ให้ ดู fieldsEditable ใน RequestEditPanel)
-  const editable = !!onEdited && (canEditFields || canAttachFiles);
+  const editable = item.module !== 'PS' && !!onEdited && (canEditFields || canAttachFiles);
 
   // รูปที่ผู้ใช้เลือก/สั่งลบไว้แต่ยังไม่ได้ยิง — endpoint เป็นรายช่องและมีผลทันที
   // จึงต้องพักไว้เองเพื่อให้ "มีผลตอนกดบันทึก" เหมือนฟิลด์อื่นในฟอร์ม
@@ -1030,6 +1012,7 @@ export function RequestDetailModal({
           <div className="border-b border-gray-100 dark:border-slate-800 px-5 py-5">
             <div className="mb-3 flex items-center gap-2">
               <h4 className="text-[13px] font-bold text-gray-800 dark:text-slate-100">{activeTab.label}</h4>
+              {activeTab.key === 'general' && item.module === 'PS' && <div ref={setPsToolbar} className="ml-auto" />}
               {activeTab.key !== 'general' && (
                 <Pill meta={STATE_CHIP[activeState]} dot={activeState === 'current'} />
               )}
@@ -1047,7 +1030,24 @@ export function RequestDetailModal({
               )}
             </div>
 
-            {activeTab.key === 'general' ? (
+            {activeTab.key === 'general' && item.module === 'PS' ? (
+              <PsRequestPanel
+                toolbar={psToolbar}
+                departmentName={full.departmentName}
+                approveLogs={logs.filter(log => log.action === 'approve')}
+                docNo={item.docNo}
+                token={user?.token}
+                refreshKey={`${item.updatedDate ?? ''}|${item.wfStep ?? ''}|${refreshTick}`}
+                allowEdit={!!onEdited}
+                onEditingChange={setPsEditing}
+                onSaved={async () => {
+                  setRefreshTick(tick => tick + 1);
+                  const latest = await fetchRequestDetail('PS', item.docNo, user?.token);
+                  applyDetailItem(latest.item);
+                  onEdited?.(latest.item);
+                }}
+              />
+            ) : activeTab.key === 'general' ? (
               <GeneralPanel
                 item={item}
                 full={full}
@@ -1261,7 +1261,7 @@ export function RequestDetailModal({
 
             {/* ปุ่มในแท็บ General (อนุมัติ/ไม่อนุมัติ/ยกเลิก…) — ผ่านกล่องยืนยันเหมือน action อื่น
                 รับทุก action ที่ไม่มีแท็บอื่นแสดงให้ ไม่ว่าแผนกนั้นตั้งชื่อ code ว่าอะไร */}
-            {activeTab.key === 'general' && !editing && onPickAction && generalActions.length > 0 && (
+            {activeTab.key === 'general' && !editing && !psEditing && onPickAction && generalActions.length > 0 && (
               <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-gray-100 dark:border-slate-800 pt-4">
                 {generalActions.map((a) => (
                   <button
@@ -2522,80 +2522,6 @@ function DeptAttachList({ module, doc }: { module: string; doc: DeptRequestDetai
 // ── ตารางรายการที่ขอของใบ PL (อ่านอย่างเดียว) ──────────────────
 // แถวที่ cancel = true คือแถวที่ถูกยกเลิกไปแล้วแต่ยังเก็บไว้เป็นประวัติ
 // → แสดงจาง + ขีดฆ่า ไม่ใช่ซ่อน (ผู้อนุมัติต้องเห็นว่าเคยขออะไรมาก่อน)
-function PlLinesTable({
-  lines,
-  loading,
-  error,
-  showReceived,
-}: {
-  lines: PlRequestLine[] | null;
-  loading: boolean;
-  error: string | null;
-  // "รับจำนวน" มีความหมายหลังปลายทางเริ่มจ่ายของแล้ว — ตอนขอยังเป็น 0 ทุกแถว
-  // จึงโชว์เฉพาะแท็บ Attachment / Service ไม่ใช่หน้า General
-  showReceived?: boolean;
-}) {
-  if (loading)
-    return (
-      <span className="flex items-center gap-1.5 text-[13px] text-slate-400 dark:text-slate-500">
-        <IconLoader2 size={14} className="animate-spin" />
-        กำลังโหลดรายการ…
-      </span>
-    );
-
-  if (error)
-    return (
-      <span className="flex items-center gap-1.5 text-[12.5px] font-semibold text-amber-700 dark:text-amber-300">
-        <IconAlertTriangle size={14} className="shrink-0" />
-        {error}
-      </span>
-    );
-
-  if (!lines || lines.length === 0)
-    return <span className="text-[13px] text-slate-400 dark:text-slate-500">— ใบนี้ไม่มีรายการที่ขอ</span>;
-
-  return (
-    <div className="overflow-hidden rounded-xl border border-gray-200 dark:border-slate-700">
-      <table className="w-full border-collapse">
-        <thead>
-          <tr className="bg-[#0b1220] text-[11.5px] font-semibold text-slate-300 dark:text-slate-600">
-            <th className="w-10 px-2 py-2 text-center">#</th>
-            <th className="px-2 py-2 text-left">รายการ</th>
-            <th className="w-20 px-2 py-2 text-center">จำนวน</th>
-            {showReceived && <th className="w-20 px-2 py-2 text-center">รับจำนวน</th>}
-            <th className="w-24 px-2 py-2 text-center">หน่วย</th>
-            <th className="px-2 py-2 text-left">หมายเหตุ</th>
-          </tr>
-        </thead>
-        <tbody>
-          {lines.map((li, i) => (
-            <tr
-              key={li.recNo}
-              className={`border-b border-[#eef1f6] dark:border-slate-800 text-[12.5px] last:border-b-0 ${
-                li.cancel ? 'bg-slate-50 dark:bg-slate-800/60 text-slate-400 dark:text-slate-500 line-through' : 'bg-white dark:bg-slate-900 text-gray-800 dark:text-slate-100'
-              }`}
-              title={li.cancel ? `ยกเลิกโดย ${li.cancelBy || '—'}` : undefined}
-            >
-              <td className="mono px-2 py-2 text-center text-slate-400 dark:text-slate-500">{i + 1}</td>
-              <td className="px-2 py-2">{li.item}</td>
-              <td className="mono px-2 py-2 text-center">{li.qty}</td>
-              {showReceived && (
-                <td className="mono px-2 py-2 text-center">
-                  {/* รับครบแล้วเน้นเขียว ยังไม่ครบเป็นสีส้ม — เห็นได้ทันทีว่าค้างแถวไหน */}
-                  <span className={li.received >= li.qty ? 'font-semibold text-emerald-700 dark:text-emerald-300' : 'text-amber-700 dark:text-amber-300'}>
-                    {li.received}
-                  </span>
-                </td>
-              )}
-              <td className="px-2 py-2 text-center">{li.unit || '—'}</td>
-              <td className="px-2 py-2">{li.remark || '—'}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
-}
 
 type PlLinesState = { lines: PlRequestLine[] | null; loading: boolean; error: string | null };
 
