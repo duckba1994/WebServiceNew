@@ -1,9 +1,10 @@
 import { apiGet, apiSend } from './client';
 import { PsPrelimApi } from '../types/masterData';
-import { RequestAttachment } from '../types/requestList';
+import { PsReportStatus, RequestAttachment } from '../types/requestList';
 
 // POST /PSRequest: attachment is the form checklist, not uploaded files.
 export interface PsRequestPayload {
+  rpDetailId?: string | null;
   requestBy?: string;
   type: string;
   requestType: string;
@@ -21,6 +22,7 @@ export interface PsRequestPayload {
 }
 
 export interface PsRequestResult {
+  reportStatus?: PsReportStatus | null;
   docNo: string;
   canEdit?: boolean;
   canEditAttachment?: boolean;
@@ -31,6 +33,7 @@ export const createPsRequest = (payload: PsRequestPayload, token?: string): Prom
 
 export interface PsRequestDetail extends PsRequestResult {
   form: Omit<PsRequestPayload, 'lines'> & { departid?: string; docDate?: string };
+  service?: PsServiceDetail;
   prelim?: PsPrelimApi | null;
   lines: (PsRequestPayload['lines'][number] & { recNo: string; received?: number; cancel?: boolean; cancelBy?: string | null; cancelDate?: string | null })[];
   attachments?: RequestAttachment[];
@@ -46,3 +49,32 @@ export const fetchPsRequest = (docNo: string, token?: string) =>
   apiGet<PsRequestDetail>(psPath(docNo), token);
 export const updatePsRequest = (docNo: string, payload: PsRequestUpdate, token?: string) =>
   apiSend<PsRequestDetail>(psPath(docNo), 'PUT', payload, token);
+
+export interface PsReportStatusOption {
+  rpStep: string;
+  rpStatus: string;
+  rpId: string;
+  rpName: string;
+  details: { step: string; rpDetailId: string; rpDetailName: string }[];
+}
+export interface PsServiceDetail {
+  action?: string | null;
+  actionDetail?: string | null;
+  workResults?: string | null;
+  wrDetail?: string | null;
+  otherRemark?: string | null;
+  leadTime?: number | null;
+  refPR?: string | null;
+  refPO?: string | null;
+  supplier?: string | null;
+  serviceBy?: string | null; // forward-compatible with the editable operator field
+  serviceDate?: string | null;
+  changeDate?: string | null;
+  remark?: string | null;
+}
+export const fetchPsReportStatuses = (token?: string) =>
+  apiGet<PsReportStatusOption[]>('/PSRequest/report-statuses', token);
+export const fetchPsReportDetails = (docNo: string, token?: string) =>
+  apiGet<PsReportStatusOption>(`${psPath(docNo)}/report-details`, token);
+export const updatePsReportDetail = (docNo: string, rpDetailId: string, token?: string) =>
+  apiSend<PsRequestDetail>(`${psPath(docNo)}/report-detail`, 'PUT', { rpDetailId }, token);

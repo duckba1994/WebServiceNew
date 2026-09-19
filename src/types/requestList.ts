@@ -132,6 +132,7 @@ export interface RequestResolution {
 }
 
 export interface RequestListItem {
+  reportStatus?: PsReportStatus | null;
   module: string;
   docNo: string; // เลขที่ใบ — เป็น string เสมอ ห้ามแปลงเป็นตัวเลข (เลข 0 นำหน้าจะหาย)
   requestBy: string | null;
@@ -172,6 +173,16 @@ export interface RequestListItem {
   planDate?: string | null; // วันที่ต้องการใช้งาน (PL)
   // หมายเหตุ: เช็คลิสต์เอกสารแนบ (attachBudget/attachSpec/…) ไม่ได้อยู่ในชุดนี้ —
   // มากับ GET /PLRequest/{docNo} เท่านั้น (ดู PlRequestDetail ใน api/plRequest.ts)
+}
+
+export interface PsReportStatus {
+  rpStep: string | null;
+  rpStatus: string | null;
+  rpId: string | null;
+  rpName: string | null;
+  rpDetailStep: string | null;
+  rpDetailId: string | null;
+  rpDetailName: string | null;
 }
 
 // ── ประวัติการดำเนินการรายเหตุการณ์ (timeline) ────────────────

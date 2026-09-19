@@ -138,6 +138,11 @@ export const fetchCrMasterData = (token?: string) =>
 export const fetchDeptMasterData = (dept: string, token?: string) =>
   apiGet<DeptMasterDataApi>(`/MasterData/${dept.toLowerCase()}`, token);
 
+export const fetchPsActions = (token?: string) =>
+  apiGet<string[]>('/MasterData/ps/actions', token);
+export const fetchPsWorkResults = (token?: string) =>
+  apiGet<string[]>('/MasterData/ps/work-results', token);
+
 // ── ใบประเมินของ PS (ดึงสดจากฐานระบบซ่อม — ดู PsPrelimApi) ──────
 // รายการคืนมาเป็นเลขที่ใบล้วน ๆ ราว 800 รายการ กรองต่อฝั่งหน้าเว็บได้เลย
 // take: ค่า default ของ API คือ 1000 — ส่ง 5000 (ค่าสูงสุด) ไว้กันรายการโดนตัดเงียบ ๆ

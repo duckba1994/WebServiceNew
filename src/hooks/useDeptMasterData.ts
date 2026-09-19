@@ -15,6 +15,11 @@ const toNameOptions = (rows: DeptMasterOptionApi[]): FieldOption[] =>
     .filter((r) => (r.name ?? '').trim() !== '')
     .map((r) => ({ value: r.name, label: r.name }));
 
+const toMixedNameOptions = (rows: (DeptMasterOptionApi | string)[]): FieldOption[] =>
+  rows.map(row => typeof row === 'string' ? row : row.name)
+    .filter(name => (name ?? '').trim() !== '')
+    .map(name => ({ value: name, label: name }));
+
 // กรองตามส่วนงานที่เลือก — แต่เฉพาะเมื่อ API ผูก section มากับแถวจริง ๆ
 // แผนกที่ไม่มีส่วนงาน (GA/IM/AF) ไม่มีฟิลด์ section ในฟอร์ม → ได้ทุกแถวเหมือนเดิม
 const bySection = <T extends DeptMasterOptionApi>(rows: T[], section: string): T[] =>
@@ -109,8 +114,8 @@ export function useDeptMasterData(dept: string | null, token?: string) {
   // ── ตัวเลือกของขั้นดำเนินการ (GA/IM) ──────────────────────────
   // ยังไม่มาจาก API — คืนรายการว่างไว้ก่อน หน้าจอเป็นคนบอกผู้ใช้ว่ายังเลือกไม่ได้
   // (ห้ามใส่รายการสำรอง — ค่าที่เก็บลง DB ต้องตรงกับที่ระบบเก่าใช้เป๊ะ)
-  const actionOptions = useMemo(() => toNameOptions(data.actions ?? []), [data.actions]);
-  const workResultOptions = useMemo(() => toNameOptions(data.workResults ?? []), [data.workResults]);
+  const actionOptions = useMemo(() => toMixedNameOptions(data.actions ?? []), [data.actions]);
+  const workResultOptions = useMemo(() => toMixedNameOptions(data.workResults ?? []), [data.workResults]);
 
   return {
     master: data,

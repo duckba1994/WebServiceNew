@@ -94,6 +94,7 @@ export const toPsUpdate = (draft: PsRequestDetail, original: PsRequestDetail): P
     });
     if (f.planPrice !== original.form.planPrice) result.planPrice = f.planPrice;
     if (f.prelimId !== original.form.prelimId) result.prelimId = f.prelimId ?? '';
+    if (f.rpDetailId !== original.form.rpDetailId) result.rpDetailId = f.rpDetailId;
   }
   if (original.canEditAttachment === true) Object.assign(result, {
     attachSpec: draft.form.attachSpec, attachQuatation: draft.form.attachQuatation,
@@ -109,6 +110,7 @@ export const toPsRequestPayload = (form: RequestFormState, requestBy: string): P
   const picked = checkedValues(values.psAttachDocs);
   return {
     requestBy,
+    ...(values.rpDetailId !== undefined ? { rpDetailId: values.rpDetailId } : {}),
     type: values.requestType ?? '',
     requestType: values.topic ?? '',
     requestDetail: (values.topicDetail ?? '').trim(),

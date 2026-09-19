@@ -91,12 +91,14 @@ export function DateQuickPick({
   invalid,
   min,
   inputClass,
+  disabled,
 }: {
   value: string; // 'YYYY-MM-DD' ('' = ยังไม่เลือก)
   onChange: (v: string) => void;
   invalid?: boolean;
   min?: string; // วันที่ย้อนหลังกว่านี้เลือกไม่ได้ (ไม่ระบุ = เลือกได้ทุกวัน)
   inputClass: string; // สไตล์ช่องกรอกของฟอร์มที่เรียกใช้ (ไม่ตั้งเอง จะได้หน้าตาเดียวกัน)
+  disabled?: boolean;
 }) {
   const label = thaiDateLabel(value);
 
@@ -109,6 +111,7 @@ export function DateQuickPick({
           type="date"
           value={value}
           min={min}
+          disabled={disabled}
           onChange={(e) => onChange(e.target.value)}
           className={`${inputClass} mono w-auto shrink-0`}
         />

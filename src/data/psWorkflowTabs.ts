@@ -6,6 +6,7 @@ export interface PsWorkflowTab {
   reachedStep: number;
   logAction: string;
   actionCodes: string[];
+  panelCodes?: string[];
   wfCodes?: string[];
 }
 
@@ -19,9 +20,9 @@ export function psWorkflowTabs(workflow?: RequestWorkflow | null): PsWorkflowTab
     const code = step.code.trim();
     if (code === 'Approved-Request') continue;
     const spec = code === 'Receive-Request'
-      ? { label: 'รับเรื่อง', logAction: 'receive', actionCodes: ['saveService', 'receive'] }
+      ? { label: 'รับเรื่อง', logAction: 'receive', actionCodes: ['receive', 'return'] }
       : code === 'Service' || code === 'Service And Close-Job'
-        ? { label: code === 'Service And Close-Job' ? 'ดำเนินการและปิดงาน' : 'ดำเนินการ', logAction: 'service', actionCodes: ['saveService', 'service'] }
+        ? { label: code === 'Service And Close-Job' ? 'ดำเนินการและปิดงาน' : 'ดำเนินการ', logAction: 'service', actionCodes: [], panelCodes: ['saveService', 'service'] }
         : code === 'Received-Service'
           ? { label: 'รับงาน', logAction: 'acceptWork', actionCodes: ['acceptWork'] }
           : code === 'Close-Job' || code === 'Request-Close-Job'

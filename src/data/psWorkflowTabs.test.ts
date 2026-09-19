@@ -10,8 +10,9 @@ test('new PS tickets use only the three-step API workflow', () => {
   const tabs = psWorkflowTabs(workflow(['Approved-Request', 'Receive-Request', 'Service And Close-Job']));
   expect(tabs.map(tab => tab.label)).toEqual(['General', 'รับเรื่อง', 'ดำเนินการและปิดงาน']);
   expect(tabs.map(tab => tab.reachedStep)).toEqual([0, 2, 3]);
-  expect(tabs[1].actionCodes).toContain('saveService');
-  expect(tabs[2].actionCodes).toEqual(['saveService', 'service']);
+  expect(tabs[1].actionCodes).toEqual(['receive', 'return']);
+  expect(tabs[2].actionCodes).toEqual([]);
+  expect(tabs[2].panelCodes).toEqual(['saveService', 'service']);
 });
 test('legacy six-step tickets retain accept and close; both approvals stay on General', () => {
   const tabs = psWorkflowTabs(workflow(['Approved-Request', 'Receive-Request', 'Approved-Request', 'Service', 'Received-Service', 'Close-Job']));

@@ -368,6 +368,6 @@ export interface DeptMasterDataApi {
   // ⚠️ ยังไม่มีในเส้น /MasterData/{ga|im} ที่เปิดใช้อยู่ — backend จะเพิ่มให้ทีหลัง
   // (ผู้ใช้ยืนยัน 9 ก.ย. 2026: ทำ UI รอไว้ก่อน) ไม่มา = ช่องเลือกจะขึ้นว่าโหลดไม่สำเร็จ
   // ห้ามใส่รายการสำรองไว้ในโค้ด — ชื่อที่พิมพ์เองจะไม่ตรงกับที่ระบบเก่าเก็บไว้
-  actions?: DeptMasterOptionApi[]; // ดำเนินการโดย (CmbAction ของเว็บเก่า)
-  workResults?: DeptMasterOptionApi[]; // ผลการดำเนินงาน (CmbWorkResults ของเว็บเก่า)
+  actions?: (DeptMasterOptionApi | string)[]; // PS ส่ง string[]; บางแผนกส่ง option rows
+  workResults?: (DeptMasterOptionApi | string)[];
 }

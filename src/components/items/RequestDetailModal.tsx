@@ -105,6 +105,8 @@ import {
 import { useAuthedImage } from '../../hooks/useAuthedImage';
 import { useAuth } from '../../context/AuthContext';
 import { PsRequestPanel } from './PsRequestPanel';
+import { PsReportStatusPanel } from './PsReportStatusPanel';
+import { PsServicePanel } from './PsServicePanel';
 import { fetchRequestDetail } from '../../api/requests';
 import { DetailRow, InfoCard } from './RequestInfoCard';
 import { RequestLinesTable as PlLinesTable } from './RequestLinesTable';
@@ -474,8 +476,12 @@ export function RequestDetailModal({
       })),
     [item.module, detail?.workflow]
   );
+  // PS builds its tabs entirely from the workflow returned by the detail API.
+  // While that request is in flight, psWorkflowTabs(null) contains only General;
+  // rendering it makes the stepper appear to grow a moment later.
+  const psWorkflowLoading = item.module === 'PS' && detailLoading && !detail?.workflow;
   const claimedCodes = useMemo(() => item.module === 'PS'
-    ? new Set(tabs.flatMap(tab => tab.actionCodes ?? []))
+    ? new Set(tabs.flatMap(tab => [...(tab.actionCodes ?? []), ...(tab.panelCodes ?? [])]))
     : claimedCodesOf(item.module), [item.module, tabs]);
 
   // ยิง action จากฟอร์มในแท็บ แล้วบังคับโหลดใบใหม่เพื่อดึงค่าที่เพิ่งบันทึกกลับมา
@@ -922,7 +928,12 @@ export function RequestDetailModal({
           </div>
           <div className="no-scrollbar overflow-x-auto pb-1 pt-1.5">
             <ol className="flex w-full items-start">
-              {tabs.map((t, i) => {
+              {psWorkflowLoading ? (
+                <li className="flex min-h-[52px] w-full items-center justify-center gap-2 text-[12px] font-semibold text-slate-500 dark:text-slate-400" aria-busy="true">
+                  <IconLoader2 size={16} className="animate-spin" />
+                  กำลังโหลดลำดับขั้นตอน PS…
+                </li>
+              ) : tabs.map((t, i) => {
                 const state = tabState(t);
                 const done = state === 'done';
                 const current = state === 'current';
@@ -1031,6 +1042,21 @@ export function RequestDetailModal({
             </div>
 
             {activeTab.key === 'general' && item.module === 'PS' ? (
+              <>
+              {full.reportStatus && <PsReportStatusPanel
+                key={`${item.docNo}|${refreshTick}`}
+                status={full.reportStatus} docNo={item.docNo} token={user?.token}
+                // During the workflow this field belongs to the PS service form. The standalone
+                // editor remains for post-close PR/PO progress, which has no active service tab.
+                canUpdate={!!onEdited && full.phase === 'closed' && !!user?.departid &&
+                  [...(detail?.workflow?.steps ?? [])].sort((a, b) => b.step - a.step)[0]?.departId === user.departid}
+                onSaved={async () => {
+                  setRefreshTick(tick => tick + 1);
+                  const latest = await fetchRequestDetail('PS', item.docNo, user?.token);
+                  applyDetailItem(latest.item);
+                  onEdited?.(latest.item);
+                }}
+              />}
               <PsRequestPanel
                 toolbar={psToolbar}
                 departmentName={full.departmentName}
@@ -1046,6 +1072,17 @@ export function RequestDetailModal({
                   applyDetailItem(latest.item);
                   onEdited?.(latest.item);
                 }}
+              />
+              </>
+            ) : item.module === 'PS' && activeTab.panelCodes?.includes('saveService') ? (
+              <PsServicePanel
+                docNo={item.docNo}
+                token={user?.token}
+                refreshKey={`${item.updatedDate ?? ''}|${item.wfStep ?? ''}|${refreshTick}`}
+                userName={user?.name ?? ''}
+                actions={actions.filter(action => activeTab.panelCodes?.includes(action.code))}
+                pending={!!actionPending || detailLoading}
+                onSubmit={onStepSubmit ? submitStep : undefined}
               />
             ) : activeTab.key === 'general' ? (
               <GeneralPanel
