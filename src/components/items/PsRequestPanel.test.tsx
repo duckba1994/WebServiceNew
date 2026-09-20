@@ -6,6 +6,8 @@ import { usePsRequest } from '../../hooks/usePsRequest';
 import { updatePsRequest, PsRequestDetail } from '../../api/psRequest';
 import { toPsAttachment } from '../../data/psRequestForm';
 import { fetchAddresses } from '../../api/masterData';
+import { DraftScope } from '../../hooks/useSessionDraft';
+import { clearDraftSession, startDraftSession, suspendDraftSession } from '../../utils/sessionDrafts';
 
 jest.mock('../../hooks/usePsRequest');
 jest.mock('../../api/masterData', () => ({ fetchAddresses: jest.fn(() => new Promise(() => {})) }));
@@ -33,9 +35,30 @@ const reload = jest.fn();
 const saved = jest.fn().mockResolvedValue(undefined);
 const renderPanel = () => render(<PsRequestPanel docNo="PS-01" refreshKey="1" token="token" allowEdit onSaved={saved} onEditingChange={jest.fn()} />);
 beforeEach(() => {
+  clearDraftSession();
   jest.clearAllMocks();
   (fetchAddresses as jest.Mock).mockImplementation(() => new Promise(() => {}));
   load.mockReturnValue({ doc: doc(), error: null, reload });
+});
+afterEach(() => clearDraftSession());
+
+test('PS reopens edit mode and draft while checking fresh API permissions', () => {
+  startDraftSession('alice');
+  const app = <DraftScope name="PS::PS-01"><PsRequestPanel docNo="PS-01" refreshKey="1" token="token" allowEdit onSaved={saved} onEditingChange={jest.fn()} /></DraftScope>;
+  const first = render(app);
+  fireEvent.click(screen.getByRole('button', { name: 'แก้ไขข้อมูล PS' }));
+  fireEvent.change(screen.getByLabelText('ระบุเรื่องที่แจ้ง'), { target: { value: 'ร่าง PS ที่ยังไม่บันทึก' } });
+  suspendDraftSession('/inbox'); first.unmount();
+  startDraftSession('alice', true);
+  load.mockReturnValue({ doc: null, error: null, reload });
+  const next = render(app);
+  expect(screen.getByText('ร่าง PS ที่ยังไม่บันทึก')).toBeInTheDocument();
+  expect(update).not.toHaveBeenCalled();
+  load.mockReturnValue({ doc: doc(), error: null, reload });
+  next.rerender(<DraftScope name="PS::PS-01"><PsRequestPanel docNo="PS-01" refreshKey="1" token="new-token" allowEdit onSaved={saved} onEditingChange={jest.fn()} /></DraftScope>);
+  expect(screen.getByLabelText('ระบุเรื่องที่แจ้ง')).toHaveValue('ร่าง PS ที่ยังไม่บันทึก');
+  expect(screen.getByRole('button', { name: 'บันทึกการแก้ไข' })).toBeInTheDocument();
+  expect(update).not.toHaveBeenCalled();
 });
 
 test('PS detail shows actual document numbers and saved table before the estimate section', () => {

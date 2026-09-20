@@ -1,4 +1,5 @@
-import React, { useMemo, useState } from 'react';
+import { useSessionDraft } from '../hooks/useSessionDraft';
+import React, { useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { IconBell } from '@tabler/icons-react';
 import { Layout } from '../components/layout/Layout';
@@ -29,16 +30,16 @@ export function MyItems() {
   // อ่านครั้งเดียวตอน mount แล้วปล่อยให้ state คุมต่อ — ไม่งั้นผู้ใช้กดเปลี่ยนตัวกรอง
   // แล้ว URL เดิมจะดึงกลับไปค่าเดิมทุกครั้งที่ re-render
   const [searchParams] = useSearchParams();
-  const [status, setStatus] = useState<StatusFilter>('All');
-  const [phase, setPhase] = useState<RequestPhase | null>(
+  const [status, setStatus] = useSessionDraft<StatusFilter>('MyItems.status', 'All');
+  const [phase, setPhase] = useSessionDraft<RequestPhase | null>('MyItems.phase',
     () => (searchParams.get('phase') as RequestPhase | null) || null
   );
-  const [ourTurnOnly, setOurTurnOnly] = useState(() => searchParams.get('ourturn') === '1');
+  const [ourTurnOnly, setOurTurnOnly] = useSessionDraft('MyItems.ourTurnOnly', () => searchParams.get('ourturn') === '1');
   // ช่วงวันที่แจ้ง — กรองที่ API (dateFrom/dateTo) ไม่ใช่กรองในตาราง
   // ตั้งต้น "เดือนนี้" (วันที่ 1 → สิ้นเดือน): ดึงทั้งฐานมาทุกครั้งไม่ไหวเมื่อใบสะสมมากขึ้น
   // ใบเก่ากว่านั้นยังหาได้ด้วยปุ่ม "3 เดือน" / "ปีนี้" / "ทั้งหมด" / กำหนดเอง
-  const [rangeKey, setRangeKey] = useState<DateRangeKey>('month');
-  const [range, setRange] = useState<DateRangeValue>(() => rangeOf('month'));
+  const [rangeKey, setRangeKey] = useSessionDraft<DateRangeKey>('MyItems.rangeKey', 'month');
+  const [range, setRange] = useSessionDraft<DateRangeValue>('MyItems.range', () => rangeOf('month'));
   const rangeInvalid = isRangeInvalid(range);
 
   // กรอง phase ที่ backend — phaseSummary ยังคืนยอดเต็มทุกครั้ง
@@ -110,7 +111,7 @@ export function MyItems() {
       });
     }
     return cards;
-  }, [phaseSummary, phase]);
+  }, [phaseSummary, phase, setPhase]);
 
   const visible = useMemo(
     () => (ourTurnOnly ? items.filter(isRequesterSide) : items),

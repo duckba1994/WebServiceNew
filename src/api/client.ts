@@ -32,7 +32,7 @@ export async function apiFetch(path: string, opts: ApiOptions = {}): Promise<Res
   if (!res.ok) console.error(`[api] ${opts.method ?? 'GET'} ${apiUrl(path)} → HTTP ${res.status}`);
 
   if (res.status === 401 && !opts.noAuthEvent) {
-    window.dispatchEvent(new Event(AUTH_UNAUTHORIZED_EVENT));
+    window.dispatchEvent(new CustomEvent(AUTH_UNAUTHORIZED_EVENT, { detail: { token: opts.token } }));
     throw new Error('เซสชันหมดอายุ กรุณาเข้าสู่ระบบใหม่');
   }
   return res;

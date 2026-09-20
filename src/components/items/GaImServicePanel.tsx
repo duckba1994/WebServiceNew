@@ -1,3 +1,4 @@
+import { useSessionDraft } from '../../hooks/useSessionDraft';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { RequestAction, RequestActionResult, RequestListItem } from '../../types/requestList';
 import { ActionFieldValues } from '../../data/requestActionFields';
@@ -15,7 +16,7 @@ export function GaImServicePanel({ item, actions, pending, onSubmit }: {
   pending: boolean;
   onSubmit?: (action: RequestAction, fields: ActionFieldValues) => Promise<RequestActionResult | null | void>;
 }) {
-  const [form, setForm] = useState(() => toDeptServiceForm(item));
+  const [form, setForm] = useSessionDraft('GaImServicePanel.form', () => toDeptServiceForm(item));
   const [error, setError] = useState<string | null>(null);
   const dirty = useRef(false);
   const submitting = useRef(false);
@@ -28,8 +29,8 @@ export function GaImServicePanel({ item, actions, pending, onSubmit }: {
   const resolution = item.resolution;
 
   useEffect(() => {
-    if (!dirty.current || !editable) setForm(toDeptServiceForm(item));
-  }, [item, editable]);
+    if (!dirty.current || !editable) setForm.hydrate(toDeptServiceForm(item));
+  }, [item, editable, setForm]);
 
   const actionOptions = useMemo(() => {
     const values = DEPT_SERVICE_ACTIONS[item.module] ?? [];

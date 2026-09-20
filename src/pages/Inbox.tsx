@@ -1,4 +1,5 @@
-import React, { useMemo, useState } from 'react';
+import { useSessionDraft } from '../hooks/useSessionDraft';
+import React, { useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { IconBell } from '@tabler/icons-react';
 import { Layout } from '../components/layout/Layout';
@@ -24,9 +25,9 @@ export function Inbox() {
   const [searchParams] = useSearchParams();
   const urlPhase = (searchParams.get('phase') as RequestPhase | null) || null;
   // มาจากลิงก์ "ปิดงานแล้ว" ต้องเปิด status เป็น All ไม่งั้นค่าตั้งต้น Open จะกรองทิ้งหมด
-  const [status, setStatus] = useState<StatusFilter>(urlPhase ? 'All' : 'Open');
-  const [onlyMyTurn, setOnlyMyTurn] = useState(() => searchParams.get('myturn') === '1');
-  const [phase, setPhase] = useState<RequestPhase | null>(urlPhase);
+  const [status, setStatus] = useSessionDraft<StatusFilter>('Inbox.status', urlPhase ? 'All' : 'Open');
+  const [onlyMyTurn, setOnlyMyTurn] = useSessionDraft('Inbox.onlyMyTurn', () => searchParams.get('myturn') === '1');
+  const [phase, setPhase] = useSessionDraft<RequestPhase | null>('Inbox.phase', urlPhase);
 
   // โมดูลของคิวนี้ = แผนกของคนที่ล็อกอิน ไม่ใช่ค่าคงที่ — ห้ามฮาร์ดโค้ด 'IT'
   // ไม่งั้นผู้ใช้แผนกอื่น (PL/HR/SV) จะเห็นคิวของ IT แล้วนึกว่าไม่มีงานเข้า
@@ -95,7 +96,7 @@ export function Inbox() {
       });
     }
     return cards;
-  }, [phaseSummary, phase]);
+  }, [phaseSummary, phase, setPhase]);
 
   return (
     <Layout

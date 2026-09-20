@@ -1,3 +1,4 @@
+import { useSessionDraft } from '../../hooks/useSessionDraft';
 import { useEffect, useRef, useState } from 'react';
 import { RequestAction, RequestActionResult } from '../../types/requestList';
 import { ActionFieldValues, cleanFieldValues } from '../../data/requestActionFields';
@@ -10,12 +11,12 @@ const LABEL = 'mb-1 block text-[12px] font-semibold text-gray-600 dark:text-slat
 type Submit = (action: RequestAction, fields: ActionFieldValues) => Promise<RequestActionResult | null | void>;
 
 export function SqaReceivePanel({ doc, actions, pending, onSubmit }: { doc: SqaRequestDetail | null; actions: RequestAction[]; pending: boolean; onSubmit?: Submit }) {
-  const [value, setValue] = useState('');
+  const [value, setValue] = useSessionDraft('SqaReceivePanel.value', '');
   const [touched, setTouched] = useState(false);
   const dirty = useRef(false);
   useEffect(() => {
-    if (!dirty.current) setValue(doc?.requestService ?? '');
-  }, [doc?.requestService]);
+    if (!dirty.current) setValue.hydrate(doc?.requestService ?? '');
+  }, [doc?.requestService, setValue]);
   const save = actions.find((item) => item.code === 'saveReceive');
   const receive = actions.find((item) => item.code === 'receive');
   if ((!save && !receive) || !onSubmit) {
@@ -39,17 +40,17 @@ export function SqaReceivePanel({ doc, actions, pending, onSubmit }: { doc: SqaR
 }
 
 export function SqaServicePanel({ doc, actions, pending, onSubmit }: { doc: SqaRequestDetail | null; actions: RequestAction[]; pending: boolean; onSubmit?: Submit }) {
-  const [serviceStd, setServiceStd] = useState('');
-  const [serviceDetail, setServiceDetail] = useState('');
-  const [servicePosition, setServicePosition] = useState('');
+  const [serviceStd, setServiceStd] = useSessionDraft('SqaServicePanel.serviceStd', '');
+  const [serviceDetail, setServiceDetail] = useSessionDraft('SqaServicePanel.serviceDetail', '');
+  const [servicePosition, setServicePosition] = useSessionDraft('SqaServicePanel.servicePosition', '');
   const [touched, setTouched] = useState(false);
   const dirty = useRef(false);
   useEffect(() => {
     if (dirty.current) return;
-    setServiceStd(doc?.serviceStd ?? '');
-    setServiceDetail(doc?.serviceDetail ?? '');
-    setServicePosition(doc?.servicePosition ?? '');
-  }, [doc]);
+    setServiceStd.hydrate(doc?.serviceStd ?? '');
+    setServiceDetail.hydrate(doc?.serviceDetail ?? '');
+    setServicePosition.hydrate(doc?.servicePosition ?? '');
+  }, [doc, setServiceStd, setServiceDetail, setServicePosition]);
   const save = actions.find((item) => item.code === 'saveService');
   const done = actions.find((item) => item.code === 'service');
   const editable = !!onSubmit && !!(save || done);

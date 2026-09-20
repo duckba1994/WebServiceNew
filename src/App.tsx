@@ -10,12 +10,17 @@ import { SalesPlan } from './pages/SalesPlan';
 import { Booking } from './pages/Booking';
 import { Delivery } from './pages/Delivery';
 import { Resources } from './pages/Resources';
+import { DraftScope } from './hooks/useSessionDraft';
+import { suspendDraftSession } from './utils/sessionDrafts';
 
-function ProtectedRoute({ children }: { children: React.ReactNode }) {
+export function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, isAuthenticated } = useAuth();
   const location = useLocation();
   // ไม่มี user หรือ token หมดอายุ → เด้ง login (จำ path เดิม + เหตุผลถ้าหมดอายุ)
   if (!isAuthenticated) {
+    // Freeze the snapshot before React unmounts protected forms, including the
+    // JWT-expiry path that does not go through an API 401.
+    if (user) suspendDraftSession(location.pathname + location.search);
     return (
       <Navigate
         to="/login"
@@ -24,7 +29,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
       />
     );
   }
-  return <>{children}</>;
+  return <DraftScope name={location.pathname}>{children}</DraftScope>;
 }
 
 export default function App() {

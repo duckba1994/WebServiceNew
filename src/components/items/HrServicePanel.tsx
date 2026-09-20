@@ -1,3 +1,4 @@
+import { useSessionDraft } from '../../hooks/useSessionDraft';
 import { useEffect, useRef, useState } from 'react';
 import { RequestAction, RequestActionResult, RequestListItem } from '../../types/requestList';
 import { ActionFieldValues } from '../../data/requestActionFields';
@@ -32,7 +33,7 @@ export function HrServicePanel({
   pending: boolean;
   onSubmit?: (action: RequestAction, fields: ActionFieldValues) => Promise<RequestActionResult | null | void>;
 }) {
-  const [form, setForm] = useState(() => toHrServiceForm(item));
+  const [form, setForm] = useSessionDraft('HrServicePanel.form', () => toHrServiceForm(item));
   const [error, setError] = useState<string | null>(null);
   const dirty = useRef(false);
   const submitting = useRef(false);
@@ -46,8 +47,8 @@ export function HrServicePanel({
 
   // ใบขยับแล้วดึงค่าใหม่มาแสดง — แต่ห้ามทับสิ่งที่ผู้ใช้กำลังพิมพ์ค้างไว้
   useEffect(() => {
-    if (!dirty.current || !editable) setForm(toHrServiceForm(item));
-  }, [item, editable]);
+    if (!dirty.current || !editable) setForm.hydrate(toHrServiceForm(item));
+  }, [item, editable, setForm]);
 
   const set = (key: keyof HrServiceForm, value: string) => {
     dirty.current = true;

@@ -146,6 +146,9 @@ Confirmed pattern (per user decision, 29 Jul 2026) — every new work-order page
 Declared in `.env.example` (copy to `.env` and adjust per environment):
 - `REACT_APP_API_BASE_URL` — backend API base URL
 
+### Session-expiry drafts
+All request create/edit/workflow forms use the shared `useSessionDraft` hook in `src/hooks/useSessionDraft.tsx`; follow `SESSION_DRAFTS.md` when adding or changing a form. `ProtectedRoute` supplies the pathname scope, and document forms inside it need a keyed `DraftScope` containing module + document number. Persist only user-entered values and navigation state — never tokens, permissions, files, pending flags, or automatic mutations. Use `setter.hydrate` for API defaults so late data cannot overwrite a restored draft, and `setter.reset` only after an explicit save/cancel/reset. Token expiry freezes the snapshot and same-account login resumes it; explicit Logout or switching accounts clears it. While fresh permissions are loading, disable saving without clearing edit mode or the draft.
+
 ## Conventions
 - TypeScript `strict` mode is enabled (`tsconfig.json`) — no path aliases/`baseUrl` configured, use relative imports.
 - ESLint uses the CRA defaults only (`react-app`, `react-app/jest`, configured inline in `package.json`) — no custom rules, no Prettier config.

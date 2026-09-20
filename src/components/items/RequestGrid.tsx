@@ -1,3 +1,6 @@
+import { DraftScope, useDiscardSessionDraft, useSessionDraft } from '../../hooks/useSessionDraft';
+import { useRequestDetail } from '../../hooks/useRequestDetail';
+import { useAuth } from '../../context/AuthContext';
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   IconSearch,
@@ -109,24 +112,49 @@ export function RequestGrid({
   searchPlaceholder?: string;
   emptyText?: string;
 }) {
-  const [preset, setPreset] = useState<ReqPresetKey>('default');
-  const [search, setSearch] = useState('');
-  const [pageSize, setPageSize] = useState<number | 'all'>(20);
-  const [page, setPage] = useState(1);
-  const [sort, setSort] = useState<{ id: string; dir: 'asc' | 'desc' } | null>(null);
+  const [preset, setPreset] = useSessionDraft<ReqPresetKey>('RequestGrid.preset', 'default');
+  const [search, setSearch] = useSessionDraft('RequestGrid.search', '');
+  const [pageSize, setPageSize] = useSessionDraft<number | 'all'>('RequestGrid.pageSize', 20);
+  const [page, setPage] = useSessionDraft('RequestGrid.page', 1);
+  const [sort, setSort] = useSessionDraft<{ id: string; dir: 'asc' | 'desc' } | null>('RequestGrid.sort', null);
   const [filters, setFilters] = useState<Record<string, Set<string>>>({});
   const [openFilter, setOpenFilter] = useState<string | null>(null);
   const [colWidths, setColWidths] = useState<Record<string, number>>({});
   // เก็บคีย์ของแถว ไม่ใช่ตัว object — พอ refetch แล้ว object จะเป็นตัวใหม่
   // ต้องใช้ module+docNo เพราะตารางรวมหลายแผนก docNo ซ้ำกันได้
-  const [viewKey, setViewKey] = useState<string | null>(null);
-  const view = useMemo(() => data.find((r) => requestKey(r) === viewKey) ?? null, [data, viewKey]);
+  const [viewKey, setViewKey] = useSessionDraft<string | null>('RequestGrid.viewKey', null);
+  const [confirmCode, setConfirmCode] = useSessionDraft<string | null>('RequestGrid.actionCode', null);
+  const [pickedConfirm, setPickedConfirm] = useState<{ item: RequestListItem; action: RequestAction } | null>(null);
+  const discardDraft = useDiscardSessionDraft();
+  const listedView = useMemo(() => data.find((r) => requestKey(r) === viewKey) ?? null, [data, viewKey]);
+  const { user } = useAuth();
+  const separator = viewKey?.indexOf('::') ?? -1;
+  const [recoveryTick, setRecoveryTick] = useState(0);
+  // The document may have left the current queue while the user logged in.
+  // Retrieve it by identity; never restore cached permissions or depend on a list filter.
+  const recovered = useRequestDetail(
+    viewKey && separator > 0 && (!listedView || (confirmCode && !pickedConfirm)) && !loading ? viewKey.slice(0, separator) : null,
+    viewKey && separator > 0 && (!listedView || (confirmCode && !pickedConfirm)) && !loading ? viewKey.slice(separator + 2) : null,
+    user?.token, recoveryTick
+  );
+  const view = recovered.detail?.item ?? listedView ?? null;
   // ใบ + ปุ่มที่กำลังรอยืนยัน (การอนุมัติย้อนกลับไม่ได้ จึงต้องถามก่อนเสมอ)
-  const [confirm, setConfirm] = useState<{ item: RequestListItem; action: RequestAction } | null>(null);
+  const confirmAction = recovered.detail?.item.availableActions?.find(action => action.code === confirmCode);
+  const confirm = pickedConfirm?.action.code === confirmCode ? pickedConfirm : view && confirmAction ? { item: view, action: confirmAction } : null;
+  const setConfirm = (next: { item: RequestListItem; action: RequestAction } | null) => {
+    if (!next && viewKey && confirmCode) discardDraft(`${viewKey}:${confirmCode}`);
+    setPickedConfirm(next);
+    setConfirmCode(next?.action.code ?? null);
+  };
+  const closeView = () => {
+    if (viewKey) discardDraft(viewKey);
+    setViewKey(null);
+    setConfirm(null);
+  };
 
   useEffect(() => {
-    if (notice?.status === 404) { setViewKey(null); setConfirm(null); }
-  }, [notice]);
+    if (notice?.status === 404) { setViewKey.reset(null); setConfirmCode.reset(null); setPickedConfirm(null); }
+  }, [notice, setViewKey, setConfirmCode]);
 
   // ตั้งใจไม่มีปุ่มดำเนินการในตาราง — ทุก action ต้องเปิดใบเข้าไปกดข้างใน
   // เพื่อบังคับให้คนอนุมัติได้อ่านก่อนว่าลูกน้องขออะไรมา (ตัดสินใจจากแถวเดียวไม่พอ)
@@ -669,10 +697,17 @@ export function RequestGrid({
         </div>
       )}
 
+      {viewKey && !view && <div role="status" className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4">
+        <div className="space-y-3 rounded-xl bg-white p-5 text-sm text-slate-700 shadow-xl dark:bg-slate-900 dark:text-slate-200">
+          <p>{recovered.error || error || 'กำลังเปิดใบแจ้งเรื่องเดิม…'}</p>
+          {(recovered.error || error) && <button type="button" className="mr-4 text-accent underline" onClick={() => { setRecoveryTick(n => n + 1); onReload?.(); }}>ลองใหม่</button>}
+          <button type="button" onClick={closeView}>ปิด</button>
+        </div>
+      </div>}
       {view && (
         <RequestDetailModal
           item={view}
-          onClose={() => setViewKey(null)}
+          onClose={closeView}
           onPickAction={onAction ? (action) => setConfirm({ item: view, action }) : undefined}
           // ฟอร์มในแท็บ (ดำเนินการ/ปิดงานรับเรื่อง/สำรวจ) ยิง action ตรงผ่าน onAction
           // ไม่ต้องผ่านกล่องยืนยัน — panel เป็นคนกำหนด code/fields เอง
@@ -684,19 +719,26 @@ export function RequestGrid({
         />
       )}
 
+      {confirmCode && view && !confirm && <div role="status" className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/50 p-4">
+        <div className="space-y-3 rounded-xl bg-white p-5 text-sm text-slate-700 shadow-xl dark:bg-slate-900 dark:text-slate-200">
+          <p>{recovered.error || (recovered.detail ? 'สถานะหรือสิทธิ์ของใบเปลี่ยนแล้ว กรุณาตรวจสอบรายการดำเนินการล่าสุด' : 'กำลังตรวจสอบสิทธิ์ดำเนินการ…')}</p>
+          {recovered.error && <button type="button" className="mr-4 text-accent underline" onClick={() => setRecoveryTick(n => n + 1)}>ลองใหม่</button>}
+          <button type="button" onClick={() => setConfirm(null)}>ปิด</button>
+        </div>
+      </div>}
       {confirm && (
-        <RequestActionDialog
+        <DraftScope key={`${requestKey(confirm.item)}:${confirm.action.code}`} name={`${requestKey(confirm.item)}:${confirm.action.code}`}><RequestActionDialog
           item={confirm.item}
           action={confirm.action}
           pending={!!actionPending}
           onCancel={() => setConfirm(null)}
           onConfirm={async (note, fields) => {
-            await onAction?.(confirm.item, confirm.action, note, fields);
-            setConfirm(null);
+            const result = await onAction?.(confirm.item, confirm.action, note, fields);
+            if (result) setConfirm(null);
             // ไม่ปิดหน้ารายละเอียด — ให้ stepper เดินหน้าโชว์ขั้นถัดไป (รับเรื่อง → ดำเนินการ)
             // ถ้าใบหลุดจากลิสต์ (ย้ายคิว/ถูกกรอง) view จะกลายเป็น null แล้ว modal ปิดเอง
           }}
-        />
+        /></DraftScope>
       )}
     </div>
   );

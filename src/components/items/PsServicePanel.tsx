@@ -1,3 +1,4 @@
+import { useSessionDraft } from '../../hooks/useSessionDraft';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { RequestAction } from '../../types/requestList';
 import { ActionFieldValues, cleanFieldValues } from '../../data/requestActionFields';
@@ -28,7 +29,7 @@ export function PsServicePanel({ docNo, token, refreshKey, userName, actions, pe
 }) {
   const { doc, error: docError, reload } = usePsRequest(docNo, token, refreshKey);
   const options = usePsServiceOptions(docNo, token);
-  const [form, setForm] = useState<Form>(() => emptyForm(userName));
+  const [form, setForm] = useSessionDraft<Form>('PsServicePanel.form', () => emptyForm(userName));
   const [error, setError] = useState('');
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -43,7 +44,7 @@ export function PsServicePanel({ docNo, token, refreshKey, userName, actions, pe
   useEffect(() => {
     if (!doc || dirty.current) return;
     const service = doc.service ?? {};
-    setForm({
+    setForm.hydrate({
       repairStatus: service.action ?? '', workResults: service.workResults ?? '',
       rpDetailId: doc.reportStatus?.rpDetailId ?? '', remark: service.remark ?? '',
       exPrNo: service.refPR ?? '', supplier: service.supplier ?? '', exPoNo: service.refPO ?? '',
@@ -51,7 +52,7 @@ export function PsServicePanel({ docNo, token, refreshKey, userName, actions, pe
       serviceBy: service.serviceBy ?? userName, changeDate: service.changeDate?.slice(0, 10) ?? '',
       otherRemark: service.otherRemark ?? '',
     });
-  }, [doc, userName]);
+  }, [doc, userName, setForm]);
 
   const actionOptions = useMemo(() => options.actions.map(value => ({ value, label: value })), [options.actions]);
   const resultOptions = useMemo(() => options.workResults.map(value => ({ value, label: value })), [options.workResults]);

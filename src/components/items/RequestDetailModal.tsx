@@ -1,3 +1,4 @@
+import { DraftScope, useSessionDraft } from '../../hooks/useSessionDraft';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   IconX,
@@ -425,7 +426,12 @@ const STATE_CHIP: Record<StepState, Meta> = {
 //
 // ปุ่มดำเนินการมาจาก item.availableActions ที่ API ส่งมา ไม่ได้ฝังไว้ในโค้ด
 // และจะโชว์อยู่ใน tab ที่เป็น "ขั้นปัจจุบัน" เท่านั้น (คิวของคนที่เปิดดู)
-export function RequestDetailModal({
+export function RequestDetailModal(props: React.ComponentProps<typeof RequestDetailContent>) {
+  const key = `${props.item.module}::${props.item.docNo}`;
+  return <DraftScope key={key} name={key}><RequestDetailContent {...props} /></DraftScope>;
+}
+
+function RequestDetailContent({
   item,
   onClose,
   onPickAction,
@@ -483,7 +489,9 @@ export function RequestDetailModal({
 
   // ยิง action จากฟอร์มในแท็บ แล้วบังคับโหลดใบใหม่เพื่อดึงค่าที่เพิ่งบันทึกกลับมา
   const submitStep = async (action: RequestAction, fields: ActionFieldValues) => {
-    await onStepSubmit?.(action, fields);
+    const result = await onStepSubmit?.(action, fields);
+    if (!result) return;
+    setSelected.reset(selected);
     setRefreshTick((t) => t + 1);
     // กด "ดำเนินการเสร็จ" (service ไม่เลื่อน step) → เด้งไปแท็บปิดงานรับเรื่องเลย
     if (action.code === 'service') {
@@ -650,7 +658,7 @@ export function RequestDetailModal({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tabs, full.wfStep, closed, serviceDone]);
 
-  const [selected, setSelected] = useState(defaultTab);
+  const [selected, setSelected] = useSessionDraft('RequestDetailModal.selected', defaultTab);
 
   // เดิน stepper ไปขั้นปัจจุบันเมื่อ wfStep เปลี่ยน (เช่นหลังกดรับเรื่อง → ไปแท็บดำเนินการ)
   // ไม่ override ตอนผู้ใช้กดดูแท็บอื่นเอง เพราะ wfStep ไม่เปลี่ยน effect จึงไม่ยิง
@@ -660,9 +668,14 @@ export function RequestDetailModal({
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [tabs, full.wfStep, closed, serviceDone, item.module, actions]
   );
+  const previousStep = useRef(full.wfStep);
   useEffect(() => {
-    if (currentIndex !== -1) setSelected(currentIndex);
-  }, [currentIndex]);
+    if (currentIndex !== -1) {
+      if (previousStep.current !== full.wfStep) setSelected.reset(currentIndex);
+      else setSelected.hydrate(currentIndex);
+    }
+    previousStep.current = full.wfStep;
+  }, [currentIndex, full.wfStep, setSelected]);
   const activeTab = tabs[selected] ?? tabs[0];
   const activeState = tabState(activeTab);
   const activeLog = logOfTab(activeTab);
@@ -686,7 +699,7 @@ export function RequestDetailModal({
     showNotice: showEditNotice,
     dismissNotice: dismissEditNotice,
   } = useRequestEdit(user?.token);
-  const [editing, setEditing] = useState(false);
+  const [editing, setEditing] = useSessionDraft('RequestDetailModal.editing', false);
   const [psEditing, setPsEditing] = useState(false);
   const [psToolbar, setPsToolbar] = useState<HTMLDivElement | null>(null);
   // สิทธิ์แก้ไข = กติกาหน้าเว็บ AND canEdit ที่ API ส่งมา (PL/CR ส่งมาแล้ว, IT ยังไม่ส่ง
@@ -755,8 +768,14 @@ export function RequestDetailModal({
   }, [setAtt]);
   // ใบขยับระหว่างที่ฟอร์มเปิดค้างอยู่ (ปลายทางเพิ่งกดรับเรื่อง) → ปิดฟอร์มทิ้งเอง
   useEffect(() => {
-    if (!editable) setEditing(false);
-  }, [editable]);
+    // Unknown permission during the initial fetch is not a revocation.
+    const permissionsReady = !!detail &&
+      (full.module !== 'PL' || !!plDoc.doc) && (full.module !== 'CR' || !!crDoc.doc) &&
+      (!isDeptRequestModule(full.module) || !!deptDoc.doc) &&
+      (full.module !== 'AF' || !!afDoc.doc) && (full.module !== HR_PR_MODULE || !!hrDoc.doc) &&
+      (full.module !== SQA_MODULE || !!sqaDoc.doc);
+    if (!editable && permissionsReady) setEditing.reset(false);
+  }, [editable, detail, full.module, plDoc.doc, crDoc.doc, deptDoc.doc, afDoc.doc, hrDoc.doc, sqaDoc.doc, setEditing]);
   // ออกจากโหมดแก้ไข = ทิ้งรูปที่เลือกค้างไว้ ไม่ให้ค้างข้ามรอบ
   useEffect(() => {
     if (!editing) clearAtt();
@@ -1435,11 +1454,11 @@ function ServicePanel({
   onNext?: () => void; // ไปแท็บปิดงานรับเรื่อง (การส่งต่อทำที่นั่นด้วย closeReceive)
   serviceLog?: RequestLog | null; // fallback ชื่อ/เวลา ถ้า resolution ยังไม่คืน servicedBy
 }) {
-  const [mode, setMode] = useState('');
-  const [vendor, setVendor] = useState('');
-  const [phone, setPhone] = useState('');
-  const [refPr, setRefPr] = useState('');
-  const [planDate, setPlanDate] = useState('');
+  const [mode, setMode] = useSessionDraft('ServicePanel.mode', '');
+  const [vendor, setVendor] = useSessionDraft('ServicePanel.vendor', '');
+  const [phone, setPhone] = useSessionDraft('ServicePanel.phone', '');
+  const [refPr, setRefPr] = useSessionDraft('ServicePanel.refPr', '');
+  const [planDate, setPlanDate] = useSessionDraft('ServicePanel.planDate', '');
   const [touched, setTouched] = useState(false);
 
   // เติมฟอร์มจากค่าที่บันทึกไว้ (resolution) — resolution จะเปลี่ยน reference เฉพาะตอน
@@ -1447,12 +1466,12 @@ function ServicePanel({
   // ตั้งเฉพาะช่องที่ API คืนค่ามา (กัน API ที่ยังไม่คืน exVendor มาล้างของที่พิมพ์)
   useEffect(() => {
     if (!resolution) return;
-    if (resolution.repairStatus) setMode(resolution.repairStatus);
-    if (resolution.exVendor) setVendor(resolution.exVendor);
-    if (resolution.exContact) setPhone(resolution.exContact);
-    if (resolution.exPrNo) setRefPr(resolution.exPrNo);
-    if (resolution.exPlanDate) setPlanDate(String(resolution.exPlanDate).slice(0, 10));
-  }, [resolution]);
+    if (resolution.repairStatus) setMode.hydrate(resolution.repairStatus);
+    if (resolution.exVendor) setVendor.hydrate(resolution.exVendor);
+    if (resolution.exContact) setPhone.hydrate(resolution.exContact);
+    if (resolution.exPrNo) setRefPr.hydrate(resolution.exPrNo);
+    if (resolution.exPlanDate) setPlanDate.hydrate(String(resolution.exPlanDate).slice(0, 10));
+  }, [resolution, setMode, setVendor, setPhone, setRefPr, setPlanDate]);
 
   if (state === 'upcoming') {
     return <p className="text-[12.5px] text-slate-400 dark:text-slate-500">ยังไม่ถึงขั้นนี้ — จะกรอกได้เมื่อรับเรื่องแล้ว</p>;
@@ -1648,11 +1667,11 @@ function ClosePanel({
   pending: boolean;
   onSubmit?: (action: RequestAction, fields: ActionFieldValues) => void | Promise<void>;
 }) {
-  const [solve, setSolve] = useState('');
-  const [causeMain, setCauseMain] = useState('');
-  const [causeSub, setCauseSub] = useState('');
-  const [detail, setDetail] = useState('');
-  const [remark, setRemark] = useState('');
+  const [solve, setSolve] = useSessionDraft('ClosePanel.solve', '');
+  const [causeMain, setCauseMain] = useSessionDraft('ClosePanel.causeMain', '');
+  const [causeSub, setCauseSub] = useSessionDraft('ClosePanel.causeSub', '');
+  const [detail, setDetail] = useSessionDraft('ClosePanel.detail', '');
+  const [remark, setRemark] = useSessionDraft('ClosePanel.remark', '');
   const [touched, setTouched] = useState(false);
 
   if (state === 'upcoming') {
@@ -1866,8 +1885,8 @@ function SurveyPanel({
   pending: boolean;
   onSubmit?: (action: RequestAction, fields: ActionFieldValues) => void | Promise<void>;
 }) {
-  const [scores, setScores] = useState<number[]>(Array(SURVEY_QUESTIONS.length).fill(0));
-  const [remark, setRemark] = useState('');
+  const [scores, setScores] = useSessionDraft<number[]>('SurveyPanel.scores', Array(SURVEY_QUESTIONS.length).fill(0));
+  const [remark, setRemark] = useSessionDraft('SurveyPanel.remark', '');
   const [touched, setTouched] = useState(false);
 
   if (state === 'upcoming') {
@@ -2018,7 +2037,7 @@ function KpiPanel({
   onSubmit?: (action: RequestAction, fields: ActionFieldValues) => void | Promise<void>;
 }) {
   // เลือกได้ช่องเดียวทั้งตาราง: sel = "แถว:คอลัมน์"
-  const [sel, setSel] = useState<string>('');
+  const [sel, setSel] = useSessionDraft<string>('KpiPanel.sel', '');
   const [touched, setTouched] = useState(false);
 
   if (state === 'upcoming') {
@@ -2576,27 +2595,27 @@ function PlAttachmentPanel({
     attachDocs: Record<PlAttachDocKey, string>
   ) => void | Promise<void>;
 }) {
-  const [attach, setAttach] = useState<Record<PlAttachKey, boolean>>(emptyAttach);
-  const [attachDocs, setAttachDocs] = useState<Record<PlAttachDocKey, string>>(emptyAttachDocs);
+  const [attach, setAttach] = useSessionDraft<Record<PlAttachKey, boolean>>('PlAttachmentPanel.attach', emptyAttach);
+  const [attachDocs, setAttachDocs] = useSessionDraft<Record<PlAttachDocKey, string>>('PlAttachmentPanel.attachDocs', emptyAttachDocs);
   const [docErrors, setDocErrors] = useState<Partial<Record<PlAttachDocKey, string>>>({});
 
   // เติมค่าจากใบเมื่อโหลดเสร็จ / โหลดใหม่หลังบันทึก — doc เปลี่ยน reference เฉพาะตอน
   // fetch ใหม่ ระหว่างที่ผู้ใช้ติ๊กค้างไว้จึงไม่โดนล้าง
   useEffect(() => {
     if (!doc) return;
-    setAttach(
+    setAttach.hydrate(
       PL_ATTACH_CHECKS.reduce(
         (acc, c) => ({ ...acc, [c.key]: !!doc[c.key] }),
         {} as Record<PlAttachKey, boolean>
       )
     );
-    setAttachDocs({
+    setAttachDocs.hydrate({
       budgetDocNo: doc.budgetDocNo ?? '',
       exBudgetDocNo: doc.exBudgetDocNo ?? '',
       attachOtherDetail: doc.attachOtherDetail ?? '',
     });
     setDocErrors({});
-  }, [doc]);
+  }, [doc, setAttach, setAttachDocs]);
 
   if (loading)
     return (
@@ -2750,8 +2769,8 @@ function PlServicePanel({
   const svc = actions.filter((a) => a.code === 'saveService' || a.code === 'service');
   const editable = svc.length > 0 && !!onSubmit;
 
-  const [actionDetail, setActionDetail] = useState('');
-  const [repairDetail, setRepairDetail] = useState('');
+  const [actionDetail, setActionDetail] = useSessionDraft('PlServicePanel.actionDetail', '');
+  const [repairDetail, setRepairDetail] = useSessionDraft('PlServicePanel.repairDetail', '');
   const [touched, setTouched] = useState(false);
 
   // เติมฟอร์มจากค่าที่บันทึกไว้ — resolution เปลี่ยน reference เฉพาะตอนโหลดใบใหม่
@@ -2760,9 +2779,9 @@ function PlServicePanel({
     if (!resolution) return;
     // actionDetail = ช่องจริงของ PL · solution เป็นค่าเก่าของใบที่บันทึกก่อนเปลี่ยนชื่อฟิลด์
     if (resolution.actionDetail || resolution.solution)
-      setActionDetail(resolution.actionDetail || resolution.solution || '');
-    if (resolution.resolutionDetail) setRepairDetail(resolution.resolutionDetail);
-  }, [resolution]);
+      setActionDetail.hydrate(resolution.actionDetail || resolution.solution || '');
+    if (resolution.resolutionDetail) setRepairDetail.hydrate(resolution.resolutionDetail);
+  }, [resolution, setActionDetail, setRepairDetail]);
 
   // actionDetail บังคับตอนกด service (API ระบุว่าเป็นฟิลด์บังคับของขั้นนี้)
   const actionDetailMissing = actionDetail.trim() === '';
@@ -2967,12 +2986,12 @@ function CrReceivePanel({
   pending: boolean;
   onSubmit?: (action: RequestAction, fields: ActionFieldValues) => void | Promise<void>;
 }) {
-  const [requestService, setRequestService] = useState('');
+  const [requestService, setRequestService] = useSessionDraft('CrReceivePanel.requestService', '');
   const [touched, setTouched] = useState(false);
 
   useEffect(() => {
-    if (resolution?.requestService) setRequestService(resolution.requestService);
-  }, [resolution]);
+    if (resolution?.requestService) setRequestService.hydrate(resolution.requestService);
+  }, [resolution, setRequestService]);
 
   if (state === 'upcoming')
     return (
@@ -3084,7 +3103,7 @@ function CrServicePanel({
   pending: boolean;
   onSubmit?: (action: RequestAction, fields: ActionFieldValues) => void | Promise<void>;
 }) {
-  const [serviceDetail, setServiceDetail] = useState('');
+  const [serviceDetail, setServiceDetail] = useSessionDraft('CrServicePanel.serviceDetail', '');
   const [touched, setTouched] = useState(false);
   // ผู้ใช้พิมพ์ค้างอยู่หรือยัง — กันเคสนี้: กด "บันทึก" แล้วพิมพ์ต่อทันที พอ refetch
   // เสร็จค่าจากเซิร์ฟเวอร์ (ของตอนกด) จะทับสิ่งที่เพิ่งพิมพ์ไป
@@ -3094,8 +3113,8 @@ function CrServicePanel({
   // (เปิดใบ / หลังเซฟ) และต้องไม่ทับของที่ผู้ใช้พิมพ์ค้างไว้
   useEffect(() => {
     if (typing.current) return;
-    if (resolution?.resolutionDetail) setServiceDetail(resolution.resolutionDetail);
-  }, [resolution]);
+    if (resolution?.resolutionDetail) setServiceDetail.hydrate(resolution.resolutionDetail);
+  }, [resolution, setServiceDetail]);
 
   // ชื่อ/เวลา ประทับตอนกด `service` เท่านั้น — `saveService` ไม่ประทับ
   // จึงห้ามเอามาโชว์เป็น "บันทึกล่าสุด" (จะว่างตลอดทั้งที่บันทึกไปหลายรอบแล้ว)
@@ -3316,11 +3335,11 @@ function CrClosePanel({
   pending: boolean;
   onSubmit?: (action: RequestAction, fields: ActionFieldValues) => void | Promise<void>;
 }) {
-  const [actionDetail, setActionDetail] = useState('');
+  const [actionDetail, setActionDetail] = useSessionDraft('CrClosePanel.actionDetail', '');
 
   useEffect(() => {
-    if (resolution?.actionDetail) setActionDetail(resolution.actionDetail);
-  }, [resolution]);
+    if (resolution?.actionDetail) setActionDetail.hydrate(resolution.actionDetail);
+  }, [resolution, setActionDetail]);
 
   if (state === 'upcoming')
     return (
@@ -3536,7 +3555,7 @@ function RequestEditPanel({
   // ฝั่ง backend ก็อ่านจาก Units.xml ไฟล์เดียวกันทั้ง PL / GA / IM)
   const plMaster = usePlMasterData(user?.token, isPl || isDeptReq);
   const unitNames = isAf ? deptMaster.unitNames : plMaster.unitNames;
-  const [form, setForm] = useState<RequestEditForm>(() =>
+  const [form, setForm] = useSessionDraft<RequestEditForm>('RequestEditPanel.form', () =>
     toEditForm(item, lines, crDoc.doc, deptDoc, afDoc, hrDoc, sqaDoc)
   );
   const [errors, setErrors] = useState<ReturnType<typeof validateEditForm>>({});
@@ -3548,9 +3567,9 @@ function RequestEditPanel({
   const crRaw = crDoc.doc;
   useEffect(() => {
     if (!isCr || !crRaw) return;
-    setForm((f) => (f.requestType ? f : toEditForm(item, lines, crRaw, deptDoc, afDoc, hrDoc, sqaDoc)));
+    setForm.hydrate((f) => (f.requestType ? f : toEditForm(item, lines, crRaw, deptDoc, afDoc, hrDoc, sqaDoc)));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isCr, crRaw]);
+  }, [isCr, crRaw, setForm]);
 
   // ตัวเลือกของแต่ละช่อง — ของ CR เป็นลูกโซ่ จึงคำนวณจากค่าที่เลือกอยู่ในฟอร์ม
   const optionsOf = (f: EditFieldDef): FieldOption[] => {

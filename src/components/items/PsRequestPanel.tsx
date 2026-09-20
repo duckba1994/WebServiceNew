@@ -1,3 +1,4 @@
+import { useSessionDraft } from '../../hooks/useSessionDraft';
 import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { IconUser, IconFileText, IconPaperclip, IconList, IconShieldCheck, IconPencil, IconDeviceFloppy, IconCircleCheck } from '@tabler/icons-react';
@@ -31,23 +32,27 @@ export function PsRequestPanel({ docNo, token, refreshKey, allowEdit, onSaved, o
   const { doc, error, reload } = usePsRequest(docNo, token, refreshKey);
   const master = useDeptMasterData('ps', token);
   const prelims = usePsPrelims(token, true);
-  const [draft, setDraft] = useState<PsRequestDetail | null>(null);
-  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useSessionDraft<PsRequestDetail | null>('PsRequestPanel.draft', null);
+  const [editing, setEditing] = useSessionDraft('PsRequestPanel.editing', false);
   const [pending, setPending] = useState(false);
   const [prelimPending, setPrelimPending] = useState(false);
-  const [prelimError, setPrelimError] = useState(false);
-  const [prelimFields, setPrelimFields] = useState<Record<string, string> | null>(null);
+  const [prelimError, setPrelimError] = useSessionDraft('PsRequestPanel.prelimError', false);
+  const [prelimFields, setPrelimFields] = useSessionDraft<Record<string, string> | null>('PsRequestPanel.prelimFields', null);
   const [notice, setNotice] = useState('');
   const version = useRef(0);
+  const previousDocument = useRef(`${docNo}|${refreshKey}`);
   useEffect(() => {
-    setDraft(null); setEditing(false); setPrelimFields(null);
+    const identity = `${docNo}|${refreshKey}`;
+    if (previousDocument.current === identity) return;
+    previousDocument.current = identity;
+    setDraft.reset(null); setEditing.reset(false); setPrelimFields.reset(null);
     setPrelimPending(false); setPrelimError(false); ++version.current;
-  }, [docNo, refreshKey]);
+  }, [docNo, refreshKey, setDraft, setEditing, setPrelimFields, setPrelimError]);
   useEffect(() => { onEditingChange(editing); }, [editing, onEditingChange]);
   const current = draft ?? doc;
   if (!current) return <div role="status">{error ?? 'กำลังโหลดข้อมูลใบแจ้งเรื่อง PS…'}{error && <button onClick={reload}>ลองใหม่</button>}</div>;
-  const general = editing && doc?.canEdit === true && !pending;
-  const attachment = editing && doc?.canEditAttachment === true && !pending;
+  const general = editing && allowEdit && doc?.canEdit === true && !pending;
+  const attachment = editing && allowEdit && doc?.canEditAttachment === true && !pending;
   const f = current.form;
   const set = (key: string, value: unknown) => setDraft(prev => ({ ...(prev ?? current), form: { ...(prev ?? current).form, [key]: value } }));
   const field = (label: string, child: React.ReactNode) => <label key={label} className="flex min-w-0 flex-col gap-1"><span className="text-[11.5px] font-semibold text-gray-500 dark:text-slate-400">{label}</span>{child}</label>;
@@ -59,7 +64,7 @@ export function PsRequestPanel({ docNo, token, refreshKey, allowEdit, onSaved, o
     ? <DateQuickPick value={(f[key] ?? '').slice(0, 10)} inputClass={INPUT_CLS} onChange={value => set(key, value ? `${value}T00:00:00` : '')} />
     : <span className="text-[13px] font-normal text-gray-800 dark:text-slate-100">{fmtDate(f[key]) || '—'}</span>);
   const save = async () => {
-    if (!doc || pending || prelimPending || prelimError || (doc.canEdit !== true && doc.canEditAttachment !== true)) return;
+    if (!allowEdit || !doc || pending || prelimPending || prelimError || (doc.canEdit !== true && doc.canEditAttachment !== true)) return;
     if (doc.canEdit === true && (!f.type || !f.requestType || !f.requestDetail.trim() || f.requestDetail.length > 500 || !f.planDate || !f.priceDate)) {
       setNotice('กรุณาระบุประเภท เรื่องที่แจ้ง รายละเอียด (ไม่เกิน 500 ตัวอักษร) และวันที่ต้องการ/วันที่ขอราคา'); return;
     }
@@ -126,6 +131,6 @@ export function PsRequestPanel({ docNo, token, refreshKey, allowEdit, onSaved, o
     </InfoCard>
     <InfoCard title="รูปภาพ" icon={IconPaperclip}><div className="col-span-2">{current.attachments?.length ? <div className="flex flex-wrap gap-2">{current.attachments.map(file => <Photo key={file.fileId} url={file.url} name={file.fileName} token={token} />)}</div> : <span className="text-[13px] text-slate-400 dark:text-slate-500">— ไม่มีรูปแนบ</span>}</div></InfoCard>
     <InfoCard title="การอนุมัติ" icon={IconShieldCheck}><div className="col-span-2">{approveLogs.length ? <div className="flex flex-col gap-1.5">{approveLogs.map((log, index) => <div key={index} className="flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-[12.5px] dark:border-emerald-900 dark:bg-emerald-950/40"><IconCircleCheck size={15} className="shrink-0 text-emerald-600 dark:text-emerald-400" /><span className="font-semibold text-gray-800 dark:text-slate-100">{log.actionByName || '—'}</span>{log.actionByDepartment && <span className="text-slate-500 dark:text-slate-400">· {log.actionByDepartment}</span>}{log.actionDate && <span className="mono ml-auto text-slate-500 dark:text-slate-400">{fmtDateTime(log.actionDate)}</span>}</div>)}</div> : <span className="text-[13px] text-slate-400 dark:text-slate-500">— ยังไม่มีการอนุมัติ</span>}</div></InfoCard>
-    {editing && <div className="flex items-center justify-end gap-2 border-t border-gray-100 pt-4 dark:border-slate-800"><button type="button" className="rounded-lg border border-gray-200 px-4 py-2 text-[13px] font-semibold text-gray-600 disabled:opacity-50 dark:border-slate-700 dark:text-slate-300" disabled={pending} onClick={() => { ++version.current; setPrelimPending(false); setPrelimError(false); setPrelimFields(null); setDraft(null); setEditing(false); setNotice(''); }}>ยกเลิก</button><button type="button" className="inline-flex items-center gap-1.5 rounded-lg bg-accent px-4 py-2 text-[13px] font-semibold text-white disabled:opacity-50" disabled={pending || prelimPending || prelimError || !doc || (doc.canEdit !== true && doc.canEditAttachment !== true)} onClick={save}><IconDeviceFloppy size={15} />{pending ? 'กำลังบันทึก…' : 'บันทึกการแก้ไข'}</button></div>}
+    {editing && <div className="flex items-center justify-end gap-2 border-t border-gray-100 pt-4 dark:border-slate-800"><button type="button" className="rounded-lg border border-gray-200 px-4 py-2 text-[13px] font-semibold text-gray-600 disabled:opacity-50 dark:border-slate-700 dark:text-slate-300" disabled={pending} onClick={() => { ++version.current; setPrelimPending(false); setPrelimError(false); setPrelimFields(null); setDraft(null); setEditing(false); setNotice(''); }}>ยกเลิก</button><button type="button" className="inline-flex items-center gap-1.5 rounded-lg bg-accent px-4 py-2 text-[13px] font-semibold text-white disabled:opacity-50" disabled={!allowEdit || pending || prelimPending || prelimError || !doc || (doc.canEdit !== true && doc.canEditAttachment !== true)} onClick={save}><IconDeviceFloppy size={15} />{pending ? 'กำลังบันทึก…' : 'บันทึกการแก้ไข'}</button></div>}
   </div>;
 }

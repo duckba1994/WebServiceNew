@@ -4,6 +4,7 @@ import { User } from '../types/user';
 import { login as loginApi } from '../api/auth';
 import { isTokenExpired } from '../utils/token';
 import { AUTH_UNAUTHORIZED_EVENT } from '../api/client';
+import { clearDraftSession, startDraftSession, suspendDraftSession } from '../utils/sessionDrafts';
 
 const STORAGE_KEY = 'app_user';
 // เวอร์ชันโครงสร้าง user ที่เก็บใน localStorage — เพิ่มขึ้นเมื่อเก็บฟิลด์ใหม่
@@ -15,7 +16,7 @@ interface AuthContextType {
   user: User | null;
   // มี user และ token ยังไม่หมดอายุ (opaque token ที่เช็คไม่ได้ = ถือว่ายังใช้ได้ รอ 401)
   isAuthenticated: boolean;
-  login: (username: string, password: string) => Promise<void>;
+  login: (username: string, password: string) => Promise<string | null>;
   logout: () => void;
   // เซสชันหมดอายุ: เคลียร์ user + เด้งไปหน้า login พร้อมจำ path เดิมไว้กลับ
   sessionExpired: () => void;
@@ -62,6 +63,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         localStorage.removeItem(STORAGE_KEY); // record เก่า ข้อมูลไม่ครบ
         return null;
       }
+      startDraftSession(u.id);
       return u;
     } catch {
       localStorage.removeItem(STORAGE_KEY);
@@ -70,10 +72,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   });
   // กันเด้งไป login ซ้ำ ๆ เมื่อมี 401 หลายก้อนพร้อมกัน
   const redirectingRef = useRef(false);
+  const activeToken = useRef(user?.token);
 
   const isAuthenticated = !!user && !isTokenExpired(user.token);
 
   const logout = useCallback(() => {
+    clearDraftSession();
+    activeToken.current = undefined;
     setUser(null);
     localStorage.removeItem(STORAGE_KEY);
   }, []);
@@ -83,6 +88,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (redirectingRef.current) return;
     redirectingRef.current = true;
     const from = window.location.pathname + window.location.search;
+    suspendDraftSession(from);
+    activeToken.current = undefined;
     setUser(null);
     localStorage.removeItem(STORAGE_KEY);
     navigate('/login', { replace: true, state: { from, reason: 'expired' } });
@@ -90,13 +97,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // ฟัง event จาก api layer (เจอ 401 ที่ไหนก็ตาม) → เด้งออก
   useEffect(() => {
-    const handler = () => sessionExpired();
+    const handler = (event: Event) => {
+      const token = (event as CustomEvent<{ token?: string }>).detail?.token;
+      if (token && token !== activeToken.current) return; // Late 401 from the previous login.
+      sessionExpired();
+    };
     window.addEventListener(AUTH_UNAUTHORIZED_EVENT, handler);
     return () => window.removeEventListener(AUTH_UNAUTHORIZED_EVENT, handler);
   }, [sessionExpired]);
 
   // เรียก API จริง — โยน error ออกไปให้หน้า Login จัดการแสดงข้อความ
-  const login = async (username: string, password: string): Promise<void> => {
+  const login = async (username: string, password: string): Promise<string | null> => {
     const result = await loginApi({ username, password });
     // ดึงข้อมูลผู้ใช้จาก payload ดิบ (login response) เท่าที่มี
     // ชื่อฟิลด์ฝั่ง backend ยังไม่นิ่ง — รับได้หลายแบบ แล้วเก็บเท่าที่มี
@@ -124,9 +135,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // undefined = backend ยังไม่ส่งมา (ต่างจาก false = ส่งมาแล้วว่าไม่ใช่หัวหน้า)
       isHead: readIsHead(raw, pick('role', 'position')),
     };
+    const resumePath = startDraftSession(next.id, true);
+    activeToken.current = next.token;
     redirectingRef.current = false; // login สำเร็จ → พร้อมเด้งอีกครั้งถ้าหมดอายุในอนาคต
     setUser(next);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+    return resumePath;
   };
 
   return (

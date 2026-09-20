@@ -1,3 +1,4 @@
+import { useSessionDraft } from '../../hooks/useSessionDraft';
 import { useEffect, useRef, useState } from 'react';
 import { RequestAction, RequestResolution } from '../../types/requestList';
 import { ActionFieldValues, cleanFieldValues } from '../../data/requestActionFields';
@@ -14,18 +15,18 @@ export function AfServicePanel({
   pending: boolean;
   onSubmit?: (action: RequestAction, fields: ActionFieldValues) => void | Promise<void>;
 }) {
-  const [serviceDetail, setServiceDetail] = useState('');
-  const [attachRef, setAttachRef] = useState('');
-  const [planCompleteDate, setPlanCompleteDate] = useState('');
+  const [serviceDetail, setServiceDetail] = useSessionDraft('AfServicePanel.serviceDetail', '');
+  const [attachRef, setAttachRef] = useSessionDraft('AfServicePanel.attachRef', '');
+  const [planCompleteDate, setPlanCompleteDate] = useSessionDraft('AfServicePanel.planCompleteDate', '');
   const [touched, setTouched] = useState(false);
   const dirty = useRef(false);
 
   useEffect(() => {
     if (dirty.current) return;
-    setServiceDetail(resolution?.resolutionDetail ?? '');
-    setAttachRef(resolution?.attachRef ?? '');
-    setPlanCompleteDate(resolution?.planCompleteDate?.slice(0, 10) ?? '');
-  }, [resolution]);
+    setServiceDetail.hydrate(resolution?.resolutionDetail ?? '');
+    setAttachRef.hydrate(resolution?.attachRef ?? '');
+    setPlanCompleteDate.hydrate(resolution?.planCompleteDate?.slice(0, 10) ?? '');
+  }, [resolution, setServiceDetail, setAttachRef, setPlanCompleteDate]);
 
   const save = actions.find((action) => action.code === 'saveService');
   const done = actions.find((action) => action.code === 'service');

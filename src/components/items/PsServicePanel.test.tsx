@@ -5,6 +5,8 @@ import { PsServicePanel } from './PsServicePanel';
 import { usePsRequest } from '../../hooks/usePsRequest';
 import { usePsServiceOptions } from '../../hooks/usePsServiceOptions';
 import { RequestAction } from '../../types/requestList';
+import { DraftScope } from '../../hooks/useSessionDraft';
+import { clearDraftSession, startDraftSession, suspendDraftSession } from '../../utils/sessionDrafts';
 
 jest.mock('../../hooks/usePsRequest');
 jest.mock('../../hooks/usePsServiceOptions');
@@ -12,6 +14,7 @@ const save: RequestAction = { code: 'saveService', label: 'บันทึกร
 const done: RequestAction = { code: 'service', label: 'ดำเนินการ', style: 'success', requireNote: false, requiredFields: [] };
 const submit = jest.fn().mockResolvedValue(undefined);
 beforeEach(() => {
+  clearDraftSession();
   jest.clearAllMocks();
   HTMLElement.prototype.scrollIntoView = jest.fn();
   (usePsRequest as jest.Mock).mockReturnValue({ doc: {
@@ -23,6 +26,20 @@ beforeEach(() => {
     rpStep: '3', rpStatus: '2', rpId: '3', details: [{ rpDetailId: '3.1', rpDetailName: 'รอดำเนินการ' }],
     }, loading: false, errors: {}, reload: jest.fn(),
   });
+});
+afterEach(() => clearDraftSession());
+
+test('restored PS service text survives refetch and never replays a submission', () => {
+  startDraftSession('alice');
+  const app = <DraftScope name="PS::PS01"><PsServicePanel docNo="PS01" refreshKey="1" userName="ผู้ใช้ระบบ" actions={[save, done]} pending={false} onSubmit={submit} /></DraftScope>;
+  const first = render(app);
+  fireEvent.change(screen.getByLabelText('Supplier Name'), { target: { value: 'ผู้ขายที่กำลังกรอก' } });
+  suspendDraftSession('/inbox'); first.unmount();
+  startDraftSession('alice', true);
+  render(app);
+  expect(screen.getByLabelText('Supplier Name')).toHaveValue('ผู้ขายที่กำลังกรอก');
+  expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  expect(submit).not.toHaveBeenCalled();
 });
 test('PS progress can be saved repeatedly with the current pending status', async () => {
   render(<PsServicePanel docNo="PS01" refreshKey="1" userName="ผู้ใช้ระบบ" actions={[save, done]} pending={false} onSubmit={submit} />);

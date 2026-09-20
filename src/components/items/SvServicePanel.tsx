@@ -1,3 +1,4 @@
+import { useSessionDraft } from '../../hooks/useSessionDraft';
 import React, { useEffect, useState } from 'react';
 import { IconLoader2 } from '@tabler/icons-react';
 import { RequestAction, RequestResolution } from '../../types/requestList';
@@ -23,16 +24,16 @@ export function SvServicePanel({
   pending: boolean;
   onSubmit?: (action: RequestAction, fields: ActionFieldValues) => void | Promise<void>;
 }) {
-  const [serviceDetail, setServiceDetail] = useState('');
-  const [planCompleteDate, setPlanCompleteDate] = useState('');
+  const [serviceDetail, setServiceDetail] = useSessionDraft('SvServicePanel.serviceDetail', '');
+  const [planCompleteDate, setPlanCompleteDate] = useSessionDraft('SvServicePanel.planCompleteDate', '');
   const [touched, setTouched] = useState(false);
   const [confirmReceive, setConfirmReceive] = useState(false);
 
   useEffect(() => {
     if (!resolution) return;
-    setServiceDetail(resolution.resolutionDetail ?? '');
-    setPlanCompleteDate(resolution.planCompleteDate?.slice(0, 10) ?? '');
-  }, [resolution]);
+    setServiceDetail.hydrate(resolution.resolutionDetail ?? '');
+    setPlanCompleteDate.hydrate(resolution.planCompleteDate?.slice(0, 10) ?? '');
+  }, [resolution, setServiceDetail, setPlanCompleteDate]);
 
   const save = actions.find((action) => action.code === 'saveService');
   const receive = actions.find((action) => action.code === 'receive');
@@ -199,15 +200,15 @@ export function SvMgrReviewPanel({
   pending: boolean;
   onSubmit?: (action: RequestAction, fields: ActionFieldValues) => void | Promise<void>;
 }) {
-  const [serviceDetail, setServiceDetail] = useState('');
-  const [planCompleteDate, setPlanCompleteDate] = useState('');
+  const [serviceDetail, setServiceDetail] = useSessionDraft('SvMgrReviewPanel.serviceDetail', '');
+  const [planCompleteDate, setPlanCompleteDate] = useSessionDraft('SvMgrReviewPanel.planCompleteDate', '');
   const [touched, setTouched] = useState(false);
   const [confirming, setConfirming] = useState(false);
 
   useEffect(() => {
-    setServiceDetail(resolution?.resolutionDetail ?? '');
-    setPlanCompleteDate(resolution?.planCompleteDate?.slice(0, 10) ?? '');
-  }, [resolution]);
+    setServiceDetail.hydrate(resolution?.resolutionDetail ?? '');
+    setPlanCompleteDate.hydrate(resolution?.planCompleteDate?.slice(0, 10) ?? '');
+  }, [resolution, setServiceDetail, setPlanCompleteDate]);
 
   const action = actions.find((item) => item.code === 'mgrClose');
   const editable = state === 'current' && !!action && !!onSubmit;
@@ -369,15 +370,15 @@ export function SvRequesterReviewPanel({
   pending: boolean;
   onSubmit?: (action: RequestAction, fields: ActionFieldValues) => void | Promise<void>;
 }) {
-  const [accepted, setAccepted] = useState<boolean | null>(null);
-  const [notAcceptedDetail, setNotAcceptedDetail] = useState('');
+  const [accepted, setAccepted] = useSessionDraft<boolean | null>('SvRequesterReviewPanel.accepted', null);
+  const [notAcceptedDetail, setNotAcceptedDetail] = useSessionDraft('SvRequesterReviewPanel.notAcceptedDetail', '');
   const [touched, setTouched] = useState(false);
   const [confirming, setConfirming] = useState(false);
 
   useEffect(() => {
-    setAccepted(resolution?.accepted ?? null);
-    setNotAcceptedDetail(resolution?.notAcceptedDetail ?? '');
-  }, [resolution]);
+    setAccepted.hydrate(resolution?.accepted ?? null);
+    setNotAcceptedDetail.hydrate(resolution?.notAcceptedDetail ?? '');
+  }, [resolution, setAccepted, setNotAcceptedDetail]);
 
   // saveReview ต้องมาจาก availableActions หลัง backend เพิ่ม action แบบ SaveOnly แล้ว
   const save = actions.find((action) => action.code === 'saveReview');

@@ -1,3 +1,4 @@
+import { useSessionDraft } from '../../hooks/useSessionDraft';
 import React, { useMemo, useState } from 'react';
 import { IconFileText } from '@tabler/icons-react';
 import { PsReportStatus } from '../../types/requestList';
@@ -11,8 +12,8 @@ export function PsReportStatusPanel({ status, docNo, token, canUpdate, onSaved }
   status: PsReportStatus; docNo: string; token?: string; canUpdate: boolean; onSaved: () => Promise<void>;
 }) {
   const master = usePsReportStatuses(token);
-  const [editing, setEditing] = useState(false);
-  const [value, setValue] = useState('');
+  const [editing, setEditing] = useSessionDraft('PsReportStatusPanel.editing', false);
+  const [value, setValue] = useSessionDraft('PsReportStatusPanel.value', '');
   const [pending, setPending] = useState(false);
   const [notice, setNotice] = useState('');
   const options = useMemo(() => {
@@ -25,7 +26,7 @@ export function PsReportStatusPanel({ status, docNo, token, canUpdate, onSaved }
     return list;
   }, [master.rows, status]);
   const save = async () => {
-    if (pending || master.loading || master.error || !options) return;
+    if (!canUpdate || pending || master.loading || master.error || !options) return;
     setPending(true); setNotice('');
     try {
       await updatePsReportDetail(docNo, value, token);
@@ -43,10 +44,10 @@ export function PsReportStatusPanel({ status, docNo, token, canUpdate, onSaved }
       {editing ? <>
         {master.error && <p role="alert">{master.error} <button onClick={master.reload}>ลองใหม่</button></p>}
         {!master.loading && !master.error && !options && <p role="alert">ไม่พบกลุ่มสถานะรายงานที่ตรงกัน กรุณาตรวจสอบข้อมูลกับผู้ดูแลระบบ <button onClick={master.reload}>ลองใหม่</button></p>}
-        <SearchSelect value={value} options={options ?? []} disabled={pending || master.loading || !!master.error || !options} onChange={setValue} />
+        <SearchSelect value={value} options={options ?? []} disabled={!canUpdate || pending || master.loading || !!master.error || !options} onChange={setValue} />
         <p className="text-xs text-gray-500 dark:text-slate-400">เปลี่ยนเฉพาะรายละเอียดสถานะรายงาน โดยคงขั้นตอนงานเดิม</p>
         <button type="button" disabled={pending} onClick={() => setEditing(false)} className="mr-3">ยกเลิก</button>
-        <button type="button" disabled={pending || master.loading || !!master.error || !options} onClick={save} className="rounded-lg bg-accent px-3 py-2 text-white disabled:opacity-50">{pending ? 'กำลังบันทึก…' : 'บันทึกสถานะรายงาน'}</button>
+        <button type="button" disabled={!canUpdate || pending || master.loading || !!master.error || !options} onClick={save} className="rounded-lg bg-accent px-3 py-2 text-white disabled:opacity-50">{pending ? 'กำลังบันทึก…' : 'บันทึกสถานะรายงาน'}</button>
       </> : canUpdate && <button type="button" className="text-accent" onClick={() => { setValue(status.rpDetailId ?? ''); setNotice(''); setEditing(true); }}>แก้ไขรายละเอียดสถานะรายงาน</button>}
     </div>
   </InfoCard>;

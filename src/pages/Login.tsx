@@ -21,8 +21,9 @@ export function Login() {
     setError('');
     setLoading(true);
     try {
-      await login(username, password);
-      navigate(backTo, { replace: true }); // กลับไปหน้าเดิมที่ค้างไว้
+      const resumePath = await login(username, password);
+      // A different account must never inherit the previous user's work page.
+      navigate(resumePath ?? (expired ? '/dashboard' : backTo), { replace: true });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'เข้าสู่ระบบไม่สำเร็จ');
     } finally {
@@ -41,7 +42,7 @@ export function Login() {
 
         {expired && !error && (
           <div className="mb-4 rounded-lg bg-amber-50 dark:bg-amber-950/40 px-3 py-2 text-sm text-amber-700 dark:text-amber-300">
-            เซสชันหมดอายุ กรุณาเข้าสู่ระบบใหม่
+            เซสชันหมดอายุ กรุณาเข้าสู่ระบบด้วยบัญชีเดิมเพื่อกลับไปทำงานต่อ ข้อความที่กรอกไว้จะถูกเรียกคืน (ไม่รวมรูปภาพและไฟล์ที่ยังไม่อัปโหลด)
           </div>
         )}
 

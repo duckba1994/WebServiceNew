@@ -1,3 +1,4 @@
+import { useSessionDraft } from '../../hooks/useSessionDraft';
 import React, { useMemo, useState } from 'react';
 import { IconAlertTriangle, IconLoader2, IconChevronDown } from '@tabler/icons-react';
 import { RequestAction, RequestListItem } from '../../types/requestList';
@@ -176,9 +177,9 @@ export function RequestActionDialog({
   onCancel: () => void;
   onConfirm: (note: string, fields?: ActionFieldValues) => void;
 }) {
-  const [note, setNote] = useState('');
-  const [values, setValues] = useState<ActionFieldValues>({});
-  const [showOptional, setShowOptional] = useState(false);
+  const [note, setNote] = useSessionDraft('RequestActionDialog.note', '');
+  const [values, setValues] = useSessionDraft<ActionFieldValues>('RequestActionDialog.values', {});
+  const [showOptional, setShowOptional] = useSessionDraft('RequestActionDialog.showOptional', false);
   const [touched, setTouched] = useState(false);
 
   const required = useMemo(() => {

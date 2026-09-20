@@ -1,3 +1,4 @@
+import { DraftScope, useSessionDraft } from '../hooks/useSessionDraft';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   IconBuildingCommunity,
@@ -210,7 +211,7 @@ function DeptPicker({
   reload: () => void;
   onPick: (d: DepartmentApi) => void;
 }) {
-  const [departid, setDepartid] = useState('');
+  const [departid, setDepartid] = useSessionDraft('DeptPicker.departid', '');
   const options = useMemo(() => toDeptOptions(departments), [departments]);
   const selected = departments.find((d) => d.departid === departid);
   const cfg = selected ? getDeptForm(selected.departmentShort) : null;
@@ -370,14 +371,14 @@ function RequestForm({
   const psPrelims = usePsPrelims(user?.token, usesMaster(cfg, 'psPrelims'));
   // ตัวเลือกแผนก (ค้นหาได้) — ใช้กับฟิลด์ kind='searchSelect' ที่ master='departments'
   const deptOptions = useMemo(() => toDeptOptions(departments), [departments]);
-  const [f, setF] = useState<RequestFormState>(() => createEmptyForm(dep, auto));
+  const [f, setF] = useSessionDraft<RequestFormState>('RequestForm.f', () => createEmptyForm(dep, auto));
   const [errors, setErrors] = useState<FormErrors>({});
-  const [saved, setSaved] = useState(false);
+  const [saved, setSaved] = useSessionDraft('RequestForm.saved', false);
   const [sending, setSending] = useState(false);
   const [sendError, setSendError] = useState<string | null>(null);
   // ผลของขั้นแนบรูป (ยิงหลังสร้างใบสำเร็จ) — ใบสร้างได้แล้วแม้รูปจะพลาด
   // จึงต้องแยกสถานะออกจาก sendError ไม่ให้กลบผลว่า "ส่งใบเรียบร้อย"
-  const [docNo, setDocNo] = useState<string | null>(null);
+  const [docNo, setDocNo] = useSessionDraft<string | null>('RequestForm.docNo', null);
   const [uploading, setUploading] = useState<{ done: number; total: number } | null>(null);
   const [uploadFailed, setUploadFailed] = useState<{ name: string; reason: string }[]>([]);
   // CR: ยืนยันก่อนบันทึก — เลขที่ใบผูกกับ (ส่วนงาน + ประเภทที่แจ้ง) และแก้ทีหลังไม่ได้
@@ -795,6 +796,7 @@ function RequestForm({
   // เซ็ตครั้งเดียวต่อฟิลด์ (จำไว้ใน ref) — ไม่งั้นผู้ใช้ล้างค่ากลับเป็น "-- เลือก --" ไม่ได้เลย
   const defaultsDone = useRef<Set<string>>(new Set());
   useEffect(() => {
+    if (setF.restored) return;
     for (const fd of cfg.sections.flatMap((s) => s.fields)) {
       if (!fd.defaultFirst || defaultsDone.current.has(fd.key)) continue;
       // มีค่าอยู่แล้ว (ผู้ใช้เลือกเอง) = ถือว่าจบหน้าที่ของค่าตั้งต้น ไม่ต้องมายุ่งอีก
@@ -1685,7 +1687,7 @@ function RequestForm({
 export function CreateItem() {
   const { user } = useAuth();
   const { departments, loading, error, reload } = useDepartments(user?.token);
-  const [dep, setDep] = useState<DepartmentApi | null>(null);
+  const [dep, setDep] = useSessionDraft<DepartmentApi | null>('CreateItem.dep', null);
 
   // เฉพาะตัวเลือก "แผนกปลายทาง" ที่ถูกคัด — ฟิลด์ในฟอร์มที่อ้างถึงหน่วยงานอื่น
   // (master='departments') ยังใช้รายชื่อเต็มจาก master เหมือนเดิม
@@ -1722,7 +1724,7 @@ export function CreateItem() {
         />
       ) : (
         // เปลี่ยนแผนก → remount ฟอร์มเพื่อล้างค่าเดิมทั้งหมด
-        <RequestForm
+        <DraftScope key={dep.departid} name={`create:${dep.departid}`}><RequestForm
           key={dep.departid}
           dep={dep}
           auto={auto}
@@ -1731,7 +1733,7 @@ export function CreateItem() {
           deptsError={error}
           reloadDepts={reload}
           onBack={() => setDep(null)}
-        />
+        /></DraftScope>
       )}
     </Layout>
   );
