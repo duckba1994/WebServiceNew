@@ -22,6 +22,8 @@ export function SearchSelect({
   disabled,
   invalid,
   autoFocus,
+  ariaLabel,
+  placement = 'bottom',
   className = '',
 }: {
   value: string;
@@ -32,6 +34,8 @@ export function SearchSelect({
   disabled?: boolean;
   invalid?: boolean;
   autoFocus?: boolean;
+  ariaLabel?: string;
+  placement?: 'top' | 'bottom';
   className?: string;
 }) {
   const [open, setOpen] = useState(false);
@@ -158,6 +162,7 @@ export function SearchSelect({
         <input
           ref={inputRef}
           role="combobox"
+          aria-label={ariaLabel}
           aria-expanded={open}
           aria-controls={listId}
           aria-autocomplete="list"
@@ -209,7 +214,7 @@ export function SearchSelect({
           id={listId}
           role="listbox"
           ref={listRef}
-          className="absolute left-0 right-0 top-full z-50 mt-1 max-h-[260px] overflow-auto rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 py-1 shadow-xl"
+          className={`absolute left-0 right-0 ${placement === 'top' ? 'bottom-full mb-1' : 'top-full mt-1'} z-50 max-h-[260px] overflow-auto rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 py-1 shadow-xl`}
         >
           {shown.length === 0 ? (
             <div className="flex items-center gap-2 px-3 py-3 text-[12px] text-amber-700 dark:text-amber-300">

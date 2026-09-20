@@ -6,9 +6,11 @@ import { usePsServiceOptions } from '../../hooks/usePsServiceOptions';
 import { SearchSelect } from '../ui/SearchSelect';
 import { DateQuickPick } from '../ui/DateQuickPick';
 import { actionBtnClass } from './RequestActionDialog';
+import { ConfirmDialog } from '../ui/ConfirmDialog';
+import { INPUT_CLS } from '../ui/FormControls';
 
-const INPUT = 'w-full rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-[13px] text-gray-800 dark:text-slate-100 outline-none focus:border-accent disabled:bg-slate-100 dark:disabled:bg-slate-800';
-const LABEL = 'mb-1 block text-[12px] font-semibold text-gray-600 dark:text-slate-300';
+const INPUT = `${INPUT_CLS} w-full disabled:cursor-not-allowed disabled:bg-gray-100 dark:disabled:bg-slate-800`;
+const LABEL = 'mb-1 block text-[11.5px] font-semibold text-gray-500 dark:text-slate-400';
 
 interface Form {
   repairStatus: string; workResults: string; rpDetailId: string; remark: string;
@@ -28,12 +30,15 @@ export function PsServicePanel({ docNo, token, refreshKey, userName, actions, pe
   const options = usePsServiceOptions(docNo, token);
   const [form, setForm] = useState<Form>(() => emptyForm(userName));
   const [error, setError] = useState('');
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const dirty = useRef(false);
   const busy = useRef(false);
   const save = actions.find(a => a.code === 'saveService');
   const done = actions.find(a => a.code === 'service');
   const editable = !!onSubmit && !!(save || done);
-  const locked = pending || busy.current || !editable;
+  const locked = pending || submitting || !editable;
+  const canComplete = form.workResults.trim() === 'จัดการเรียบร้อย';
 
   useEffect(() => {
     if (!doc || dirty.current) return;
@@ -72,12 +77,13 @@ export function PsServicePanel({ docNo, token, refreshKey, userName, actions, pe
   }) ?? {};
   const submit = async (action: RequestAction) => {
     if (locked || busy.current || !onSubmit) return;
+    if (action.code === 'service' && !canComplete) return;
     if (form.leadTime && (!/^\d+$/.test(form.leadTime) || Number(form.leadTime) < 0)) {
       setError('ระยะเวลา (วัน) ต้องเป็นจำนวนเต็มตั้งแต่ 0 ขึ้นไป'); return;
     }
-    busy.current = true; setError('');
+    busy.current = true; setSubmitting(true); setError(''); setConfirmOpen(false);
     try { await onSubmit(action, fields()); dirty.current = false; }
-    finally { busy.current = false; }
+    finally { busy.current = false; setSubmitting(false); }
   };
   const select = (label: string, value: string, options: { value: string; label: string }[], onChange: (value: string) => void, unavailable: boolean) =>
     <div><label className={LABEL}>{label}</label><SearchSelect value={value} options={options} disabled={locked || unavailable} onChange={onChange} /></div>;
@@ -85,7 +91,7 @@ export function PsServicePanel({ docNo, token, refreshKey, userName, actions, pe
   if (!doc) return <div role="status" className="text-sm text-slate-500">{docError ?? 'กำลังโหลดข้อมูลดำเนินการ PS…'}{docError && <button className="ml-2 text-accent" onClick={reload}>ลองใหม่</button>}</div>;
   return <div className="space-y-4">
     {Object.entries(options.errors).map(([source, message]) => <p key={source} role="alert" className="text-xs text-rose-600">{message} <button className="underline" onClick={options.reload}>ลองใหม่</button></p>)}
-    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+    <div className="grid grid-cols-1 gap-x-5 gap-y-4 sm:grid-cols-2">
       {select('ดำเนินการโดย', form.repairStatus, actionOptions, value => set('repairStatus', value), options.loading || !!options.errors.actions)}
       {select('ผลการดำเนินการ', form.workResults, resultOptions, value => set('workResults', value), options.loading || !!options.errors.workResults)}
       {select('Status งานค้าง', form.rpDetailId, statusOptions, value => set('rpDetailId', value), options.loading || !!options.errors.report || statusOptions.length === 0)}
@@ -99,10 +105,15 @@ export function PsServicePanel({ docNo, token, refreshKey, userName, actions, pe
       <div className="sm:col-span-2"><label className={LABEL} htmlFor="ps-postpone-reason">สาเหตุที่เลื่อน</label><textarea id="ps-postpone-reason" className={`${INPUT} resize-y`} rows={3} maxLength={500} value={form.otherRemark} disabled={locked} onChange={e => set('otherRemark', e.target.value)} /></div>
     </div>
     {error && <p role="alert" className="text-xs font-semibold text-rose-600">{error}</p>}
-    {editable && <div className="flex flex-wrap gap-2 border-t border-gray-100 pt-4 dark:border-slate-800">
+    {editable && <div className="flex flex-wrap items-center gap-2 border-t border-gray-100 pt-4 dark:border-slate-800">
       {save && <button type="button" disabled={locked} onClick={() => void submit(save)} className={`rounded-lg border px-4 py-2 text-[13px] font-semibold disabled:opacity-50 ${actionBtnClass(save.style)}`}>{save.label}</button>}
-      {done && <button type="button" disabled={locked} onClick={() => void submit(done)} className={`rounded-lg border px-4 py-2 text-[13px] font-semibold disabled:opacity-50 ${actionBtnClass(done.style)}`}>ดำเนินการ</button>}
-      <span className="self-center text-[11px] text-slate-500">บันทึกซ้ำได้โดยไม่เลื่อนขั้น จนกว่าจะกด “ดำเนินการ”</span>
+      {done && <button type="button" disabled={locked || !canComplete} onClick={() => setConfirmOpen(true)}
+        title={!canComplete ? 'ต้องเลือกผลการดำเนินการเป็น “จัดการเรียบร้อย” ก่อน' : undefined}
+        className={`rounded-lg border px-4 py-2 text-[13px] font-semibold disabled:cursor-not-allowed disabled:opacity-50 ${actionBtnClass(done.style)}`}>{done.label}</button>}
     </div>}
+    {confirmOpen && done && editable && canComplete && <ConfirmDialog title={`ยืนยัน${done.label}`} pending={locked}
+      confirmClass={actionBtnClass(done.style)} onCancel={() => setConfirmOpen(false)} onConfirm={() => void submit(done)}>
+      ต้องการยืนยันดำเนินการใบ <span className="mono font-semibold">{docNo}</span> ใช่หรือไม่?
+    </ConfirmDialog>}
   </div>;
 }

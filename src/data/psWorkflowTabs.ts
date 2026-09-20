@@ -10,25 +10,13 @@ export interface PsWorkflowTab {
   wfCodes?: string[];
 }
 
-// Approvals remain on General, including the second approval on legacy tickets.
-// Never add absent steps or guess a template while the workflow is loading.
+// Confirmed PS screens: General → รับเรื่อง → ดำเนินการ.
+// Like other modules, render all tabs immediately and resolve step numbers from the API.
 export function psWorkflowTabs(workflow?: RequestWorkflow | null): PsWorkflowTab[] {
   const tabs: PsWorkflowTab[] = [
     { key: 'general', label: 'General', reachedStep: 0, logAction: 'create', actionCodes: [] },
+    { key: 'psReceive', label: 'รับเรื่อง', reachedStep: 2, logAction: 'receive', actionCodes: ['receive', 'return'], wfCodes: ['Receive-Request'] },
+    { key: 'psService', label: 'ดำเนินการ', reachedStep: 3, logAction: 'service', actionCodes: [], panelCodes: ['saveService', 'service'], wfCodes: ['Service', 'Service And Close-Job'] },
   ];
-  for (const step of [...(workflow?.steps ?? [])].sort((a, b) => a.step - b.step)) {
-    const code = step.code.trim();
-    if (code === 'Approved-Request') continue;
-    const spec = code === 'Receive-Request'
-      ? { label: 'รับเรื่อง', logAction: 'receive', actionCodes: ['receive', 'return'] }
-      : code === 'Service' || code === 'Service And Close-Job'
-        ? { label: code === 'Service And Close-Job' ? 'ดำเนินการและปิดงาน' : 'ดำเนินการ', logAction: 'service', actionCodes: [], panelCodes: ['saveService', 'service'] }
-        : code === 'Received-Service'
-          ? { label: 'รับงาน', logAction: 'acceptWork', actionCodes: ['acceptWork'] }
-          : code === 'Close-Job' || code === 'Request-Close-Job'
-            ? { label: 'ปิดงาน', logAction: 'close', actionCodes: ['close'] }
-            : { label: step.name || code, logAction: code, actionCodes: [] };
-    tabs.push({ key: `psWorkflow-${step.step}`, reachedStep: step.step, wfCodes: [code], ...spec });
-  }
-  return tabs;
+  return tabs.map(tab => ({ ...tab, reachedStep: workflow?.steps.find(step => tab.wfCodes?.includes(step.code.trim()))?.step ?? tab.reachedStep }));
 }

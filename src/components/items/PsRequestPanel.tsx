@@ -97,7 +97,7 @@ export function PsRequestPanel({ docNo, token, refreshKey, allowEdit, onSaved, o
     <InfoCard title="สิ่งที่แนบมาด้วย" icon={IconPaperclip}>
       <div className="col-span-2">
       {(['attachSpec', 'attachQuatation'] as const).map(key => <div key={key} className="mb-3 flex flex-wrap items-center gap-3"><label><input type="checkbox" checked={!!f[key]} disabled={!attachment} onChange={e => set(key, e.target.checked)} /> {key === 'attachSpec' ? PS_ATTACH.spec : PS_ATTACH.quotation}</label>{f[key] && text(key === 'attachSpec' ? 'budgetDocNo' : 'exBudgetDocNo', key === 'attachSpec' ? 'เลขที่รายละเอียด/Spec' : 'เลขที่ Quotation', 50, attachment)}</div>)}
-      <PsQuoteAttachmentTable value={fromPsAttachment(f.attachment)} readOnly={!editing} disabled={!attachment} onChange={value => set('attachment', toPsAttachment(value))} />
+      <PsQuoteAttachmentTable token={token} value={fromPsAttachment(f.attachment)} readOnly={!editing} disabled={!attachment} onChange={value => set('attachment', toPsAttachment(value))} />
       </div>
     </InfoCard>
     <InfoCard title="ข้อมูลใบประเมินราคา" icon={IconFileText}>

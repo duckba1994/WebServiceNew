@@ -943,6 +943,7 @@ function RequestForm({
       case 'psQuoteAttachments':
         return (
           <PsQuoteAttachmentTable
+            token={user?.token}
             value={f.values[fd.key]}
             onChange={(value) => setValue(fd.key, value)}
           />

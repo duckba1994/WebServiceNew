@@ -371,3 +371,24 @@ export interface DeptMasterDataApi {
   actions?: (DeptMasterOptionApi | string)[]; // PS ส่ง string[]; บางแผนกส่ง option rows
   workResults?: (DeptMasterOptionApi | string)[];
 }
+// GET /MasterData/addresses?includeSubdistricts=false
+export interface AddressDistrictApi {
+  districtId: number;
+  code: string;
+  nameTH: string;
+  nameEN: string | null;
+}
+
+export interface AddressProvinceApi {
+  provinceId: number;
+  code: string;
+  nameTH: string;
+  nameEN: string | null;
+  districts: AddressDistrictApi[];
+}
+
+export interface AddressMasterApi {
+  loadedAtUtc: string;
+  includesSubdistricts: boolean;
+  provinces: AddressProvinceApi[];
+}

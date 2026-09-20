@@ -1,5 +1,6 @@
 import { ApiError, apiFetch, apiGet } from './client';
 import {
+  AddressMasterApi,
   DepartmentApi,
   SalesmanApi,
   ContactChannelApi,
@@ -52,6 +53,9 @@ export const fetchCustomers = (token?: string) =>
 
 export const fetchProvinces = (token?: string) =>
   apiGet<ProvinceApi[]>('/MasterData/provinces', token);
+
+export const fetchAddresses = (token?: string) =>
+  apiGet<AddressMasterApi>('/MasterData/addresses?includeSubdistricts=false', token);
 
 export const fetchMachineTypes = (token?: string) =>
   apiGet<MachineTypeApi[]>('/MasterData/machine-types', token);

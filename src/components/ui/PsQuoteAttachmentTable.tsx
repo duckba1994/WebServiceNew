@@ -1,5 +1,10 @@
 import React from 'react';
 import { IconCheck } from '@tabler/icons-react';
+import { SearchOption, SearchSelect } from './SearchSelect';
+import { useAddressMaster } from '../../hooks/useAddressMaster';
+
+const withSavedOption = (options: SearchOption[], value: string): SearchOption[] =>
+  value && !options.some(o => o.value === value) ? [{ value, label: value }, ...options] : options;
 
 type DocumentKey = 'estimate' | 'partBook' | 'photo' | 'samplePart' | 'oldPart' | 'other';
 
@@ -97,17 +102,37 @@ export function PsQuoteAttachmentTable({
   onChange,
   disabled = false,
   readOnly = false,
+  token,
 }: {
   value?: string;
   onChange: (value: string) => void;
   disabled?: boolean;
   readOnly?: boolean;
+  token?: string;
 }) {
   disabled = disabled || readOnly;
   const state = parseState(value);
+  const addresses = useAddressMaster(token, !disabled);
 
   const updateRow = (code: string, patch: Partial<RowState>) =>
     onChange(JSON.stringify({ ...state, [code]: { ...state[code], ...patch } }));
+
+  const locationSelect = (code: string, field: 'province' | 'district') => {
+    const row = state[code] ?? {};
+    const value = row[field] ?? '';
+    const options = field === 'province' ? addresses.provinceOptions : addresses.districtsByProvince.get(row.province ?? '') ?? [];
+    return <div className="min-w-0 flex-1"><SearchSelect
+      ariaLabel={`${field === 'province' ? 'จังหวัด' : 'อำเภอ'} — ลำดับ ${code}`}
+      placement="top"
+      value={value}
+      options={withSavedOption(options, value)}
+      placeholder={field === 'province' ? '-- เลือกจังหวัด --' : '-- เลือกอำเภอ --'}
+      disabled={disabled || !row.selected || addresses.loading || !!addresses.error || (field === 'district' && !row.province)}
+      onChange={next => updateRow(code, field === 'province'
+        ? { province: next, ...(next !== row.province ? { district: '' } : {}) }
+        : { district: next })}
+    /></div>;
+  };
 
   const setSelected = (row: FixedRow) => {
     if (state[row.code]?.selected) {
@@ -133,6 +158,11 @@ export function PsQuoteAttachmentTable({
 
   return (
     <div className="overflow-hidden rounded-xl border border-gray-200 dark:border-slate-700">
+      {!disabled && addresses.loading && <p role="status" className="px-3 py-2 text-[12px] text-slate-500 dark:text-slate-400">กำลังโหลดจังหวัดและอำเภอ…</p>}
+      {!disabled && addresses.error && <div role="alert" className="flex items-center gap-3 px-3 py-2 text-[12px] text-red-600 dark:text-red-400">
+        <span>โหลดจังหวัดและอำเภอไม่สำเร็จ: {addresses.error}</span>
+        <button type="button" className="font-semibold underline" onClick={addresses.reload}>ลองใหม่</button>
+      </div>}
       <div className="overflow-x-auto">
         <table className="w-full min-w-[1120px] border-collapse">
           <thead className="text-[11px] font-semibold text-slate-200">
@@ -196,23 +226,9 @@ export function PsQuoteAttachmentTable({
                         ) : row.location === 'provinceDistrict' ? (
                           <div className="flex items-center gap-2">
                             <span className="text-[12px] font-semibold text-slate-600 dark:text-slate-300">จังหวัด</span>
-                            <input
-                              aria-label={`จังหวัด — ลำดับ ${row.code}`}
-                              maxLength={200}
-                              value={rowState.province ?? ''}
-                              onChange={(e) => updateRow(row.code, { province: e.target.value })}
-                              disabled={disabled || !selected}
-                              className={`${EXTRA_INPUT} disabled:cursor-not-allowed disabled:bg-slate-100 dark:disabled:bg-slate-800`}
-                            />
+                            {locationSelect(row.code, 'province')}
                             <span className="text-[12px] font-semibold text-slate-600 dark:text-slate-300">อำเภอ</span>
-                            <input
-                              aria-label={`อำเภอ — ลำดับ ${row.code}`}
-                              maxLength={200}
-                              value={rowState.district ?? ''}
-                              onChange={(e) => updateRow(row.code, { district: e.target.value })}
-                              disabled={disabled || !selected}
-                              className={`${EXTRA_INPUT} disabled:cursor-not-allowed disabled:bg-slate-100 dark:disabled:bg-slate-800`}
-                            />
+                            {locationSelect(row.code, 'district')}
                           </div>
                         ) : (
                           <div className="flex items-center gap-2">
@@ -226,14 +242,7 @@ export function PsQuoteAttachmentTable({
                               className={`${EXTRA_INPUT} disabled:cursor-not-allowed disabled:bg-slate-100 dark:disabled:bg-slate-800`}
                             />
                             <span className="text-[12px] font-semibold text-slate-600 dark:text-slate-300">จังหวัด</span>
-                            <input
-                              aria-label={`จังหวัด — ลำดับ ${row.code}`}
-                              maxLength={200}
-                              value={rowState.province ?? ''}
-                              onChange={(e) => updateRow(row.code, { province: e.target.value })}
-                              disabled={disabled || !selected}
-                              className={`${EXTRA_INPUT} disabled:cursor-not-allowed disabled:bg-slate-100 dark:disabled:bg-slate-800`}
-                            />
+                            {locationSelect(row.code, 'province')}
                           </div>
                         )}
                       </td>

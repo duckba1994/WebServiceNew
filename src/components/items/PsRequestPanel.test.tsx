@@ -5,8 +5,10 @@ import { PsRequestPanel } from './PsRequestPanel';
 import { usePsRequest } from '../../hooks/usePsRequest';
 import { updatePsRequest, PsRequestDetail } from '../../api/psRequest';
 import { toPsAttachment } from '../../data/psRequestForm';
+import { fetchAddresses } from '../../api/masterData';
 
 jest.mock('../../hooks/usePsRequest');
+jest.mock('../../api/masterData', () => ({ fetchAddresses: jest.fn(() => new Promise(() => {})) }));
 jest.mock('../../api/psRequest', () => ({ updatePsRequest: jest.fn() }));
 jest.mock('../../hooks/useDeptMasterData', () => ({ useDeptMasterData: () => ({
   typeOptions: () => [{ value: 'ภายใน', label: 'ภายใน' }],
@@ -30,7 +32,11 @@ const doc = (): PsRequestDetail => ({
 const reload = jest.fn();
 const saved = jest.fn().mockResolvedValue(undefined);
 const renderPanel = () => render(<PsRequestPanel docNo="PS-01" refreshKey="1" token="token" allowEdit onSaved={saved} onEditingChange={jest.fn()} />);
-beforeEach(() => { jest.clearAllMocks(); load.mockReturnValue({ doc: doc(), error: null, reload }); });
+beforeEach(() => {
+  jest.clearAllMocks();
+  (fetchAddresses as jest.Mock).mockImplementation(() => new Promise(() => {}));
+  load.mockReturnValue({ doc: doc(), error: null, reload });
+});
 
 test('PS detail shows actual document numbers and saved table before the estimate section', () => {
   renderPanel();
