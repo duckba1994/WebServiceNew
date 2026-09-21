@@ -10,6 +10,8 @@ import { SalesPlan } from './pages/SalesPlan';
 import { Booking } from './pages/Booking';
 import { Delivery } from './pages/Delivery';
 import { PhoneBook } from './pages/PhoneBook';
+import { Reports } from './pages/Reports';
+import { ReportWorkspace } from './pages/ReportWorkspace';
 import { DraftScope } from './hooks/useSessionDraft';
 import { suspendDraftSession } from './utils/sessionDrafts';
 
@@ -46,6 +48,9 @@ export default function App() {
           <Route path="/booking" element={<ProtectedRoute><Booking /></ProtectedRoute>} />
           <Route path="/delivery" element={<ProtectedRoute><Delivery /></ProtectedRoute>} />
           <Route path="/phone-book" element={<ProtectedRoute><PhoneBook /></ProtectedRoute>} />
+          <Route path="/reports" element={<ProtectedRoute><Reports /></ProtectedRoute>} />
+          <Route path="/reports/it/satisfaction-summary" element={<ProtectedRoute><ReportWorkspace reportKey="it-satisfaction-summary" /></ProtectedRoute>} />
+          <Route path="/reports/it/request-register" element={<ProtectedRoute><ReportWorkspace reportKey="it-request-register" /></ProtectedRoute>} />
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Routes>
       </AuthProvider>

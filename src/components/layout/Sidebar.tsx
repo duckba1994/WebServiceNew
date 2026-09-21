@@ -2,6 +2,7 @@ import React from 'react';
 import { NavLink } from 'react-router-dom';
 import { IconFileText, IconLayoutDashboard } from '@tabler/icons-react';
 import { COMPANY, MENU_GROUPS, SYSTEM_MENU, MenuItem } from '../../data/menuData';
+import { useAuth } from '../../context/AuthContext';
 
 interface SidebarProps {
   isOpen: boolean;
@@ -54,6 +55,14 @@ function MenuButton({ item, iconClass }: { item: MenuItem; iconClass: string }) 
 }
 
 export function Sidebar({ isOpen }: SidebarProps) {
+  const { user } = useAuth();
+  const department = (user?.departmentShort ?? '').trim().toUpperCase();
+  const canSee = (item: MenuItem) => !item.departments || item.departments.includes(department) || user?.role === 'admin';
+  const visibleGroups = MENU_GROUPS.map((group) => ({
+    ...group,
+    items: group.items.filter(canSee),
+  })).filter((group) => group.items.length > 0);
+
   return (
     <aside
       className={`flex shrink-0 flex-col overflow-hidden bg-[#0b1220] transition-all duration-200 ${
@@ -96,7 +105,7 @@ export function Sidebar({ isOpen }: SidebarProps) {
           )}
         </NavLink>
 
-        {MENU_GROUPS.map((group) => (
+        {visibleGroups.map((group) => (
           <div key={group.key}>
             <GroupLabel>{group.label}</GroupLabel>
             {group.items.map((item) => (

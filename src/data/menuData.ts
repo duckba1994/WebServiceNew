@@ -8,6 +8,7 @@ import {
   IconDatabase,
   IconShieldLock,
   IconHelp,
+  IconChartBar,
 } from '@tabler/icons-react';
 
 // ── ข้อมูลระบบ — ใช้ใน Sidebar และแบนเนอร์หน้าหลัก ─────────────
@@ -32,10 +33,12 @@ export interface MenuItem {
   // ยังไม่มีหน้าจริง (placeholder) — เติม to เมื่อสร้างหน้าแล้ว
   to?: string;
   tags?: MenuTag[];
+  // จำกัดเมนูตาม departmentShort ของผู้ใช้; ไม่ระบุ = ทุกแผนกเห็น
+  departments?: string[];
 }
 
 export interface MenuGroup {
-  key: 'INTAKE' | 'SERVICE';
+  key: 'INTAKE' | 'SERVICE' | 'REPORT';
   label: string;
   // สีประจำหมวดโทน corporate (ดู Design System ใน CLAUDE.md)
   color: string;
@@ -72,6 +75,15 @@ export const MENU_GROUPS: MenuGroup[] = [
         icon: IconPhone,
         to: '/phone-book',
       },
+    ],
+  },
+  {
+    key: 'REPORT',
+    label: 'รายงาน',
+    color: '#475569',
+    sidebarIconClass: 'text-slate-300',
+    items: [
+      { label: 'รายงานหน่วยงาน', icon: IconChartBar, to: '/reports', departments: ['IT'] },
     ],
   },
 ];
