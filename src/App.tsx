@@ -11,7 +11,7 @@ import { Booking } from './pages/Booking';
 import { Delivery } from './pages/Delivery';
 import { PhoneBook } from './pages/PhoneBook';
 import { Reports } from './pages/Reports';
-import { ReportWorkspace } from './pages/ReportWorkspace';
+import { ReportWorkspace } from './pages/ITReportWorkspace';
 import { DraftScope } from './hooks/useSessionDraft';
 import { suspendDraftSession } from './utils/sessionDrafts';
 

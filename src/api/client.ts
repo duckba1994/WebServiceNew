@@ -51,6 +51,8 @@ export async function apiGet<T>(path: string, token?: string): Promise<T> {
 interface ApiErrorBody {
   statusCode?: number;
   message?: string;
+  title?: string;
+  errors?: Record<string, string | string[]>;
   traceId?: string;
 }
 
@@ -93,6 +95,11 @@ async function throwApiError(res: Response, fallback?: string): Promise<never> {
   try {
     const body = (await res.json()) as ApiErrorBody;
     if (body?.message) message = body.message;
+    else if (body?.errors) {
+      const details = Object.values(body.errors).flatMap((value) => Array.isArray(value) ? value : [value]);
+      if (details.length) message = details.join(' · ');
+      else if (body.title) message = body.title;
+    } else if (body?.title) message = body.title;
     traceId = body?.traceId;
   } catch {
     // ตอบกลับไม่ใช่ JSON — ใช้ข้อความ default

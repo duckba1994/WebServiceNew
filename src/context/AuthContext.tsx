@@ -125,6 +125,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       username: pick('username') || username,
       name: pick('fullName', 'name', 'employeeName', 'userFullName') || username,
       token: result.token,
+      role: /admin/i.test(pick('role', 'userRole', 'roleName') ?? '') ? 'admin' : 'staff',
       salemanId: (raw.salemanId as string | null | undefined) ?? null,
       departid: pick('departid', 'departId', 'departmentId', 'deptId'),
       departmentShort: pick('departmentShort', 'departShort', 'deptShort'),
