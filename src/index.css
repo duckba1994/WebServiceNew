@@ -250,12 +250,34 @@ html.dark {
   position: relative;
   background: #fff;
   color: #000;
-  font-family: Tahoma, 'Leelawadee UI', sans-serif;
-  font-size: 8px;
+  font-family: 'Angsana New', 'TH Sarabun New', Tahoma, 'Leelawadee UI', sans-serif;
+  font-size: 12px;
   line-height: 1.35;
   -webkit-print-color-adjust: exact;
   print-color-adjust: exact;
 }
+.it-report-print, .it-report-print * {
+  font-family: 'Angsana New', 'TH Sarabun New', Tahoma, 'Leelawadee UI', sans-serif;
+}
+.it-report-tool {
+  display: inline-flex;
+  height: 32px;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 0 10px;
+  color: #475569;
+  font-size: 12px;
+  font-weight: 600;
+  transition: 0.15s ease;
+}
+.it-report-tool:hover { border-color: #1a5fb4; color: #1a5fb4; }
+.dark .it-report-tool { border-color: #334155; color: #cbd5e1; }
+.dark .it-report-tool:hover { border-color: #1a5fb4; color: #93c5fd; }
+.it-report-tool.bg-accent { border-color: #1a5fb4; color: #fff; }
+.it-report-tool.bg-accent:hover { color: #fff; }
 .it-report-preview {
   position: absolute;
   inset: 0;
@@ -269,18 +291,18 @@ html.dark {
 }
 .dark .it-report-preview { background: #020617; }
 .it-survey-print { page: it-survey; width: 210mm; min-height: 297mm; padding: 7mm 5mm 10mm; }
-.it-service-print { page: it-service; width: 297mm; min-height: 210mm; padding: 5mm 4mm 9mm; font-size: 6.2px; }
+.it-service-print { page: it-service; width: 297mm; min-height: 210mm; padding: 5mm 4mm 9mm; font-size: 9.5px; }
 @page it-survey { size: A4 portrait; margin: 0; }
 @page it-service { size: A4 landscape; margin: 0; }
 .it-print-head { display: grid; grid-template-columns: 32mm 1fr 44mm; align-items: start; min-height: 23mm; }
 .it-print-head img { width: 23mm; height: 19mm; object-fit: contain; justify-self: center; }
-.it-print-title { display: flex; flex-direction: column; gap: 3mm; padding-top: 2mm; text-align: center; font-size: 10px; }
-.it-print-title strong { font-size: 11px; }
-.it-print-title b { font-size: 12px; }
-.it-print-meta { padding-top: 1mm; text-align: right; font-size: 7px; line-height: 1.8; }
-.it-print-range { margin: 0 0 3mm; text-align: center; font-size: 9px; }
+.it-print-title { display: flex; flex-direction: column; gap: 3mm; padding-top: 2mm; text-align: center; font-size: 14px; }
+.it-print-title strong { font-size: 16px; }
+.it-print-title b { font-size: 17px; }
+.it-print-meta { padding-top: 1mm; text-align: right; font-size: 10px; line-height: 1.8; }
+.it-print-range { margin: 0 0 3mm; text-align: center; font-size: 13px; }
 .it-print-range b { margin: 0 8mm 0 3mm; }
-.it-report-print h3 { margin: 3mm 0 1.5mm 2mm; font-size: 9px; }
+.it-report-print h3 { margin: 3mm 0 1.5mm 2mm; font-size: 13px; }
 .it-report-print table { width: 100%; border-collapse: collapse; table-layout: fixed; }
 .it-report-print th, .it-report-print td { border: 0.6px solid #222; padding: 1.5mm 1mm; text-align: center; vertical-align: middle; overflow-wrap: anywhere; }
 .it-report-print thead th { font-weight: 700; }
@@ -291,12 +313,12 @@ html.dark {
 .it-survey-print .it-survey-summary { width: 112mm; margin: 4mm 0 0 1.5mm; }
 .it-survey-print .it-survey-summary th:nth-child(1) { width: 15mm; }
 .it-survey-print .it-survey-summary th:nth-child(3) { width: 20mm; }
-.it-print-notes { margin: 3mm 4mm 0; font-size: 8px; line-height: 1.8; }
+.it-print-notes { margin: 3mm 4mm 0; font-size: 11px; line-height: 1.8; }
 .it-print-notes h3 { margin-left: 0; }
 .it-print-notes .remark { line-height: 2.4; }
 .it-print-signatures { display: grid; grid-template-columns: 1fr 1fr; gap: 25mm; margin: 10mm 24mm 0; text-align: center; line-height: 2.4; }
 .it-print-signatures span { display: inline-block; margin: 1mm 0; }
-.it-print-footer { position: absolute; right: 5mm; bottom: 3mm; left: 5mm; display: flex; justify-content: space-between; font-size: 6px; }
+.it-print-footer { position: absolute; right: 5mm; bottom: 3mm; left: 5mm; display: flex; justify-content: space-between; font-size: 8px; }
 .it-service-print .it-print-head { min-height: 19mm; grid-template-columns: 28mm 1fr 50mm; }
 .it-service-print .it-print-head img { width: 17mm; height: 15mm; }
 .it-service-print .it-print-title { gap: 2mm; padding-top: 1mm; font-size: 8px; }
