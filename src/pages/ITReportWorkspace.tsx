@@ -88,10 +88,6 @@ export function ReportWorkspace({ reportKey }: { reportKey: ReportKey }) {
         <div className="flex shrink-0 flex-wrap items-center gap-3 border-b border-gray-200 px-5 py-3 dark:border-slate-700">
           <Link to="/reports" className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-gray-200 text-slate-500 transition hover:border-accent hover:text-accent dark:border-slate-700 dark:text-slate-300" title="กลับหน้ารายงาน"><IconArrowLeft size={17} /></Link>
           <div><h2 className="text-sm font-bold text-gray-900 dark:text-white">{report.title}</h2><p className="text-[11.5px] text-slate-400">{report.description}</p></div>
-          <div className="ml-auto flex items-center gap-2">
-            <button type="button" disabled={!current.data || current.data.total === 0 || current.loading} onClick={() => window.print()} className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3.5 py-2 text-[12.5px] font-semibold text-slate-600 transition hover:border-accent hover:text-accent disabled:cursor-not-allowed disabled:opacity-40 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300"><IconPrinter size={16} />พิมพ์</button>
-            <button type="button" disabled={!current.data || current.data.total === 0 || current.loading} onClick={() => window.print()} className="inline-flex items-center gap-2 rounded-lg bg-accent px-3.5 py-2 text-[12.5px] font-semibold text-white shadow-sm transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40"><IconFileTypePdf size={16} />PDF</button>
-          </div>
         </div>
 
         <div className="flex shrink-0 gap-1 overflow-x-auto border-b border-gray-200 px-5 pt-2 dark:border-slate-700">
@@ -115,6 +111,10 @@ export function ReportWorkspace({ reportKey }: { reportKey: ReportKey }) {
           </div>
           <button type="button" onClick={() => fitPreview('page')} className="it-report-tool"><IconArrowsMaximize size={15} />พอดีหน้า</button>
           <button type="button" onClick={() => fitPreview('width')} className="it-report-tool"><IconArrowsHorizontal size={15} />พอดีความกว้าง</button>
+          <div className="ml-auto flex items-center gap-2">
+            <button type="button" onClick={() => window.print()} className="it-report-tool"><IconPrinter size={16} />พิมพ์</button>
+            <button type="button" onClick={() => window.print()} className="it-report-tool border-accent bg-accent text-white hover:bg-accent/90"><IconFileTypePdf size={16} />PDF</button>
+          </div>
         </div>}
 
         <div ref={previewHost} className="relative min-h-0 flex-1">
