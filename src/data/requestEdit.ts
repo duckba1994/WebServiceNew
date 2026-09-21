@@ -319,18 +319,14 @@ export interface PlAttachCheck {
   docMax?: number; // ความยาวสูงสุดตามคอลัมน์จริงใน DB
 }
 
-// ⚠️ docKey ของสองแถวแรกสลับกันโดยตั้งใจ (27 ส.ค. 2026)
-// ข้อมูลเดิมจากระบบ WinForms เก็บเลขที่งบประมาณไว้ในคอลัมน์ ExBudgetDocNo และ
-// เลขที่อนุมัตินอกงบไว้ใน BudgetDocNo — สลับกันมาตั้งแต่ต้น หน้าเว็บจึงสลับ
-// การอ่าน/เขียนให้ตรงกับของเดิม เพื่อไม่ให้เว็บกับ WinForms แสดงคนละเรื่องกัน
-// ระหว่างที่ยังใช้คู่กันอยู่
-// → วันไหน backend สลับข้อมูลใน DB ให้ถูกแล้ว ให้สลับ docKey ตรงนี้กลับ
+// สัญญา API ปัจจุบันใช้ชื่อตรงความหมายทั้งตอนสร้าง อ่าน และแก้ไข:
+// งบประมาณ → budgetDocNo · ใบขออนุมัตินอกงบ → exBudgetDocNo
 export const PL_ATTACH_CHECKS: PlAttachCheck[] = [
-  { key: 'attachBudget', label: 'งบประมาณ', docKey: 'exBudgetDocNo', docLabel: 'เลขที่งบประมาณ', docMax: 50 },
+  { key: 'attachBudget', label: 'งบประมาณ', docKey: 'budgetDocNo', docLabel: 'เลขที่งบประมาณ', docMax: 50 },
   {
     key: 'attachExBudget',
     label: 'ใบขออนุมัตินอกงบ',
-    docKey: 'budgetDocNo',
+    docKey: 'exBudgetDocNo',
     docLabel: 'เลขที่อนุมัตินอกงบ',
     docMax: 50,
   },
@@ -352,7 +348,12 @@ export interface EditLine {
 }
 
 // สถานะฟอร์มแก้ไข — ฟิลด์ข้อความเป็น string ล้วนเพื่อผูกกับ input ตรง ๆ
-export type RequestEditForm = Record<EditFieldKey, string> & { lines: EditLine[] };
+export type RequestEditForm = Record<EditFieldKey, string> & {
+  lines: EditLine[];
+  // optional เพื่อรองรับ draft รุ่นก่อนเพิ่มเช็กลิสต์; ฟอร์มใหม่จาก toEditForm มีให้ครบเสมอ
+  plAttach?: Record<PlAttachKey, boolean>;
+  plAttachDocs?: Record<PlAttachDocKey, string>;
+};
 
 export const emptyEditLine = (): EditLine => ({ item: '', qty: '', unit: '', remark: '' });
 
@@ -377,7 +378,8 @@ export const toEditForm = (
   deptDoc?: DeptRequestDetail | null,
   afDoc?: AfRequestDetail | null,
   hrDoc?: HrPrRequestDetail | null,
-  sqaDoc?: SqaRequestDetail | null
+  sqaDoc?: SqaRequestDetail | null,
+  plDoc?: PlRequestDetail | null
 ): RequestEditForm => ({
   requestDetail:
     item.module === 'SQA'
@@ -411,9 +413,18 @@ export const toEditForm = (
       unit: l.unit ?? '',
       remark: l.remark ?? '',
     })),
+  plAttach: PL_ATTACH_CHECKS.reduce(
+    (acc, c) => ({ ...acc, [c.key]: !!plDoc?.[c.key] }),
+    {} as Record<PlAttachKey, boolean>
+  ),
+  plAttachDocs: {
+    budgetDocNo: plDoc?.budgetDocNo ?? '',
+    exBudgetDocNo: plDoc?.exBudgetDocNo ?? '',
+    attachOtherDetail: plDoc?.attachOtherDetail ?? '',
+  },
 });
 
-export type EditErrors = Partial<Record<EditFieldKey, string>> & { lines?: string };
+export type EditErrors = Partial<Record<EditFieldKey | PlAttachDocKey, string>> & { lines?: string };
 
 export function validateEditForm(module: string, form: RequestEditForm): EditErrors {
   const errors: EditErrors = {};
@@ -442,13 +453,23 @@ export function validateEditForm(module: string, form: RequestEditForm): EditErr
         ? `รายการที่ ${bad + 1}: กรุณากรอกชื่อรายการ`
         : `รายการที่ ${bad + 1}: จำนวนต้องมากกว่า 0`;
   }
+  if (module === 'PL') {
+    Object.assign(
+      errors,
+      validatePlChecklist(form.plAttach ?? emptyPlAttach(), form.plAttachDocs ?? emptyPlAttachDocs())
+    );
+  }
   return errors;
 }
 
 // มีการแก้อะไรไหม — ใช้ตัดสินว่าต้องยิง API ไหม (ไม่ได้แก้ก็ไม่ต้องกวน backend)
 export const hasFormChanges = (original: RequestEditForm, next: RequestEditForm): boolean => {
-  const keys = Object.keys(next).filter((k) => k !== 'lines') as EditFieldKey[];
+  const keys = Object.keys(next).filter(
+    (k) => k !== 'lines' && k !== 'plAttach' && k !== 'plAttachDocs'
+  ) as EditFieldKey[];
   if (keys.some((k) => (original[k] ?? '').trim() !== (next[k] ?? '').trim())) return true;
+  if (JSON.stringify(original.plAttach ?? emptyPlAttach()) !== JSON.stringify(next.plAttach ?? emptyPlAttach())) return true;
+  if (JSON.stringify(original.plAttachDocs ?? emptyPlAttachDocs()) !== JSON.stringify(next.plAttachDocs ?? emptyPlAttachDocs())) return true;
   const norm = (ls: EditLine[]) =>
     JSON.stringify(
       ls
@@ -500,6 +521,18 @@ const docValue = (
   return owner && !attach[owner.key] ? '' : attachDocs[docKey].trim();
 };
 
+export const emptyPlAttach = (): Record<PlAttachKey, boolean> =>
+  PL_ATTACH_CHECKS.reduce(
+    (acc, c) => ({ ...acc, [c.key]: false }),
+    {} as Record<PlAttachKey, boolean>
+  );
+
+export const emptyPlAttachDocs = (): Record<PlAttachDocKey, string> => ({
+  budgetDocNo: '',
+  exBudgetDocNo: '',
+  attachOtherDetail: '',
+});
+
 // ติ๊กหัวข้อที่มีช่องข้อความ = ต้องกรอกช่องนั้นด้วย (ติ๊กงบประมาณแต่ไม่บอกเลขที่
 // ก็ไม่มีประโยชน์กับคนที่มาอ่านใบต่อ) — คืน map ของ error, ว่าง = ผ่าน
 export const validatePlChecklist = (
@@ -544,34 +577,48 @@ export const toPlUpdatePayload = (
   item: RequestListItem,
   form: RequestEditForm,
   doc?: PlRequestDetail | null
-): PlRequestUpdatePayload => ({
-  requestBy: item.requestBy ?? undefined,
-  attachBudget: doc?.attachBudget,
-  budgetDocNo: doc?.budgetDocNo ?? undefined,
-  attachExBudget: doc?.attachExBudget,
-  exBudgetDocNo: doc?.exBudgetDocNo ?? undefined,
-  attachSpec: doc?.attachSpec,
-  attachQuatation: doc?.attachQuatation,
-  attachPicture: doc?.attachPicture,
-  attachCustDocConfirm: doc?.attachCustDocConfirm,
-  attachOther: doc?.attachOther,
-  attachOtherDetail: doc?.attachOtherDetail ?? undefined,
-  requestDetail: form.requestDetail.trim(),
-  requestDetailRemark: form.requestDetailRemark.trim(),
-  type: form.type || undefined,
-  requestType: form.requestType || undefined,
-  // เวลาท้องถิ่นแบบไม่มี timezone — ถ้าแปลงเป็น ISO UTC จะโดน +07 ดึงวันถอยไป 1 วัน
-  planDate: form.planDate ? `${form.planDate}T00:00:00` : undefined,
-  lines: form.lines
-    .filter((l) => l.item.trim() !== '')
-    .map((l) => ({
-      recNo: l.recNo ?? undefined,
-      item: l.item.trim(),
-      qty: Number(l.qty) || 0,
-      unit: l.unit.trim() || undefined,
-      remark: l.remark.trim() || undefined,
-    })),
-});
+): PlRequestUpdatePayload => {
+  // draft ที่ถูกเก็บไว้ก่อนเพิ่ม UI ชุดนี้อาจยังไม่มีสอง object ใหม่ จึง fallback
+  // ไปยังค่าจาก GET /PLRequest เพื่อไม่ให้การแก้ข้อความล้างเช็กลิสต์เดิมทั้งชุด
+  const attach = form.plAttach ?? PL_ATTACH_CHECKS.reduce(
+    (acc, c) => ({ ...acc, [c.key]: !!doc?.[c.key] }),
+    {} as Record<PlAttachKey, boolean>
+  );
+  const attachDocs = form.plAttachDocs ?? {
+    budgetDocNo: doc?.budgetDocNo ?? '',
+    exBudgetDocNo: doc?.exBudgetDocNo ?? '',
+    attachOtherDetail: doc?.attachOtherDetail ?? '',
+  };
+
+  return {
+    requestBy: item.requestBy ?? undefined,
+    attachBudget: attach.attachBudget,
+    budgetDocNo: attach.attachBudget ? attachDocs.budgetDocNo.trim() : null,
+    attachExBudget: attach.attachExBudget,
+    exBudgetDocNo: attach.attachExBudget ? attachDocs.exBudgetDocNo.trim() : null,
+    attachSpec: attach.attachSpec,
+    attachQuatation: attach.attachQuatation,
+    attachPicture: attach.attachPicture,
+    attachCustDocConfirm: attach.attachCustDocConfirm,
+    attachOther: attach.attachOther,
+    attachOtherDetail: attach.attachOther ? attachDocs.attachOtherDetail.trim() : null,
+    requestDetail: form.requestDetail.trim(),
+    requestDetailRemark: form.requestDetailRemark.trim(),
+    type: form.type || undefined,
+    requestType: form.requestType || undefined,
+    // เวลาท้องถิ่นแบบไม่มี timezone — ถ้าแปลงเป็น ISO UTC จะโดน +07 ดึงวันถอยไป 1 วัน
+    planDate: form.planDate ? `${form.planDate}T00:00:00` : undefined,
+    lines: form.lines
+      .filter((l) => l.item.trim() !== '')
+      .map((l) => ({
+        recNo: l.recNo ?? undefined,
+        item: l.item.trim(),
+        qty: Number(l.qty) || 0,
+        unit: l.unit.trim() || undefined,
+        remark: l.remark.trim() || undefined,
+      })),
+  };
+};
 
 // ฟอร์ม → payload ของ PUT /{GA|IM}Request/{docNo}
 // requestBy กับ requestDetail บังคับส่งทุกครั้ง แม้ผู้ใช้ไม่ได้แก้ (API บังคับ)

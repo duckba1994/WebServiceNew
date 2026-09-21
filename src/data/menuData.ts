@@ -4,7 +4,6 @@ import {
   IconInbox,
   IconFilePlus,
   IconCalendarEvent,
-  IconTruck,
   IconPhone,
   IconDatabase,
   IconShieldLock,
@@ -69,17 +68,9 @@ export const MENU_GROUPS: MenuGroup[] = [
         tags: [{ label: 'เร็วๆนี้', variant: 'outline' }],
       },
       {
-        label: 'เบอร์โทรศัพท์โต๊ะ',
+        label: 'สมุดโทรศัพท์',
         icon: IconPhone,
-        tags: [{ label: 'เร็วๆนี้', variant: 'outline' }],
-      },
-      // dashboard เครื่องจักร/คนขับเดิม — ยกออกจากหน้าแรก 5 ก.ย. 2026 (หน้าแรกเป็น
-      // "งานที่แผนกเราต้องทำ") ตัวเลขยังเป็น mock ล้วน จึงติดป้าย "ตัวอย่าง" ไว้
-      {
-        label: 'สถานะทรัพยากร',
-        icon: IconTruck,
-        to: '/resources',
-        tags: [{ label: 'ตัวอย่าง', variant: 'outline' }],
+        to: '/phone-book',
       },
     ],
   },

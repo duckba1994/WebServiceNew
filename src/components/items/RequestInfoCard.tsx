@@ -18,7 +18,7 @@ export function InfoCard({ title, icon: Icon, children }: {
         <Icon size={15} className="text-slate-400 dark:text-slate-500" />
         <h5 className="text-[12.5px] font-bold text-gray-700 dark:text-slate-200">{title}</h5>
       </div>
-      <div className="grid grid-cols-2 gap-x-5 gap-y-4 px-4 py-4">{children}</div>
+      <div className="grid grid-cols-1 gap-x-5 gap-y-4 px-3 py-3 sm:grid-cols-2 sm:px-4 sm:py-4">{children}</div>
     </section>
   );
 }

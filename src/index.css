@@ -27,7 +27,7 @@ html.dark, html.dark body { background-color: #0f172a; }
   --ph-cancel-fg:   #9f1239;  --ph-cancel-bg:   #fff1f2;  --ph-cancel-bd:   #fecdd3;
   --ph-other-fg:    #475569;  --ph-other-bg:    #f1f5f9;  --ph-other-bd:    #e2e8f0;
 }
-/* ชุดสีป้ายสถานะกลาง (ใบจอง / แผนขาย / ใบส่งของ / สถานะทรัพยากร)
+/* ชุดสีป้ายสถานะกลาง (ใบจอง / แผนขาย / ใบส่งของ)
    data ของแต่ละหน้าเลือก "ตระกูลสี" ไม่ใช่ค่าสี — ค่าจริงสลับเองตอนโหมดมืด */
 :root {
   --tint-blue-fg:   #1d4ed8;  --tint-blue-bg:   #eff6ff;  --tint-blue-bd:   #bfdbfe;

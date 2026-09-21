@@ -266,6 +266,18 @@ export const SV_EXTERNAL = 'ลูกค้าภายนอก';
 export const SV_INTERNAL = 'หน่วยงานภายในองค์กร';
 export const OTHER_ATTACHMENT = 'อื่นๆ';
 
+// เช็กลิสต์ "สิ่งที่แนบมาด้วย" ตอนผู้แจ้งสร้างใบ PL — ค่าเหล่านี้ใช้ทั้ง
+// options, showWhen และการแปลงเป็น boolean ของ POST /PLRequest
+export const PL_CREATE_ATTACH = {
+  budget: 'งบประมาณ',
+  exBudget: 'ใบขออนุมัตินอกงบ',
+  spec: 'รายละเอียด/Spec',
+  quotation: 'Quotation เปรียบเทียบราคา',
+  picture: 'รูปถ่าย',
+  custDocConfirm: 'เอกสารยืนยันจากบริษัทลูกค้า',
+  other: 'อื่นๆ',
+} as const;
+
 // ป้ายภาษาไทยของกล่องสิ่งที่แนบมาด้วยของ PS — ใช้ค่าเดียวกันทั้ง options,
 // showWhen และ optionFields เพื่อไม่ให้เงื่อนไขหลุดเมื่อแก้ข้อความที่แสดง
 export const PS_ATTACH = {
@@ -558,6 +570,54 @@ export const DEPT_FORMS: Record<string, DeptFormConfig> = {
             span2: true,
             maxLen: 500,
             placeholder: 'ระบุความจำเป็น / ผลกระทบหากไม่ได้รับ',
+          },
+          {
+            key: 'plAttachDocs',
+            label: 'สิ่งที่แนบมาด้วย',
+            kind: 'checkboxes',
+            span2: true,
+            hint: '(ติ๊กเอกสารที่ส่งแนบมากับใบนี้ — ไม่บังคับ)',
+            options: [
+              PL_CREATE_ATTACH.budget,
+              PL_CREATE_ATTACH.exBudget,
+              PL_CREATE_ATTACH.spec,
+              PL_CREATE_ATTACH.quotation,
+              PL_CREATE_ATTACH.picture,
+              PL_CREATE_ATTACH.custDocConfirm,
+              PL_CREATE_ATTACH.other,
+            ],
+            optionFields: {
+              [PL_CREATE_ATTACH.budget]: 'plBudgetDocNo',
+              [PL_CREATE_ATTACH.exBudget]: 'plExBudgetDocNo',
+              [PL_CREATE_ATTACH.other]: 'plAttachOtherDetail',
+            },
+          },
+          {
+            key: 'plBudgetDocNo',
+            label: 'เลขที่งบประมาณ',
+            kind: 'text',
+            required: true,
+            maxLen: 50,
+            placeholder: 'เลขที่งบประมาณ',
+            showWhen: { key: 'plAttachDocs', includes: PL_CREATE_ATTACH.budget },
+          },
+          {
+            key: 'plExBudgetDocNo',
+            label: 'เลขที่อนุมัตินอกงบ',
+            kind: 'text',
+            required: true,
+            maxLen: 50,
+            placeholder: 'เลขที่อนุมัตินอกงบ',
+            showWhen: { key: 'plAttachDocs', includes: PL_CREATE_ATTACH.exBudget },
+          },
+          {
+            key: 'plAttachOtherDetail',
+            label: 'รายละเอียดอื่นๆ',
+            kind: 'text',
+            required: true,
+            maxLen: 500,
+            placeholder: 'รายละเอียดอื่นๆ',
+            showWhen: { key: 'plAttachDocs', includes: PL_CREATE_ATTACH.other },
           },
         ],
       },

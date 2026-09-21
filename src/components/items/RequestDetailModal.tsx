@@ -67,6 +67,7 @@ import {
   canEditRequest,
   editBlockedReason,
   editFieldsOf,
+  emptyPlAttach,
   emptyEditLine,
   editFieldVisible,
   hasFormChanges,
@@ -119,11 +120,11 @@ type Meta = { label: string; color: string; bg: string; border: string };
 function Pill({ meta, dot }: { meta: Meta; dot?: boolean }) {
   return (
     <span
-      className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border px-2.5 py-0.5 text-[11.5px] font-semibold"
+      className="inline-flex min-w-0 max-w-full items-center gap-1.5 whitespace-nowrap rounded-full border px-2.5 py-0.5 text-[11.5px] font-semibold"
       style={{ background: meta.bg, color: meta.color, borderColor: meta.border }}
     >
       {dot && <span className="h-1.5 w-1.5 rounded-full" style={{ background: meta.color }} />}
-      {meta.label}
+      <span className="truncate">{meta.label}</span>
     </span>
   );
 }
@@ -132,7 +133,7 @@ function Pill({ meta, dot }: { meta: Meta; dot?: boolean }) {
 // แผง General เดิมเป็นตารางแบน ๆ ก้อนเดียว คนอ่านแยกไม่ออกว่าอะไรคือข้อมูล
 // "ผู้แจ้ง" อะไรคือ "เรื่องที่แจ้ง" — แบ่งเป็นการ์ดหัวข้อเหมือนหน้าสร้างใบ
 // (SectionCard ใน ui/FormControls) แต่ย่อส่วนลงให้พอดีความกว้างของ modal
-// ตัวการ์ดเป็น grid 2 คอลัมน์ในตัวเอง ของเดิมที่ใช้ col-span-2 จึงยกมาวางได้เลย
+// ตัวการ์ดเป็น grid 2 คอลัมน์ในตัวเอง ของเดิมที่ใช้ sm:col-span-2 จึงยกมาวางได้เลย
 // ── นิยาม 5 ขั้นของ stepper (อิงงานฝั่ง IT ตาม WinForms) ────────
 // reachedStep = wfStep ที่ขั้นนี้กลายเป็น "ขั้นปัจจุบัน"
 //   (IT: 1 อนุมัติ → 2 รับเรื่อง → 3 ดำเนินการ/ปิดงานรับเรื่อง → 4 สำรวจ → 5 ปิดงาน)
@@ -176,7 +177,6 @@ const IT_STEP_TABS: StepTab[] = [
 const PL_STEP_TABS: StepTab[] = [
   { key: 'general', label: 'General', reachedStep: 0, logAction: 'create', actionCodes: [] },
   { key: 'receive', label: 'รับเรื่อง', reachedStep: 2, logAction: 'receive', actionCodes: ['receive'] },
-  { key: 'plAttachment', label: 'Attachment', reachedStep: 3, logAction: 'create', actionCodes: [] },
   { key: 'plService', label: 'Service', reachedStep: 3, logAction: 'service', actionCodes: [] },
   // step 4 (Request-Close-Job) — งานเสร็จแล้ว แต่คนที่กดปิดคือ "แผนกผู้แจ้ง"
   // ไม่ใช่ PL (ownerType = requesterDepart) จึงเป็นขั้นที่ค้างเงียบได้ง่ายที่สุด
@@ -787,7 +787,7 @@ function RequestDetailContent({
     const attSlots = Object.keys(attRef.current).length;
     const fieldsChanged =
       canEditFields &&
-      hasFormChanges(toEditForm(full, plLines.lines, crDoc.doc, deptDoc.doc, afDoc.doc, hrDoc.doc, sqaDoc.doc), form);
+      hasFormChanges(toEditForm(full, plLines.lines, crDoc.doc, deptDoc.doc, afDoc.doc, hrDoc.doc, sqaDoc.doc, plDoc.doc), form);
     // ไม่ได้แก้อะไรเลย → ไม่ต้องยิง API ให้เปลืองรอบ
     if (!fieldsChanged && attSlots === 0) {
       setEditing(false);
@@ -887,11 +887,11 @@ function RequestDetailContent({
   const dismissBanner = notice ? onDismissNotice : dismissEditNotice;
 
   return (
-    <div className="fixed inset-0 z-40 flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-40 flex items-center justify-center p-0 sm:p-4">
       <div className="backdrop-fade-in absolute inset-0 bg-slate-900/50" onClick={onClose} />
-      <div className="modal-pop relative flex max-h-[92vh] w-[min(760px,96vw)] flex-col overflow-hidden rounded-2xl bg-white dark:bg-slate-900 shadow-2xl">
+      <div className="modal-pop relative flex h-[100dvh] max-h-[100dvh] w-full max-w-[1100px] flex-col overflow-hidden rounded-none bg-white shadow-2xl dark:bg-slate-900 sm:h-auto sm:max-h-[92vh] sm:w-[calc(100vw-2rem)] sm:rounded-2xl">
         {/* หัว: เลขที่ใบ + โมดูล + สถานะย่อ + ปุ่มปิด */}
-        <div className="flex shrink-0 items-center gap-3.5 border-b border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-5 py-4">
+        <div className="flex shrink-0 items-center gap-2 border-b border-gray-200 bg-white px-3 py-3 dark:border-slate-700 dark:bg-slate-900 sm:gap-3.5 sm:px-5 sm:py-4">
           <div className="min-w-0">
             <div className="mono text-xs text-slate-400 dark:text-slate-500">เลขที่ใบแจ้ง</div>
             <div className="flex items-center gap-2">
@@ -901,7 +901,7 @@ function RequestDetailContent({
               </span>
             </div>
           </div>
-          <div className="ml-auto flex items-center gap-2">
+          <div className="ml-auto flex min-w-0 items-center gap-2">
             {/* ป้ายเดียวพอ = สถานะปัจจุบันของใบ (ผู้ใช้สั่ง 2 ก.ย. 2026)
                 เดิมมีป้าย "ถึงคิวเรา / รอแผนกผู้แจ้ง" ต่อท้ายด้วย แต่สองป้ายติดกัน
                 อ่านแล้วงงว่าตกลงใบอยู่สถานะไหน — ใครต้องลงมือดูได้จาก stepper
@@ -918,7 +918,7 @@ function RequestDetailContent({
         </div>
 
         {/* ===== stepper คลิกได้ (แทนแถบ pill เดิม) ===== */}
-        <div className="shrink-0 border-b border-gray-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/60 px-5 py-4">
+        <div className="shrink-0 border-b border-gray-100 bg-slate-50 px-3 py-3 dark:border-slate-800 dark:bg-slate-800/60 sm:px-5 sm:py-4">
           <div className="mb-1 flex items-center gap-2">
             {detailLoading && (
               <span className="inline-flex items-center gap-1 text-[11px] text-slate-400 dark:text-slate-500">
@@ -956,7 +956,7 @@ function RequestDetailContent({
                   .filter(Boolean)
                   .join(' · ');
                 return (
-                  <li key={t.key} className="relative flex min-w-[104px] flex-1 flex-col items-center px-1">
+                  <li key={t.key} className="relative flex min-w-[88px] flex-1 flex-col items-center px-1 sm:min-w-[104px]">
                     {i > 0 && (
                       <span
                         className="absolute right-1/2 top-[15px] h-[3px] w-full"
@@ -1031,7 +1031,7 @@ function RequestDetailContent({
 
         <div className="min-h-0 flex-1 overflow-y-auto">
           {/* ===== แผงของ tab ที่เลือก ===== */}
-          <div className="border-b border-gray-100 dark:border-slate-800 px-5 py-5">
+          <div className="border-b border-gray-100 px-3 py-4 dark:border-slate-800 sm:px-5 sm:py-5">
             <div className="mb-3 flex items-center gap-2">
               <h4 className="text-[13px] font-bold text-gray-800 dark:text-slate-100">{activeTab.label}</h4>
               {activeTab.key === 'general' && item.module === 'PS' && <div ref={setPsToolbar} className="ml-auto" />}
@@ -1391,7 +1391,7 @@ function StepPanel({
   const r = resolution;
 
   return (
-    <div className="grid grid-cols-2 gap-x-5 gap-y-4">
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-5 gap-y-4">
       {(who || when) && (
         <>
           <DetailRow label="ผู้ดำเนินการ">{who || '—'}</DetailRow>
@@ -1406,7 +1406,7 @@ function StepPanel({
         <>
           <DetailRow label="สถานะการซ่อม">{r.repairStatus || '—'}</DetailRow>
           <DetailRow label="แนวทางแก้ไข">{r.solution || '—'}</DetailRow>
-          <div className="col-span-2">
+          <div className="sm:col-span-2">
             <DetailRow label="รายละเอียดการดำเนินการ">
               <span className="whitespace-pre-wrap">{r.resolutionDetail || '—'}</span>
             </DetailRow>
@@ -1415,7 +1415,7 @@ function StepPanel({
       )}
 
       {!who && !when && (
-        <div className="col-span-2">
+        <div className="sm:col-span-2">
           <p className="text-[12.5px] text-slate-400 dark:text-slate-500">
             {state === 'current'
               ? 'ยังไม่ได้บันทึกข้อมูลขั้นนี้ — กดปุ่มด้านล่างเพื่อดำเนินการ'
@@ -1491,7 +1491,7 @@ function ServicePanel({
   if (!editable) {
     const rs = resolution;
     return (
-      <div className="grid grid-cols-2 gap-x-5 gap-y-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-5 gap-y-4">
         <DetailRow label="ผู้ดำเนินการ">{serviceBy || '—'}</DetailRow>
         <DetailRow label="วันที่ดำเนินการ">{serviceAt ? fmtDateTime(serviceAt) : '—'}</DetailRow>
         <DetailRow label="การดำเนินการ">{rs?.repairStatus || mode || '—'}</DetailRow>
@@ -1523,7 +1523,7 @@ function ServicePanel({
   };
 
   return (
-    <div className="grid grid-cols-2 gap-x-5 gap-y-4">
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-5 gap-y-4">
       <SelectField
         label="ดำเนินการ"
         value={mode}
@@ -1535,7 +1535,7 @@ function ServicePanel({
         onChange={setMode}
       />
       <div />
-      <div className="col-span-2">
+      <div className="sm:col-span-2">
         <label className={SVC_LABEL}>
           ส่งบริษัท<span className="text-rose-600 dark:text-rose-400"> *</span>
         </label>
@@ -1567,10 +1567,10 @@ function ServicePanel({
       </div>
 
       {touched && vendorMissing && (
-        <p className="col-span-2 text-[11.5px] font-semibold text-rose-600 dark:text-rose-400">ต้องกรอก “ส่งบริษัท” ก่อนบันทึก/ดำเนินการเสร็จ</p>
+        <p className="sm:col-span-2 text-[11.5px] font-semibold text-rose-600 dark:text-rose-400">ต้องกรอก “ส่งบริษัท” ก่อนบันทึก/ดำเนินการเสร็จ</p>
       )}
 
-      <div className="col-span-2 flex flex-wrap items-center gap-2 border-t border-gray-100 dark:border-slate-800 pt-4">
+      <div className="sm:col-span-2 flex flex-wrap items-center gap-2 border-t border-gray-100 dark:border-slate-800 pt-4">
         {svc.map((a) => (
           <button
             key={a.code}
@@ -1683,13 +1683,13 @@ function ClosePanel({
   if (state === 'done') {
     const r = resolution;
     return (
-      <div className="grid grid-cols-2 gap-x-5 gap-y-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-5 gap-y-4">
         <DetailRow label="ผู้ปิดงานรับเรื่อง">{r?.closedBy || '—'}</DetailRow>
         <DetailRow label="วันที่ปิดงานรับเรื่อง">{r?.closedDate ? fmtDateTime(r.closedDate) : '—'}</DetailRow>
         <DetailRow label="แนวทางการแก้ไข">{r?.solution || '—'}</DetailRow>
         <DetailRow label="สาเหตุหลัก">{r?.hw || '—'}</DetailRow>
         <DetailRow label="สาเหตุรอง">{r?.hwDetail || '—'}</DetailRow>
-        <div className="col-span-2">
+        <div className="sm:col-span-2">
           <DetailRow label="รายละเอียดการดำเนินการ">
             <span className="whitespace-pre-wrap">{r?.resolutionDetail || '—'}</span>
           </DetailRow>
@@ -1720,7 +1720,7 @@ function ClosePanel({
   };
 
   return (
-    <div className="grid grid-cols-2 gap-x-5 gap-y-4">
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-5 gap-y-4">
       <SelectField
         label="แนวทางการแก้ไข"
         value={solve}
@@ -1755,7 +1755,7 @@ function ClosePanel({
         invalid={touched && missing.causeSub}
         onChange={setCauseSub}
       />
-      <div className="col-span-2">
+      <div className="sm:col-span-2">
         <label className={SVC_LABEL}>รายละเอียดการดำเนินการ</label>
         <textarea
           rows={3}
@@ -1765,16 +1765,16 @@ function ClosePanel({
           className={`${SVC_INPUT} resize-none ${touched && missing.detail ? 'border-rose-300 dark:border-rose-800 bg-rose-50/40' : ''}`}
         />
       </div>
-      <div className="col-span-2">
+      <div className="sm:col-span-2">
         <label className={SVC_LABEL}>หมายเหตุ</label>
         <input value={remark} disabled={pending} onChange={(e) => setRemark(e.target.value)} className={SVC_INPUT} />
       </div>
 
       {touched && blocked && (
-        <p className="col-span-2 text-[11.5px] font-semibold text-rose-600 dark:text-rose-400">กรอกแนวทางแก้ไข / สาเหตุหลัก / สาเหตุรอง / รายละเอียดให้ครบก่อนปิดงาน</p>
+        <p className="sm:col-span-2 text-[11.5px] font-semibold text-rose-600 dark:text-rose-400">กรอกแนวทางแก้ไข / สาเหตุหลัก / สาเหตุรอง / รายละเอียดให้ครบก่อนปิดงาน</p>
       )}
 
-      <div className="col-span-2 flex items-center gap-2 border-t border-gray-100 dark:border-slate-800 pt-4">
+      <div className="sm:col-span-2 flex items-center gap-2 border-t border-gray-100 dark:border-slate-800 pt-4">
         <button
           type="button"
           disabled={pending || !onSubmit}
@@ -1905,7 +1905,7 @@ function SurveyPanel({
     const pctDone = rs?.servicePercentage ?? (score != null ? Math.round((score / SURVEY_MAX) * 100) : null);
     return (
       <div>
-        <div className="grid grid-cols-2 gap-x-5 gap-y-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-5 gap-y-4">
           <DetailRow label="ผู้ประเมิน">{by || '—'}</DetailRow>
           <DetailRow label="วันที่ประเมิน">{at ? fmtDateTime(at) : '—'}</DetailRow>
           <DetailRow label="คะแนนที่ได้">{score != null ? `${score} / ${SURVEY_MAX}` : '—'}</DetailRow>
@@ -2076,7 +2076,7 @@ function KpiPanel({
   return (
     <div>
       {done && (
-        <div className="mb-4 grid grid-cols-2 gap-x-5 gap-y-4 border-b border-gray-100 dark:border-slate-800 pb-4">
+        <div className="mb-4 grid grid-cols-1 sm:grid-cols-2 gap-x-5 gap-y-4 border-b border-gray-100 dark:border-slate-800 pb-4">
           <DetailRow label="ผู้ปิดงาน">{closedBy || '—'}</DetailRow>
           <DetailRow label="วันที่ปิดงาน">{closedAt ? fmtDateTime(closedAt) : '—'}</DetailRow>
           {/* ตัวเลข KPI มาจาก backend เท่านั้น — แผนกที่ไม่มีเกณฑ์จะไม่ส่งมา ก็ไม่ต้องโชว์ */}
@@ -2281,9 +2281,9 @@ function GeneralPanel({
 
   // ── บล็อกที่ใช้ร่วมกันทั้งแบบการ์ด (IT) และแบบตารางแบน (PL/CR) ──
   // ประกาศไว้ที่เดียว จะได้ไม่ต้องก๊อปโครงเดิมไปวางสองที่แล้วแก้ตกทีหลัง
-  // ทุกบล็อกใช้ col-span-2 เพราะทั้งการ์ดและแผงเดิมเป็น grid 2 คอลัมน์เหมือนกัน
+  // ทุกบล็อกใช้ sm:col-span-2 เพราะทั้งการ์ดและแผงเดิมเป็น grid 2 คอลัมน์เหมือนกัน
   const detailBlock = (
-    <div className="col-span-2">
+    <div className="sm:col-span-2">
       <span className="mb-1 block text-[11.5px] font-semibold text-gray-500 dark:text-slate-400">รายละเอียด</span>
       <div className="rounded-lg border border-gray-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 px-3.5 py-3 text-[13px] leading-relaxed text-gray-800 dark:text-slate-100">
         <span className="whitespace-pre-wrap">{full.detail || '— (ผู้แจ้งไม่ได้กรอกรายละเอียด)'}</span>
@@ -2296,7 +2296,7 @@ function GeneralPanel({
   // โมดูลที่ไม่มีเส้นรูปแนบ (CR) ไม่ต้องขึ้นหัวข้อนี้เลย — ขึ้นแล้วบอกว่า
   // "ไม่มีรูปแนบ" ทุกใบตลอดกาล ทำให้คนอ่านนึกว่าผู้แจ้งลืมแนบ
   const attachmentsBlock = hasAttachments ? (
-    <div className="col-span-2">
+    <div className="sm:col-span-2">
       {imgs.length === 0 ? (
         <span className="text-[13px] text-slate-400 dark:text-slate-500">— ไม่มีรูปแนบ</span>
       ) : (
@@ -2335,7 +2335,7 @@ function GeneralPanel({
 
   // แก้ไม่ได้ = บอกเหตุผลไปเลย ดีกว่าปล่อยให้หาปุ่มที่ไม่มี
   const hintBlock = editHint ? (
-    <p className="col-span-2 text-[12px] text-slate-400 dark:text-slate-500">— {editHint}</p>
+    <p className="sm:col-span-2 text-[12px] text-slate-400 dark:text-slate-500">— {editHint}</p>
   ) : null;
 
   // ── แบ่งเป็นการ์ดตามหัวข้อเดียวกับหน้าสร้างใบ ทุกโมดูล ────────
@@ -2440,7 +2440,7 @@ function GeneralPanel({
         {/* สิ่งที่แนบมาด้วย — ผู้แจ้งติ๊กไว้ตอนสร้างใบ อยู่ในกล่องเดียวกับที่กรอก
             ผู้อนุมัติต้องเห็นว่าใบนี้มีงบประมาณ/สเปกแนบมาหรือยัง ก่อนกดอนุมัติ */}
         {isDeptReq && (
-          <div className="col-span-2">
+          <div className="sm:col-span-2">
             <span className="mb-1 block text-[11.5px] font-semibold text-gray-500 dark:text-slate-400">
               สิ่งที่แนบมาด้วย
             </span>
@@ -2449,19 +2449,27 @@ function GeneralPanel({
         )}
 
         {isPl && (
-          <div className="col-span-2">
-            <span className="mb-1 block text-[11.5px] font-semibold text-gray-500 dark:text-slate-400">เหตุผลการขอ</span>
-            <div className="rounded-lg border border-gray-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 px-3.5 py-3 text-[13px] leading-relaxed text-gray-800 dark:text-slate-100">
-              <span className="whitespace-pre-wrap">{full.remark || '— (ไม่ได้ระบุ)'}</span>
+          <>
+            <div className="sm:col-span-2">
+              <span className="mb-1 block text-[11.5px] font-semibold text-gray-500 dark:text-slate-400">เหตุผลการขอ</span>
+              <div className="rounded-lg border border-gray-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 px-3.5 py-3 text-[13px] leading-relaxed text-gray-800 dark:text-slate-100">
+                <span className="whitespace-pre-wrap">{full.remark || '— (ไม่ได้ระบุ)'}</span>
+              </div>
             </div>
-          </div>
+            <div className="sm:col-span-2">
+              <span className="mb-1 block text-[11.5px] font-semibold text-gray-500 dark:text-slate-400">
+                สิ่งที่แนบมาด้วย
+              </span>
+              <PlAttachList doc={plDoc} />
+            </div>
+          </>
         )}
       </InfoCard>
 
       {/* มีเฉพาะโมดูลที่ผู้แจ้งกรอกรายการมาด้วย (PL / GA / IM) */}
       {(isPl || isDeptReq || isAf) && (
         <InfoCard title="รายการที่ขอ" icon={IconList}>
-          <div className="col-span-2">
+          <div className="sm:col-span-2">
             <PlLinesTable {...plLines} />
           </div>
         </InfoCard>
@@ -2474,7 +2482,7 @@ function GeneralPanel({
 
       {!isSqa && (
         <InfoCard title="การอนุมัติ" icon={IconShieldCheck}>
-          <div className="col-span-2">{approverList}</div>
+          <div className="sm:col-span-2">{approverList}</div>
         </InfoCard>
       )}
 
@@ -2563,6 +2571,38 @@ function DeptAttachList({ module, doc }: { module: string; doc: DeptRequestDetai
           )}
         </div>
       ))}
+    </div>
+  );
+}
+
+// เช็กลิสต์ที่ผู้แจ้งระบุไว้ตอนสร้าง/แก้ไขใบ PL — แสดงใน General เพื่อให้ผู้อนุมัติ
+// เห็นพร้อมเนื้อหาใบ โดยไม่ต้องสลับไปแท็บ Attachment
+function PlAttachList({ doc }: { doc: PlRequestDetail | null }) {
+  if (!doc) return <span className="text-[13px] text-slate-400 dark:text-slate-500">— กำลังโหลดข้อมูล</span>;
+  return (
+    <div className="overflow-hidden rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900">
+      {PL_ATTACH_CHECKS.map((c, i) => {
+        const on = !!doc[c.key];
+        const no = c.docKey ? doc[c.docKey] : null;
+        return (
+          <div
+            key={c.key}
+            className={`flex flex-wrap items-start gap-x-3 gap-y-1 px-3 py-2 ${
+              i > 0 ? 'border-t border-gray-100 dark:border-slate-800' : ''
+            } ${on ? 'bg-slate-50/70 dark:bg-slate-800/40' : ''}`}
+          >
+            <IconCheck size={15} className={`mt-0.5 shrink-0 ${on ? 'text-emerald-600' : 'text-slate-300 dark:text-slate-600'}`} />
+            <span className={`min-w-[220px] text-[12.5px] ${on ? 'font-semibold text-gray-800 dark:text-slate-100' : 'text-slate-400 dark:text-slate-500'}`}>
+              {c.label}
+            </span>
+            {on && c.docKey && (
+              <span className="mono min-w-0 flex-1 break-all text-[12.5px] font-semibold text-gray-700 dark:text-slate-200">
+                {no || '— ไม่ได้ระบุ'}
+              </span>
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -2805,7 +2845,7 @@ function PlServicePanel({
               · repairDetail = รายละเอียดการดำเนินงาน
               ช่อง "การดำเนินการ" (repairStatus) กับ "เลขที่ใบ PR อ้างอิง" (exPrNo)
               ถูกเอาออกจากจอตามที่ผู้ใช้สั่ง 27 ส.ค. 2026 — ฟิลด์ยังมีใน API อยู่ */}
-          <div className="grid grid-cols-2 gap-x-5 gap-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-5 gap-y-4">
             <div>
               <label className={SVC_LABEL}>รายละเอียดการดำเนินงาน</label>
               <textarea
@@ -2858,7 +2898,7 @@ function PlServicePanel({
           </div>
         </>
       ) : (
-        <div className="grid grid-cols-2 gap-x-5 gap-y-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-5 gap-y-3">
           <div>
             <span className="mb-1 block text-[11.5px] font-semibold text-gray-500 dark:text-slate-400">รายละเอียดการดำเนินงาน</span>
             <div className="min-h-[76px] rounded-lg border border-gray-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 px-3.5 py-3 text-[13px] leading-relaxed text-gray-800 dark:text-slate-100">
@@ -2922,7 +2962,7 @@ function PlClosePanel({
         </p>
       )}
 
-      <div className="grid grid-cols-2 gap-x-5 gap-y-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-5 gap-y-3">
         <DetailRow label="ผู้ปิดงาน">{by || '—'}</DetailRow>
         <DetailRow label="วันที่ปิดงาน">{when ? fmtDateTime(when) : '—'}</DetailRow>
       </div>
@@ -3048,10 +3088,10 @@ function CrReceivePanel({
         <DetailRow label="ผู้ดำเนินการ">{resolution?.requestService || '—'}</DetailRow>
       )}
 
-      <div className="grid grid-cols-2 gap-x-5 gap-y-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-5 gap-y-4">
         <DetailRow label="ผู้รับเรื่อง">{by || '—'}</DetailRow>
         <DetailRow label="วันที่รับเรื่อง">{when ? fmtDateTime(when) : '—'}</DetailRow>
-        <div className="col-span-2">
+        <div className="sm:col-span-2">
           <DetailRow label="มาตรฐานการดำเนินการ">
             {resolution?.planCompleteDate ? (
               <span className="mono">{fmtDate(resolution.planCompleteDate)}</span>
@@ -3137,7 +3177,7 @@ function CrServicePanel({
           <span className="mb-1 block text-[11.5px] font-semibold text-gray-500 dark:text-slate-400">รายละเอียดการดำเนินการ</span>
           <ReadBox text={resolution?.resolutionDetail} />
         </div>
-        <div className="grid grid-cols-2 gap-x-5 gap-y-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-5 gap-y-3">
           <DetailRow label="ผู้ดำเนินการ">{resolution?.requestService || '—'}</DetailRow>
           <DetailRow label="มาตรฐานการดำเนินการ">
             {resolution?.planCompleteDate ? <span className="mono">{fmtDate(resolution.planCompleteDate)}</span> : '—'}
@@ -3163,7 +3203,7 @@ function CrServicePanel({
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="grid grid-cols-2 gap-x-5 gap-y-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-5 gap-y-3">
         <DetailRow label="ผู้ดำเนินการ">{resolution?.requestService || '—'}</DetailRow>
         <DetailRow label="มาตรฐานการดำเนินการ">
           {resolution?.planCompleteDate ? (
@@ -3284,7 +3324,7 @@ function CrReceiveJobPanel({
         <ReadBox text={resolution?.resolutionDetail} />
       </div>
 
-      <div className="grid grid-cols-2 gap-x-5 gap-y-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-5 gap-y-3">
         <DetailRow label="ผู้ดำเนินการ">{resolution?.requestService || '—'}</DetailRow>
         <DetailRow label="ผู้ดำเนินงาน">{serviceBy || '—'}</DetailRow>
         <DetailRow label="วันที่ดำเนินการ">{serviceAt ? fmtDateTime(serviceAt) : '—'}</DetailRow>
@@ -3392,7 +3432,7 @@ function CrClosePanel({
         )
       )}
 
-      <div className="grid grid-cols-2 gap-x-5 gap-y-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-5 gap-y-3">
         <DetailRow label="ผู้ปิดงาน">{by || '—'}</DetailRow>
         <DetailRow label="วันที่ปิดงาน">{when ? fmtDateTime(when) : '—'}</DetailRow>
       </div>
@@ -3556,7 +3596,7 @@ function RequestEditPanel({
   const plMaster = usePlMasterData(user?.token, isPl || isDeptReq);
   const unitNames = isAf ? deptMaster.unitNames : plMaster.unitNames;
   const [form, setForm] = useSessionDraft<RequestEditForm>('RequestEditPanel.form', () =>
-    toEditForm(item, lines, crDoc.doc, deptDoc, afDoc, hrDoc, sqaDoc)
+    toEditForm(item, lines, crDoc.doc, deptDoc, afDoc, hrDoc, sqaDoc, doc)
   );
   const [errors, setErrors] = useState<ReturnType<typeof validateEditForm>>({});
   // ล็อกช่องกรอกทั้งหมดเมื่อเข้ามาเพื่อจัดการรูปอย่างเดียว (canEdit ปิดไปแล้ว)
@@ -3567,7 +3607,7 @@ function RequestEditPanel({
   const crRaw = crDoc.doc;
   useEffect(() => {
     if (!isCr || !crRaw) return;
-    setForm.hydrate((f) => (f.requestType ? f : toEditForm(item, lines, crRaw, deptDoc, afDoc, hrDoc, sqaDoc)));
+    setForm.hydrate((f) => (f.requestType ? f : toEditForm(item, lines, crRaw, deptDoc, afDoc, hrDoc, sqaDoc, doc)));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isCr, crRaw, setForm]);
 
@@ -3629,6 +3669,34 @@ function RequestEditPanel({
   const setLine = (i: number, patch: Partial<EditLine>) =>
     setLines(form.lines.map((l, n) => (n === i ? { ...l, ...patch } : l)));
 
+  // draft รุ่นก่อนเพิ่มเช็กลิสต์ยังไม่มีสอง object นี้ — ใช้ค่าจากใบเป็นฐาน
+  // เพื่อไม่ให้เปิดแก้ข้อความเก่าแล้ว checkbox ทั้งชุดกลายเป็นว่าง
+  const plAttachFromDoc = PL_ATTACH_CHECKS.reduce(
+    (acc, c) => ({ ...acc, [c.key]: !!doc?.[c.key] }),
+    emptyPlAttach()
+  );
+  const plAttachDocsFromDoc = {
+    budgetDocNo: doc?.budgetDocNo ?? '',
+    exBudgetDocNo: doc?.exBudgetDocNo ?? '',
+    attachOtherDetail: doc?.attachOtherDetail ?? '',
+  };
+  const plAttach = form.plAttach ?? plAttachFromDoc;
+  const plAttachDocs = form.plAttachDocs ?? plAttachDocsFromDoc;
+  const setPlAttach = (key: PlAttachKey, checked: boolean, docKey?: PlAttachDocKey) => {
+    setForm((f) => ({
+      ...f,
+      plAttach: { ...(f.plAttach ?? plAttachFromDoc), [key]: checked },
+    }));
+    if (docKey) setErrors((e) => ({ ...e, [docKey]: undefined }));
+  };
+  const setPlAttachDoc = (key: PlAttachDocKey, value: string) => {
+    setForm((f) => ({
+      ...f,
+      plAttachDocs: { ...(f.plAttachDocs ?? plAttachDocsFromDoc), [key]: value },
+    }));
+    setErrors((e) => ({ ...e, [key]: undefined }));
+  };
+
   const submit = () => {
     // ใบ CR ที่ยังไม่รู้ค่าเดิม = ห้ามบันทึก (จะเขียนทับประเภทของใบด้วยค่าว่าง)
     if (isCr && !crDoc.doc) return;
@@ -3652,7 +3720,7 @@ function RequestEditPanel({
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="grid grid-cols-2 gap-x-5 gap-y-3 rounded-lg border border-gray-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 px-3.5 py-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-5 gap-y-3 rounded-lg border border-gray-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 px-3.5 py-3">
         <DetailRow label="ผู้แจ้งเรื่อง">{item.requestBy || '—'}</DetailRow>
         <DetailRow label="หน่วยงาน">{item.departmentName || '—'}</DetailRow>
         {/* ใบ CR เก็บ "วันที่ต้องการ" ไว้ในคอลัมน์ RequestDate ซึ่งเป็นช่องที่แก้ได้ในฟอร์มนี้
@@ -3667,7 +3735,7 @@ function RequestEditPanel({
               <span className="mono font-semibold">{crDoc.doc?.section || item.type || '—'}</span>
             </DetailRow>
             <DetailRow label="ประเภทที่แจ้ง">{crDoc.doc?.requestType || '—'}</DetailRow>
-            <div className="col-span-2 text-[11px] text-slate-400 dark:text-slate-500">
+            <div className="sm:col-span-2 text-[11px] text-slate-400 dark:text-slate-500">
               ส่วนงานและประเภทที่แจ้งแก้ไม่ได้ — เลขที่ใบ <span className="mono">{item.docNo}</span>{' '}
               ถูกออกจากชุดของสองค่านี้ไปแล้ว ถ้าเลือกผิดต้องเปิดใบใหม่
             </div>
@@ -3693,7 +3761,7 @@ function RequestEditPanel({
         </p>
       )}
 
-      <div className="grid grid-cols-2 gap-x-5 gap-y-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-5 gap-y-4">
         {/* ช่องที่มีเงื่อนไข showWhen (เช่น "ระบุเพิ่มเติม" ของ CR) ซ่อนจนกว่าจะถึงเงื่อนไข */}
         {fields.filter((f) => editFieldVisible(f, form)).map((f) => {
           const value = form[f.key] ?? '';
@@ -3706,7 +3774,7 @@ function RequestEditPanel({
             err ? 'border-red-300 dark:border-red-800' : 'border-gray-200 dark:border-slate-700'
           }`;
           return (
-            <div key={f.key} className={f.span2 ? 'col-span-2' : ''}>
+            <div key={f.key} className={f.span2 ? 'sm:col-span-2' : ''}>
               <div className="mb-1 flex items-baseline gap-1.5">
                 <span className="text-[11.5px] font-semibold text-gray-500 dark:text-slate-400">{f.label}</span>
                 {required && <span className="text-[11.5px] font-bold text-red-500 dark:text-red-400">*</span>}
@@ -3767,6 +3835,55 @@ function RequestEditPanel({
         })}
       </div>
 
+      {isPl && (
+        <div>
+          <div className="mb-1.5 flex items-baseline gap-1.5">
+            <span className="text-[11.5px] font-semibold text-gray-500 dark:text-slate-400">สิ่งที่แนบมาด้วย</span>
+            <span className="text-[10.5px] text-slate-400 dark:text-slate-500">(ไม่บังคับ)</span>
+          </div>
+          <div className="flex flex-col gap-1.5 rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-3">
+            {PL_ATTACH_CHECKS.map((c) => {
+              const showDoc = !!c.docKey && plAttach[c.key];
+              const err = c.docKey ? errors[c.docKey] : undefined;
+              return (
+                <div key={c.key} className="flex flex-col gap-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <label className={`flex min-w-[230px] items-center gap-2 text-[12.5px] text-gray-800 dark:text-slate-100 ${lock ? '' : 'cursor-pointer'}`}>
+                      <input
+                        type="checkbox"
+                        checked={plAttach[c.key]}
+                        disabled={lock}
+                        onChange={(e) => setPlAttach(c.key, e.target.checked, c.docKey)}
+                        className="h-4 w-4 accent-accent disabled:cursor-not-allowed"
+                      />
+                      {c.label}
+                    </label>
+                    {showDoc && c.docKey && (
+                      <>
+                        <input
+                          type="text"
+                          aria-label={c.docLabel}
+                          value={plAttachDocs[c.docKey]}
+                          maxLength={c.docMax ?? PL_CHECKLIST_MAX[c.docKey]}
+                          disabled={lock}
+                          placeholder={c.docLabel}
+                          onChange={(e) => setPlAttachDoc(c.docKey!, e.target.value)}
+                          className={`${LINE_INPUT_CLS} max-w-[260px] flex-1 ${err ? 'border-red-300 dark:border-red-800' : ''}`}
+                        />
+                        <span className="text-[11.5px] font-bold text-red-500 dark:text-red-400">*</span>
+                      </>
+                    )}
+                  </div>
+                  {showDoc && err && (
+                    <p className="pl-6 text-[11.5px] font-semibold text-red-600 dark:text-red-400">{err}</p>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {/* รายการที่ขอ (PL / GA / IM) — ส่งขึ้น API พร้อมกับปุ่มบันทึก ไม่ใช่ทีละแถว
           แถวเดิมหิ้ว recNo ไว้ใน state ไม่ได้โชว์ให้ผู้ใช้เห็น */}
       {hasLinesEditor && (
@@ -3775,8 +3892,8 @@ function RequestEditPanel({
             <span className="text-[11.5px] font-semibold text-gray-500 dark:text-slate-400">รายการที่ขอ</span>
             <span className="text-[10.5px] text-slate-400 dark:text-slate-500">(ไม่บังคับ — ลบแถวออก = ลบรายการนั้นทิ้ง)</span>
           </div>
-          <div className="overflow-hidden rounded-xl border border-gray-200 dark:border-slate-700">
-            <table className="w-full border-collapse">
+          <div className="overflow-x-auto rounded-xl border border-gray-200 dark:border-slate-700">
+            <table className="w-full min-w-[720px] border-collapse">
               <thead>
                 <tr className="bg-[#0b1220] text-[11.5px] font-semibold text-slate-300 dark:text-slate-600">
                   <th className="w-9 px-2 py-2 text-center">#</th>

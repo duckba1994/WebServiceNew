@@ -33,15 +33,15 @@ export interface PlRequestPayload {
   requestType?: string; // เรื่องที่แจ้ง — "ชื่อ" จาก master requestTypes (ไม่ใช่ id)
   // เช็คลิสต์เอกสารแนบ (ค่าเริ่มต้น false) — คนละเรื่องกับรูปแนบด้านล่าง
   attachBudget?: boolean;
-  budgetDocNo?: string;
+  budgetDocNo?: string | null;
   attachExBudget?: boolean;
-  exBudgetDocNo?: string;
+  exBudgetDocNo?: string | null;
   attachSpec?: boolean;
   attachQuatation?: boolean;
   attachPicture?: boolean;
   attachCustDocConfirm?: boolean;
   attachOther?: boolean;
-  attachOtherDetail?: string;
+  attachOtherDetail?: string | null;
   // ไม่ส่ง / [] = ใบไม่มีรายการย่อย
   lines?: PlRequestLineInput[];
 }
@@ -143,15 +143,15 @@ export interface PlRequestUpdatePayload {
   // เช็คลิสต์เอกสารแนบ — หน้าเว็บยังไม่มี UI ให้แก้ แต่ต้องส่งค่าเดิมกลับไปทุกครั้ง
   // ไม่งั้นเสี่ยงโดนเขียนทับเป็น false (ค่าที่ผู้แจ้งติ๊กไว้หายโดยไม่มีใครสั่ง)
   attachBudget?: boolean;
-  budgetDocNo?: string;
+  budgetDocNo?: string | null;
   attachExBudget?: boolean;
-  exBudgetDocNo?: string;
+  exBudgetDocNo?: string | null;
   attachSpec?: boolean;
   attachQuatation?: boolean;
   attachPicture?: boolean;
   attachCustDocConfirm?: boolean;
   attachOther?: boolean;
-  attachOtherDetail?: string;
+  attachOtherDetail?: string | null;
   // ⚠️ ส่งเป็น "ชุดสมบูรณ์": แถวมี recNo = แก้แถวเดิม, ไม่มี recNo = เพิ่มใหม่,
   // แถวเดิมที่ไม่อยู่ในชุด = ถูกลบ · ไม่ส่งฟิลด์นี้เลย = ไม่แตะรายการเดิม · [] = ลบหมด
   lines?: PlRequestLineInput[];
