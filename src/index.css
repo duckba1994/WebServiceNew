@@ -383,3 +383,90 @@ html.dark {
   .it-report-print thead { display: table-header-group; }
   .it-report-print tr { break-inside: avoid; }
 }
+
+/* ══════════ ใบรับเรื่องฝ่ายเทคโนโลยีสารสนเทศ ══════════ */
+.it-work-order-print {
+  page: it-work-order;
+  box-sizing: border-box;
+  position: relative;
+  width: 210mm;
+  height: 297mm;
+  padding: 5.5mm 7mm 12mm;
+  overflow: hidden;
+  background: #fff;
+  color: #000;
+  font-family: 'Angsana New', 'TH Sarabun New', Tahoma, 'Leelawadee UI', sans-serif;
+  font-size: 10.5px;
+  line-height: 1.35;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+.it-work-order-print, .it-work-order-print * { box-sizing: border-box; font-family: inherit; }
+.it-work-head {
+  display: grid;
+  grid-template-columns: 29mm 1fr 52mm;
+  height: 21mm;
+  border: 0.7px solid #111;
+}
+.it-work-logo { display: flex; align-items: center; justify-content: center; border-right: 0.7px solid #111; }
+.it-work-logo img { width: 18mm; height: 17mm; object-fit: contain; }
+.it-work-heading { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4mm; border-right: 0.7px solid #111; }
+.it-work-heading strong { font-size: 13px; }
+.it-work-heading span { font-size: 10px; }
+.it-work-document-meta { display: flex; flex-direction: column; justify-content: center; gap: 5mm; padding: 2mm; }
+.it-work-document-meta div { display: grid; grid-template-columns: 24mm 1fr; align-items: center; }
+.it-work-document-meta b { font-size: 10px; }
+.it-work-section { border: 0.7px solid #111; }
+.it-work-section h2 { height: 6.2mm; margin: 0; padding: 1.4mm 2mm; border-bottom: 0.7px solid #111; font-size: 10px; line-height: 1; }
+.it-work-requester { height: 70mm; border-top: 0; }
+.it-work-service { height: 60mm; margin-top: 2.4mm; }
+.it-work-survey { height: 116mm; margin-top: 1.6mm; }
+.it-work-fields { padding: 3mm 2mm 0; }
+.it-work-fields.two-cols { display: grid; grid-template-columns: 1fr 1fr; column-gap: 14mm; row-gap: 5mm; }
+.it-work-fields > div { display: grid; grid-template-columns: 25mm minmax(0, 1fr); column-gap: 3mm; min-height: 5mm; }
+.it-work-fields.two-cols > div { grid-template-columns: 20mm minmax(0, 1fr); }
+.it-work-fields .wide { grid-column: 1 / -1; }
+.it-work-fields label { white-space: nowrap; }
+.it-work-fields .detail span { white-space: pre-wrap; overflow-wrap: anywhere; }
+.it-work-requester .detail { margin-top: 0; min-height: 24mm; }
+.it-work-service .cause { grid-template-columns: 10mm minmax(0, 1fr); column-gap: 0.5mm; }
+.it-work-service .detail { min-height: 25mm; margin-top: 4mm; grid-template-columns: 32mm minmax(0, 1fr); column-gap: 1.5mm; }
+.it-work-signature-row { display: grid; grid-template-columns: 1fr 1fr; gap: 18mm; padding: 0 10mm; }
+.it-work-requester .it-work-signature-row { margin-top: 2mm; }
+.it-work-signature-row.single { grid-template-columns: 1fr; width: 88mm; margin: 1mm 9mm 0 auto; padding: 0; }
+.it-work-signature { text-align: center; line-height: 2.5; }
+.it-work-signature div:first-child { white-space: nowrap; }
+.it-work-signature span { display: inline-block; min-width: 35mm; min-height: 4mm; margin: 0 2mm; border-bottom: 0.6px dashed #333; text-align: center; line-height: 1.4; }
+.it-work-signature div:last-child span { min-width: 29mm; }
+.it-work-survey-intro { margin: 2mm 7mm; }
+.it-work-survey table { width: calc(100% - 14mm); margin: 0 7mm; border-collapse: collapse; table-layout: fixed; }
+.it-work-survey th, .it-work-survey td { height: 5.6mm; border: 0.6px solid #111; padding: 0.5mm 1mm; text-align: center; vertical-align: middle; font-weight: 400; }
+.it-work-survey thead th { height: 10mm; }
+.it-work-survey th.no { width: 11mm; }
+.it-work-survey thead th:nth-child(2) { width: 88mm; }
+.it-work-survey thead th:nth-child(n+3) { width: 16mm; }
+.it-work-survey td.question { text-align: left; }
+.it-work-survey tr.summary th { text-align: center; }
+.it-work-remark { display: grid; grid-template-columns: 1fr; gap: 0; margin: 1.5mm 7mm 0; }
+.it-work-remark label { margin-bottom: 0.5mm; }
+.it-work-remark span { min-height: 4.7mm; padding-left: 2mm; border-bottom: 0.6px dashed #333; overflow: hidden; }
+.it-work-criteria { margin: 1.2mm 4mm 0; font-size: 9.5px; }
+.it-work-criteria strong { display: block; margin-bottom: 0.8mm; }
+.it-work-criteria p { margin: 0 0 0.7mm; }
+.it-work-signature-row.survey-signatures { margin-top: 1.5mm; padding: 0 30mm; gap: 20mm; }
+.it-work-footer {
+  position: absolute;
+  right: 7mm;
+  bottom: 3mm;
+  left: 7mm;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  row-gap: 3mm;
+  font-size: 8.5px;
+}
+.it-work-footer span:nth-child(2), .it-work-footer span:nth-child(4) { text-align: right; }
+.it-work-footer span:nth-child(3) { grid-column: 1; margin-left: auto; }
+@page it-work-order { size: A4 portrait; margin: 0; }
+@media print {
+  .it-work-order-print { margin: 0; box-shadow: none; }
+}

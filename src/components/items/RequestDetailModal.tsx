@@ -1,5 +1,6 @@
 import { DraftScope, useSessionDraft } from '../../hooks/useSessionDraft';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import {
   IconX,
   IconBell,
@@ -17,6 +18,7 @@ import {
   IconFileText,
   IconShieldCheck,
   IconList,
+  IconPrinter,
 } from '@tabler/icons-react';
 import {
   RequestAction,
@@ -31,6 +33,7 @@ import { GaImServicePanel } from './GaImServicePanel';
 import { AfServicePanel } from './AfServicePanel';
 import { HrServicePanel } from './HrServicePanel';
 import { SqaReceivePanel, SqaServicePanel } from './SqaWorkflowPanel';
+import { ItWorkOrderPrint } from './ItWorkOrderPrint';
 import {
   SvMgrRequestClosePanel,
   SvMgrReviewPanel,
@@ -114,6 +117,9 @@ import { fetchRequestDetail } from '../../api/requests';
 import { DetailRow, InfoCard } from './RequestInfoCard';
 import { RequestLinesTable as PlLinesTable } from './RequestLinesTable';
 import { psWorkflowTabs } from '../../data/psWorkflowTabs';
+import { fetchItServiceForm } from '../../api/itReports';
+import { apiErrorText } from '../../api/client';
+import { ITServiceFormItem } from '../../types/itReport';
 
 type Meta = { label: string; color: string; bg: string; border: string };
 
@@ -882,11 +888,34 @@ function RequestDetailContent({
     }
   };
 
+  const [printData, setPrintData] = useState<ITServiceFormItem | null>(null);
+  const [printLoading, setPrintLoading] = useState(false);
+  const [printError, setPrintError] = useState('');
+
+  const printItWorkOrder = async () => {
+    if (item.module !== 'IT' || printLoading) return;
+    setPrintLoading(true);
+    setPrintError('');
+    try {
+      const data = await fetchItServiceForm(item.docNo, user?.token);
+      setPrintData(data);
+      // รอให้ React วางเอกสารจาก response ลง DOM ก่อนเปิด print preview
+      await new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
+      window.print();
+    } catch (reason) {
+      setPrintError(apiErrorText(reason, 'โหลดข้อมูลใบงานสำหรับพิมพ์ไม่สำเร็จ'));
+    } finally {
+      setPrintLoading(false);
+    }
+  };
+
   // แถบข้อความรวม — action กับ edit ใช้แถบเดียวกัน (ที่ว่างในหัว modal มีแถบเดียว)
-  const bannerNotice = notice ?? editNotice;
-  const dismissBanner = notice ? onDismissNotice : dismissEditNotice;
+  const printNotice = printError ? { kind: 'error' as const, text: printError } : null;
+  const bannerNotice = notice ?? printNotice ?? editNotice;
+  const dismissBanner = notice ? onDismissNotice : printNotice ? () => setPrintError('') : dismissEditNotice;
 
   return (
+    <>
     <div className="fixed inset-0 z-40 flex items-center justify-center p-0 sm:p-4">
       <div className="backdrop-fade-in absolute inset-0 bg-slate-900/50" onClick={onClose} />
       <div className="modal-pop relative flex h-[100dvh] max-h-[100dvh] w-full max-w-[1100px] flex-col overflow-hidden rounded-none bg-white shadow-2xl dark:bg-slate-900 sm:h-auto sm:max-h-[92vh] sm:w-[calc(100vw-2rem)] sm:rounded-2xl">
@@ -907,6 +936,19 @@ function RequestDetailContent({
                 อ่านแล้วงงว่าตกลงใบอยู่สถานะไหน — ใครต้องลงมือดูได้จาก stepper
                 กับปุ่มที่ขึ้นให้อยู่แล้ว และในตารางยังมีคอลัมน์ "รอเราลงมือ" */}
             <Pill meta={status} dot />
+            {item.module === 'IT' && (
+              <button
+                type="button"
+                onClick={() => void printItWorkOrder()}
+                disabled={printLoading}
+                className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-lg border border-blue-200 bg-blue-50 px-3 text-xs font-semibold text-blue-700 transition hover:border-blue-300 hover:bg-blue-100 disabled:cursor-wait disabled:opacity-60 dark:border-blue-800 dark:bg-blue-950/40 dark:text-blue-200 dark:hover:bg-blue-900/50"
+                aria-label="พิมพ์ใบงาน IT"
+                title="พิมพ์ใบงาน IT"
+              >
+                {printLoading ? <IconLoader2 size={16} className="animate-spin" /> : <IconPrinter size={16} />}
+                <span className="hidden sm:inline">{printLoading ? 'กำลังโหลด...' : 'พิมพ์ใบงาน'}</span>
+              </button>
+            )}
             <button
               onClick={onClose}
               className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 transition hover:bg-slate-100 dark:hover:bg-slate-700"
@@ -1367,6 +1409,8 @@ function RequestDetailContent({
         </div>
       </div>
     </div>
+    {item.module === 'IT' && printData && createPortal(<ItWorkOrderPrint item={printData} />, document.body)}
+    </>
   );
 }
 
