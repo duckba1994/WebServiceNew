@@ -92,6 +92,7 @@ export function DateQuickPick({
   min,
   inputClass,
   disabled,
+  showThaiLabel = true,
 }: {
   value: string; // 'YYYY-MM-DD' ('' = ยังไม่เลือก)
   onChange: (v: string) => void;
@@ -99,6 +100,7 @@ export function DateQuickPick({
   min?: string; // วันที่ย้อนหลังกว่านี้เลือกไม่ได้ (ไม่ระบุ = เลือกได้ทุกวัน)
   inputClass: string; // สไตล์ช่องกรอกของฟอร์มที่เรียกใช้ (ไม่ตั้งเอง จะได้หน้าตาเดียวกัน)
   disabled?: boolean;
+  showThaiLabel?: boolean;
 }) {
   const label = thaiDateLabel(value);
 
@@ -115,7 +117,7 @@ export function DateQuickPick({
           onChange={(e) => onChange(e.target.value)}
           className={`${inputClass} mono w-auto shrink-0`}
         />
-        {label && (
+        {showThaiLabel && label && (
           <span className="flex min-w-0 items-center gap-1 whitespace-nowrap text-[12.5px] font-semibold text-slate-600 dark:text-slate-300">
             <IconCalendar size={14} className="shrink-0 text-slate-400 dark:text-slate-500" />
             {label}

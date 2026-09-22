@@ -1,14 +1,14 @@
 import React, { useMemo, useRef, useState } from 'react';
 import {
   IconAlertTriangle, IconArrowLeft, IconArrowsHorizontal, IconArrowsMaximize,
-  IconChartBar, IconClipboardList, IconFileTypePdf, IconLoader2, IconPrinter,
+  IconFileTypePdf, IconLoader2, IconPrinter,
   IconSearch, IconZoomIn, IconZoomOut,
 } from '@tabler/icons-react';
 import { Link, Navigate } from 'react-router-dom';
 import { Layout } from '../components/layout/Layout';
 import { DateQuickPick } from '../components/ui/DateQuickPick';
 import { useAuth } from '../context/AuthContext';
-import { reportByKey, ReportKey, REPORTS } from '../data/reportData';
+import { reportByKey, ReportKey } from '../data/reportData';
 import { useItReport } from '../hooks/useItReport';
 import {
   DateRangeReport, ITServiceFormSummaryItem, ITSurveySummaryItem,
@@ -36,9 +36,36 @@ const formatDateTime = (value: string | null): string => {
   return Number.isNaN(date.getTime()) ? value : date.toLocaleString('th-TH', { dateStyle: 'short', timeStyle: 'short' });
 };
 
-const formatDate = (value: string): string => {
-  const [year, month, day] = value.split('-').map(Number);
-  return new Date(year, month - 1, day).toLocaleDateString('th-TH');
+const formatDate = (value: string | null): string => {
+  if (!value) return '—';
+  const [year, month, day] = value.slice(0, 10).split('-').map(Number);
+  if (!year || !month || !day) return value;
+  return `${String(day).padStart(2, '0')}/${String(month).padStart(2, '0')}/${year}`;
+};
+
+const formatPrintDate = (date: Date): string =>
+  `${String(date.getDate()).padStart(2, '0')}/${String(date.getMonth() + 1).padStart(2, '0')}/${date.getFullYear()}`;
+
+const chunkItems = <T,>(items: T[], pageSize: number): T[][] => {
+  if (items.length === 0) return [[]];
+  const pages: T[][] = [];
+  for (let offset = 0; offset < items.length; offset += pageSize) {
+    pages.push(items.slice(offset, offset + pageSize));
+  }
+  return pages;
+};
+
+const chunkItemsWithFinalCapacity = <T,>(items: T[], pageSize: number, finalPageSize: number): T[][] => {
+  if (items.length === 0) return [[]];
+  const pages: T[][] = [];
+  let offset = 0;
+  while (items.length - offset > finalPageSize) {
+    const take = Math.min(pageSize, items.length - offset - finalPageSize);
+    pages.push(items.slice(offset, offset + take));
+    offset += take;
+  }
+  pages.push(items.slice(offset));
+  return pages;
 };
 
 export function ReportWorkspace({ reportKey }: { reportKey: ReportKey }) {
@@ -90,15 +117,11 @@ export function ReportWorkspace({ reportKey }: { reportKey: ReportKey }) {
           <div><h2 className="text-sm font-bold text-gray-900 dark:text-white">{report.title}</h2><p className="text-[11.5px] text-slate-400">{report.description}</p></div>
         </div>
 
-        <div className="flex shrink-0 gap-1 overflow-x-auto border-b border-gray-200 px-5 pt-2 dark:border-slate-700">
-          {REPORTS.map((item, index) => <Link key={item.key} to={item.path} className={`inline-flex items-center gap-2 whitespace-nowrap rounded-t-lg border border-b-0 px-3.5 py-2 text-[12.5px] font-semibold ${item.key === reportKey ? 'border-gray-200 bg-slate-50 text-accent dark:border-slate-700 dark:bg-slate-800' : 'border-transparent text-slate-500 hover:text-accent dark:text-slate-400'}`}>{index === 0 ? <IconChartBar size={15} /> : <IconClipboardList size={15} />}{item.title.replace('หน่วยงาน IT', 'IT').replace('ฝ่ายเทคโนโลยีสารสนเทศ', 'IT')}</Link>)}
-        </div>
-
-        <div className="grid shrink-0 gap-3 border-b border-gray-200 bg-slate-50 px-5 py-3 dark:border-slate-700 dark:bg-slate-800/60 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
-          <label><span className="mb-1.5 block text-[11.5px] font-semibold text-slate-500 dark:text-slate-400">วันที่เริ่มต้น</span><DateQuickPick value={dateFrom} onChange={(value) => { setDateFrom(value); setValidation(''); }} inputClass={INPUT} /></label>
-          <label><span className="mb-1.5 block text-[11.5px] font-semibold text-slate-500 dark:text-slate-400">วันที่สิ้นสุด</span><DateQuickPick value={dateTo} onChange={(value) => { setDateTo(value); setValidation(''); }} inputClass={INPUT} min={dateFrom || undefined} /></label>
+        <div className="flex shrink-0 flex-wrap items-end gap-3 border-b border-gray-200 bg-slate-50 px-5 py-3 dark:border-slate-700 dark:bg-slate-800/60">
+          <label className="w-full sm:w-[240px]"><span className="mb-1.5 block text-[11.5px] font-semibold text-slate-500 dark:text-slate-400">วันที่เริ่มต้น</span><DateQuickPick value={dateFrom} onChange={(value) => { setDateFrom(value); setValidation(''); }} inputClass={INPUT} showThaiLabel={false} /></label>
+          <label className="w-full sm:w-[240px]"><span className="mb-1.5 block text-[11.5px] font-semibold text-slate-500 dark:text-slate-400">วันที่สิ้นสุด</span><DateQuickPick value={dateTo} onChange={(value) => { setDateTo(value); setValidation(''); }} inputClass={INPUT} min={dateFrom || undefined} showThaiLabel={false} /></label>
           <button type="button" disabled={current.loading} onClick={search} className="inline-flex h-[38px] items-center justify-center gap-2 rounded-lg bg-accent px-4 text-[12.5px] font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50">{current.loading ? <IconLoader2 size={16} className="animate-spin" /> : <IconSearch size={16} />}{current.loading ? 'กำลังโหลด…' : 'แสดงรายงาน'}</button>
-          {validation && <p className="text-[11.5px] font-semibold text-red-600 sm:col-span-3 dark:text-red-400">{validation}</p>}
+          {validation && <p className="w-full text-[11.5px] font-semibold text-red-600 dark:text-red-400">{validation}</p>}
         </div>
 
         {current.error && <div className="flex shrink-0 items-center gap-2 border-b border-red-200 bg-red-50 px-5 py-2.5 text-[12.5px] font-semibold text-red-700 dark:border-red-900 dark:bg-red-950/40 dark:text-red-300"><IconAlertTriangle size={16} />{current.error}<button type="button" onClick={current.retry} className="ml-auto rounded border border-red-300 px-2.5 py-1 text-[11.5px]">ลองใหม่</button></div>}
@@ -140,35 +163,86 @@ function ToolButton({ title, onClick, disabled, children }: { title: string; onC
 }
 
 const SURVEY_COLUMNS: { key: keyof ITSurveySummaryItem; label: string }[] = [
-  { key: 'friendlyService', label: 'สุภาพและเป็นมิตร' },
-  { key: 'fastService', label: 'ความรวดเร็ว' },
-  { key: 'focusService', label: 'กระตือรือร้นและตั้งใจ' },
-  { key: 'directService', label: 'ตรงตามที่คาดหวัง' },
-  { key: 'serviceKnowledge', label: 'แนะนำขั้นตอนและให้ความรู้' },
+  { key: 'friendlyService', label: 'ให้บริการด้วยความสุภาพและเป็นมิตร' },
+  { key: 'fastService', label: 'ความรวดเร็วในการให้บริการ' },
+  { key: 'focusService', label: 'เจ้าหน้าที่กระตือรือร้น และตั้งใจทำงาน' },
+  { key: 'directService', label: 'ได้รับบริการตรงตามที่คาดหวัง' },
+  { key: 'serviceKnowledge', label: 'การแนะนำขั้นตอนและให้ความรู้ในเรื่องที่ให้บริการ' },
 ];
 
 const sumSurvey = (items: ITSurveySummaryItem[], key: keyof ITSurveySummaryItem): number =>
   items.reduce((sum, item) => sum + Number(item[key] ?? 0), 0);
 
 
-function PrintHeader({ title, dateFrom, dateTo }: { title: string; dateFrom: string; dateTo: string }) {
+function PrintHeader({ title, dateFrom, dateTo, page, totalPages }: { title: string; dateFrom: string; dateTo: string; page?: number; totalPages?: number }) {
   const now = new Date();
-  return <><div className="it-print-head"><img src={logo} alt="Big Crane" /><div className="it-print-title"><strong>บริษัท บิ๊กเครน แอนด์ อีควิปเม้นต์ เร้นทัลส์ จำกัด</strong><b>{title}</b></div><div className="it-print-meta">วันที่พิมพ์ : {now.toLocaleDateString('th-TH')}<br />เวลาที่พิมพ์ : {now.toLocaleTimeString('th-TH')}</div></div><div className="it-print-range">ประจำวันที่ <b>{formatDate(dateFrom)}</b> ถึงวันที่ <b>{formatDate(dateTo)}</b></div></>;
+  return <><div className="it-print-head"><img src={logo} alt="Big Crane" /><div className="it-print-title"><strong>บริษัท บิ๊กเครน แอนด์ อิควิปเม้นต์ เร้นทัลส์ จำกัด</strong><b>{title}</b></div><div className="it-print-meta">วันที่พิมพ์ : {formatPrintDate(now)}<br />เวลาที่พิมพ์ : {now.toLocaleTimeString('th-TH')}{page !== undefined && totalPages !== undefined && <><br />Page {page} of {totalPages}</>}</div></div><div className="it-print-range">ประจำวันที่ <b>{formatDate(dateFrom)}</b> ถึงวันที่ <b>{formatDate(dateTo)}</b></div></>;
 }
 
 function SurveyPrint({ data, preview = false, zoom = 100 }: { data: DateRangeReport<ITSurveySummaryItem>; preview?: boolean; zoom?: number }) {
   const maximum = data.items.length * 5;
-  return <div className={preview ? 'it-report-preview' : 'print-root'}><article className="it-report-print it-survey-print" style={preview ? { transform: `scale(${zoom / 100})`, transformOrigin: 'top left' } : undefined}><PrintHeader title="สรุปการสำรวจความพึงพอใจ ฝ่ายเทคโนโลยีสารสนเทศ" dateFrom={data.dateFrom} dateTo={data.dateTo} /><table><thead><tr><th>No.</th><th>Service No</th><th>Service Date</th>{SURVEY_COLUMNS.map((column) => <th key={column.key}>{column.label}</th>)}<th>Total</th></tr></thead><tbody>{data.items.map((item, index) => <tr key={`${item.jobNo}-${index}`}><td>{index + 1}</td><td>{item.jobNo}</td><td>{formatDateTime(item.requestDate)}</td>{SURVEY_COLUMNS.map((column) => <td key={column.key}>{item[column.key]}</td>)}<td>{item.totalScore}</td></tr>)}<tr className="summary"><th colSpan={3}>คะแนนที่ทำได้</th>{SURVEY_COLUMNS.map((column) => <td key={column.key}>{sumSurvey(data.items, column.key)}</td>)}<td>{sumSurvey(data.items, 'totalScore')}</td></tr><tr className="summary"><th colSpan={3}>คะแนนรวม</th>{SURVEY_COLUMNS.map((column) => <td key={column.key}>{maximum}</td>)}<td>{maximum * 5}</td></tr><tr className="summary"><th colSpan={3}>คะแนนเฉลี่ย</th>{SURVEY_COLUMNS.map((column) => <td key={column.key}>{(sumSurvey(data.items, column.key) / data.items.length).toFixed(2)}</td>)}<td>{(sumSurvey(data.items, 'totalScore') / data.items.length).toFixed(2)}</td></tr><tr className="summary"><th colSpan={3}>%</th>{SURVEY_COLUMNS.map((column) => <td key={column.key}>{maximum ? `${(sumSurvey(data.items, column.key) / maximum * 100).toFixed(2)}%` : '0.00%'}</td>)}<td>{maximum ? `${(sumSurvey(data.items, 'totalScore') / (maximum * 5) * 100).toFixed(2)}%` : '0.00%'}</td></tr></tbody></table><h3>สรุปการสำรวจความพึงพอใจ ตามข้อคำถาม</h3><table className="it-survey-summary"><thead><tr><th>No</th><th>รายละเอียดข้อคำถามที่สำรวจความพึงพอใจ</th><th>%</th></tr></thead><tbody>{SURVEY_COLUMNS.map((column, index) => <tr key={column.key}><td>{index + 1}</td><td>{column.label}</td><td>{maximum ? `${(sumSurvey(data.items, column.key) / maximum * 100).toFixed(2)}%` : '0.00%'}</td></tr>)}<tr className="summary"><th colSpan={2}>เฉลี่ย</th><td>{maximum ? `${(sumSurvey(data.items, 'totalScore') / (maximum * 5) * 100).toFixed(2)}%` : '0.00%'}</td></tr></tbody></table><div className="it-print-notes"><h3>หลักเกณฑ์ในการพิจารณา</h3><p>- ความพึงพอใจในการให้บริการเฉลี่ย ตั้งแต่ 80% ขึ้นไป ถือว่าเป็นไปตามเป้าหมายตั้งไว้</p><p>- ความพึงพอใจในการให้บริการเฉลี่ย น้อยกว่า 80% ต้องเก็บสถิติเพื่อปรับปรุงการให้บริการของฝ่าย IT โดยจะรวบรวมปีละ 2 ครั้ง เพื่อจัดทำ Action Plan ในการแก้ไขปัญหาในปีต่อไป</p><p className="remark">หมายเหตุ ................................................................................................................................................................................<br />................................................................................................................................................................................................</p></div><Signatures /><PrintFooter left="(P) FM-BC/IT-002/11" right="REV.00(11/04/66)" /></article></div>;
+  const itemPages = chunkItems(data.items, 38);
+  const lastItemCount = itemPages[itemPages.length - 1].length;
+  const summaryFitsLastItemPage = lastItemCount <= 27;
+  const criteriaNeedsOwnPage = summaryFitsLastItemPage && lastItemCount >= 27;
+  const remarkNeedsOwnPage = summaryFitsLastItemPage && !criteriaNeedsOwnPage && lastItemCount >= 18;
+  const signaturesNeedOwnPage = summaryFitsLastItemPage && !criteriaNeedsOwnPage && lastItemCount >= 15;
+  const extraPages = summaryFitsLastItemPage ? (criteriaNeedsOwnPage || remarkNeedsOwnPage || signaturesNeedOwnPage ? 1 : 0) : 1;
+  const pages = [...itemPages, ...Array.from({ length: extraPages }, () => [] as ITSurveySummaryItem[])];
+  const summaryPageIndex = summaryFitsLastItemPage ? itemPages.length - 1 : itemPages.length;
+  const criteriaPageIndex = criteriaNeedsOwnPage ? summaryPageIndex + 1 : summaryPageIndex;
+  const remarkPageIndex = remarkNeedsOwnPage ? criteriaPageIndex + 1 : criteriaPageIndex;
+  const signaturesPageIndex = signaturesNeedOwnPage ? criteriaPageIndex + 1 : criteriaPageIndex;
+  let itemOffset = 0;
+  return <div className={preview ? 'it-report-preview' : 'print-root'}>{pages.map((items, pageIndex) => {
+    const startIndex = itemOffset;
+    itemOffset += items.length;
+    const isItemPage = pageIndex < itemPages.length;
+    const isScorePage = pageIndex === itemPages.length - 1;
+    const isSurveySummaryPage = pageIndex === summaryPageIndex;
+    const isCriteriaPage = pageIndex === criteriaPageIndex;
+    const isRemarkPage = pageIndex === remarkPageIndex;
+    const isSignaturesPage = pageIndex === signaturesPageIndex;
+    return <article key={pageIndex} className="it-report-page it-report-print it-survey-print" style={preview ? { zoom: zoom / 100 } : undefined}>
+      <PrintHeader title="สรุปการสำรวจความพึงพอใจ ฝ่ายเทคโนโลยีสารสนเทศ" dateFrom={data.dateFrom} dateTo={data.dateTo} page={pageIndex + 1} totalPages={pages.length} />
+      {isItemPage && <table><thead><tr><th>No.</th><th>Service No</th><th>Service Date</th>{SURVEY_COLUMNS.map((column) => <th key={column.key}>{column.label}</th>)}<th>Total</th></tr></thead><tbody>
+        {items.map((item, index) => <tr key={`${item.jobNo}-${index}`}><td>{startIndex + index + 1}</td><td>{item.jobNo}</td><td>{formatDate(item.requestDate)}</td>{SURVEY_COLUMNS.map((column) => <td key={column.key}>{item[column.key]}</td>)}<td>{item.totalScore}</td></tr>)}
+        {isScorePage && <><tr className="summary"><th colSpan={3}>คะแนนที่ทำได้</th>{SURVEY_COLUMNS.map((column) => <td key={column.key}>{sumSurvey(data.items, column.key)}</td>)}<td>{sumSurvey(data.items, 'totalScore')}</td></tr><tr className="summary"><th colSpan={3}>คะแนนรวม</th>{SURVEY_COLUMNS.map((column) => <td key={column.key}>{maximum}</td>)}<td>{maximum * 5}</td></tr><tr className="summary"><th colSpan={3}>คะแนนเฉลี่ย</th>{SURVEY_COLUMNS.map((column) => <td key={column.key}>{(sumSurvey(data.items, column.key) / data.items.length).toFixed(2)}</td>)}<td>{(sumSurvey(data.items, 'totalScore') / data.items.length).toFixed(2)}</td></tr><tr className="summary"><th colSpan={3}>%</th>{SURVEY_COLUMNS.map((column) => <td key={column.key}>{maximum ? `${(sumSurvey(data.items, column.key) / maximum * 100).toFixed(2)}%` : '0.00%'}</td>)}<td>{maximum ? `${(sumSurvey(data.items, 'totalScore') / (maximum * 5) * 100).toFixed(2)}%` : '0.00%'}</td></tr></>}
+      </tbody></table>}
+      {isSurveySummaryPage && <><h3 className="it-survey-summary-title">สรุปการสำรวจความพึงพอใจ ตามข้อคำถาม</h3><table className="it-survey-summary"><thead><tr><th>No</th><th>รายละเอียดข้อคำถามที่สำรวจความพึงพอใจ</th><th>%</th></tr></thead><tbody>{SURVEY_COLUMNS.map((column, index) => <tr key={column.key}><td>{index + 1}</td><td>{column.label}</td><td>{maximum ? `${(sumSurvey(data.items, column.key) / maximum * 100).toFixed(2)}%` : '0.00%'}</td></tr>)}<tr className="summary"><th colSpan={2}>เฉลี่ย</th><td>{maximum ? `${(sumSurvey(data.items, 'totalScore') / (maximum * 5) * 100).toFixed(2)}%` : '0.00%'}</td></tr></tbody></table></>}
+      {isCriteriaPage && <div className="it-print-notes"><h3>หลักเกณฑ์ในการพิจารณา</h3><p>- ความพึงพอใจในการให้บริการเฉลี่ย ตั้งแต่ 80% ขึ้นไป ถือว่าเป็นไปตามเป้าหมายตั้งไว้</p><p>- ความพึงพอใจในการให้บริการเฉลี่ย น้อยกว่า 80% ต้องเก็บสถิติเพื่อปรับปรุงการให้บริการของฝ่าย IT โดยจะรวบรวมปีละ 2 ครั้ง เพื่อจัดทำ Action Plan ในการแก้ไขปัญหาในปีต่อไป</p></div>}
+      {isRemarkPage && <div className="it-print-notes it-print-remark-block"><div className="remark"><div className="it-print-remark-line"><span>หมายเหตุ</span><span /></div>{Array.from({ length: 4 }, (_, index) => <div key={index} className="it-print-remark-line"><span /></div>)}</div></div>}
+      {isSignaturesPage && <Signatures />}
+      <PrintFooter left="(P) FM-BC/IT-002/11" right="REV.00(11/04/66)" />
+    </article>;
+  })}</div>;
 }
 
 function ServicePrint({ data, preview = false, zoom = 100 }: { data: DateRangeReport<ITServiceFormSummaryItem>; preview?: boolean; zoom?: number }) {
-  return <div className={preview ? 'it-report-preview' : 'print-root'}><article className="it-report-print it-service-print" style={preview ? { transform: `scale(${zoom / 100})`, transformOrigin: 'top left' } : undefined}><PrintHeader title="ทะเบียนคุมใบรับเรื่องฝ่ายเทคโนโลยีสารสนเทศ" dateFrom={data.dateFrom} dateTo={data.dateTo} /><h3>งานทั้งหมด</h3><table><thead><tr>{['ลำดับ', 'เลขที่ใบรับเรื่อง', 'วันที่-เวลาในใบรับเรื่อง', 'ผู้แจ้งเรื่อง', 'หน่วยงาน', 'ชื่อคอมพิวเตอร์', 'รายละเอียดที่แจ้ง', 'การบริการ', 'สาเหตุหลัก', 'วันที่-เวลาปิดใบรับเรื่อง', 'ผู้ปิดงานรับเรื่อง', 'รายละเอียดการดำเนินงาน'].map((label) => <th key={label}>{label}</th>)}</tr></thead><tbody>{data.items.map((item, index) => <tr key={`${item.jobNo}-${index}`}><td>{index + 1}</td><td>{item.jobNo}</td><td>{formatDateTime(item.requestDate)}</td><td>{item.requestBy ?? ''}</td><td>{item.department ?? ''}</td><td>{item.comName ?? ''}</td><td>{item.requestDetail ?? ''}</td><td>{item.solve ?? ''}</td><td>{[item.hw, item.hwDetail].filter(Boolean).join(' / ')}</td><td>{formatDateTime(item.closeDate)}</td><td>{item.closeBy ?? ''}</td><td>{item.repairDetail ?? ''}</td></tr>)}</tbody></table><h3>งานกำลังดำเนินการ</h3><table><thead><tr>{['ลำดับ', 'เลขที่ใบรับเรื่อง', 'วันที่-เวลาในใบรับเรื่อง', 'ผู้แจ้งเรื่อง', 'หน่วยงาน', 'ชื่อคอมพิวเตอร์', 'รายละเอียดที่แจ้ง', 'กำหนดเสร็จ', 'หมายเหตุ'].map((label) => <th key={label}>{label}</th>)}</tr></thead><tbody>{data.items.filter((item) => (item.wfStep ?? 0) < 6).map((item, index) => <tr key={`${item.jobNo}-${index}`}><td>{index + 1}</td><td>{item.jobNo}</td><td>{formatDateTime(item.requestDate)}</td><td>{item.requestBy ?? ''}</td><td>{item.department ?? ''}</td><td>{item.comName ?? ''}</td><td>{item.requestDetail ?? ''}</td><td>{formatDateTime(item.exPlanDate)}</td><td>{item.remark ?? ''}</td></tr>)}</tbody></table><Signatures /><PrintFooter left="(P) Log-BC/IT-002/04" right="REV.03(16/03/66)" /></article></div>;
+  const inProgress = data.items.filter((item) => (item.wfStep ?? 0) < 6);
+  const allChunks = chunkItemsWithFinalCapacity(data.items, 12, inProgress.length === 0 ? 7 : 12);
+  const progressChunks = inProgress.length > 0 ? chunkItemsWithFinalCapacity(inProgress, 12, 7) : [];
+  const pages = [
+    ...allChunks.map((items, index) => ({ section: 'all' as const, items, startIndex: allChunks.slice(0, index).reduce((sum, page) => sum + page.length, 0) })),
+    ...progressChunks.map((items, index) => ({ section: 'progress' as const, items, startIndex: progressChunks.slice(0, index).reduce((sum, page) => sum + page.length, 0) })),
+  ];
+  return <div className={preview ? 'it-report-preview' : 'print-root'}>{pages.map((page, pageIndex) => {
+    const isLastPage = pageIndex === pages.length - 1;
+    return <article key={`${page.section}-${pageIndex}`} className="it-report-page it-report-print it-service-print" style={preview ? { zoom: zoom / 100 } : undefined}>
+      <PrintHeader title="รายงานทะเบียนคุมใบ Service Form" dateFrom={data.dateFrom} dateTo={data.dateTo} />
+      <h3>{page.section === 'all' ? 'งานทั้งหมด' : 'งานกำลังดำเนินการ'}</h3>
+      {page.section === 'all' ? <table><thead><tr>{['ลำดับ', 'เลขที่ใบรับเรื่อง', 'วันที่-เวลาในใบรับเรื่อง', 'ผู้แจ้งเรื่อง', 'หน่วยงาน', 'ชื่อคอมพิวเตอร์', 'รายละเอียดที่แจ้ง', 'การบริการ', 'สาเหตุหลัก', 'วันที่-เวลาปิดใบรับเรื่อง', 'ผู้ปิดงานรับเรื่อง', 'รายละเอียดการดำเนินงาน'].map((label) => <th key={label}>{label}</th>)}</tr></thead><tbody>{page.items.map((item, index) => <tr key={`${item.jobNo}-${index}`}><td>{page.startIndex + index + 1}</td><td>{item.jobNo}</td><td>{formatDateTime(item.requestDate)}</td><td>{item.requestBy ?? ''}</td><td>{item.department ?? ''}</td><td>{item.comName ?? ''}</td><td>{item.requestDetail ?? ''}</td><td>{item.solve ?? ''}</td><td>{[item.hw, item.hwDetail].filter(Boolean).join(' / ')}</td><td>{formatDateTime(item.closeDate)}</td><td>{item.closeBy ?? ''}</td><td>{item.repairDetail ?? ''}</td></tr>)}</tbody></table>
+        : <table><thead><tr>{['ลำดับ', 'เลขที่ใบรับเรื่อง', 'วันที่-เวลาในใบรับเรื่อง', 'ผู้แจ้งเรื่อง', 'หน่วยงาน', 'ชื่อคอมพิวเตอร์', 'รายละเอียดที่แจ้ง', 'กำหนดเสร็จ', 'หมายเหตุ'].map((label) => <th key={label}>{label}</th>)}</tr></thead><tbody>{page.items.map((item, index) => <tr key={`${item.jobNo}-${index}`}><td>{page.startIndex + index + 1}</td><td>{item.jobNo}</td><td>{formatDateTime(item.requestDate)}</td><td>{item.requestBy ?? ''}</td><td>{item.department ?? ''}</td><td>{item.comName ?? ''}</td><td>{item.requestDetail ?? ''}</td><td>{formatDateTime(item.exPlanDate)}</td><td>{item.remark ?? ''}</td></tr>)}</tbody></table>}
+      {isLastPage && <Signatures />}
+      <PrintFooter left="(P) Log-BC/IT-002/04" right="REV.03(16/03/66)" page={pageIndex + 1} totalPages={pages.length} />
+    </article>;
+  })}</div>;
 }
 
 function Signatures() {
   return <div className="it-print-signatures"><div>ลงชื่อ ................................................ ผู้จัดทำ<br /><span>เจ้าหน้าที่เทคโนโลยีสารสนเทศ</span><br />วันที่ ........../........../................</div><div>ลงชื่อ ................................................ ผู้ตรวจสอบ<br /><span>ผู้จัดการฝ่ายเทคโนโลยีสารสนเทศ</span><br />วันที่ ........../........../................</div></div>;
 }
 
-function PrintFooter({ left, right }: { left: string; right: string }) {
-  return <div className="it-print-footer"><span>{left}</span><span>{right}</span></div>;
+function PrintFooter({ left, right, page, totalPages }: { left: string; right: string; page?: number; totalPages?: number }) {
+  return <div className="it-print-footer"><span>{left}</span><span>{page !== undefined && totalPages !== undefined ? `Page ${page} of ${totalPages}` : ''}</span><span>{right}</span></div>;
 }

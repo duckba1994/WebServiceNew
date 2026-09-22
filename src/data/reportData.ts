@@ -20,7 +20,7 @@ export const REPORTS: ReportDefinition[] = [
   {
     key: 'it-request-register',
     department: 'IT',
-    title: 'ทะเบียนคุมรับเรื่อง IT',
+    title: 'รายงานทะเบียนคุมใบ Service Form',
     description: 'ทะเบียนรายการรับเรื่องและสถานะการดำเนินงานของหน่วยงาน IT',
     path: '/reports/it/request-register',
   },
