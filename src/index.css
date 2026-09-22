@@ -293,7 +293,7 @@ html.dark {
 .it-report-page { break-after: page; page-break-after: always; }
 .it-report-page:last-child { break-after: auto; page-break-after: auto; }
 .it-survey-print { page: it-survey; width: 210mm; height: 297mm; padding: 7mm 5mm 10mm; }
-.it-service-print { page: it-service; width: 297mm; height: 210mm; padding: 5mm 4mm 9mm; font-size: 9.5px; }
+.it-service-print { page: it-service; width: 297mm; height: 210mm; padding: 5mm 4mm 9mm; font-size: 12px; }
 @page it-survey { size: A4 portrait; margin: 0; }
 @page it-service { size: A4 landscape; margin: 0; }
 .it-print-head { display: grid; grid-template-columns: 32mm 1fr 44mm; align-items: start; min-height: 23mm; }
@@ -313,6 +313,8 @@ html.dark {
 .it-report-print th, .it-report-print td { border: 0.6px solid #222; padding: 1.5mm 1mm; text-align: center; vertical-align: middle; overflow-wrap: anywhere; }
 .it-report-print thead th { font-weight: 700; }
 .it-report-print tr.summary th { text-align: center; }
+.it-survey-print table:not(.it-survey-summary) tr.summary th,
+.it-survey-print table:not(.it-survey-summary) tr.summary td { font-weight: 700; }
 .it-survey-print th, .it-survey-print td { padding: 0.8mm 0.7mm; line-height: 1.2; }
 .it-survey-print table th:nth-child(1), .it-survey-print table td:nth-child(1) { width: 11mm; }
 .it-survey-print table th:nth-child(2), .it-survey-print table td:nth-child(2) { width: 21mm; }
@@ -336,23 +338,43 @@ html.dark {
 .it-survey-print .it-print-footer { bottom: 6mm; font-size: 12px; }
 .it-service-print .it-print-head { min-height: 19mm; grid-template-columns: 28mm 1fr 50mm; }
 .it-service-print .it-print-head img { width: 17mm; height: 15mm; }
-.it-service-print .it-print-title { gap: 2mm; padding-top: 1mm; font-size: 8px; }
-.it-service-print .it-print-title strong { font-size: 8.5px; }
-.it-service-print .it-print-title b { font-size: 9px; }
-.it-service-print .it-print-range { margin-bottom: 2mm; font-size: 7px; }
-.it-service-print h3 { margin: 2mm 0 1mm; font-size: 7px; }
+.it-service-print .it-print-title { gap: 2mm; padding-top: 1mm; font-size: 14px; }
+.it-service-print .it-print-title strong { font-size: 18px; }
+.it-service-print .it-print-title b { font-size: 19px; }
+.it-service-print .it-print-meta { font-size: 13px; }
+.it-service-print .it-print-range { margin-bottom: 2mm; font-size: 13px; }
+.it-service-print h3 { margin: 2mm 0 1mm; font-size: 13px; }
+.it-service-print .it-print-footer { bottom: 6mm; font-size: 12px; }
 .it-service-print th, .it-service-print td { padding: 1mm 0.6mm; }
-.it-service-print table:first-of-type th:nth-child(1) { width: 9mm; }
-.it-service-print table:first-of-type th:nth-child(2) { width: 17mm; }
-.it-service-print table:first-of-type th:nth-child(3) { width: 22mm; }
-.it-service-print table:first-of-type th:nth-child(4) { width: 20mm; }
-.it-service-print table:first-of-type th:nth-child(5) { width: 12mm; }
-.it-service-print table:first-of-type th:nth-child(6) { width: 18mm; }
-.it-service-print table:first-of-type th:nth-child(7) { width: 47mm; }
-.it-service-print table:first-of-type th:nth-child(8) { width: 22mm; }
-.it-service-print table:first-of-type th:nth-child(9) { width: 22mm; }
-.it-service-print table:first-of-type th:nth-child(10) { width: 24mm; }
-.it-service-print table:first-of-type th:nth-child(11) { width: 20mm; }
+.it-service-print table:not(.it-service-pivot):not(.it-service-progress):first-of-type th:nth-child(1) { width: 9mm; }
+.it-service-print table:not(.it-service-pivot):not(.it-service-progress):first-of-type th:nth-child(2) { width: 17mm; }
+.it-service-print table:not(.it-service-pivot):not(.it-service-progress):first-of-type th:nth-child(3) { width: 22mm; }
+.it-service-print table:not(.it-service-pivot):not(.it-service-progress):first-of-type th:nth-child(4) { width: 20mm; }
+.it-service-print table:not(.it-service-pivot):not(.it-service-progress):first-of-type th:nth-child(5) { width: 12mm; }
+.it-service-print table:not(.it-service-pivot):not(.it-service-progress):first-of-type th:nth-child(6) { width: 18mm; }
+.it-service-print table:not(.it-service-pivot):not(.it-service-progress):first-of-type th:nth-child(7) { width: 47mm; }
+.it-service-print table:not(.it-service-pivot):not(.it-service-progress):first-of-type th:nth-child(8) { width: 22mm; }
+.it-service-print table:not(.it-service-pivot):not(.it-service-progress):first-of-type th:nth-child(9) { width: 22mm; }
+.it-service-print table:not(.it-service-pivot):not(.it-service-progress):first-of-type th:nth-child(10) { width: 24mm; }
+.it-service-print table:not(.it-service-pivot):not(.it-service-progress):first-of-type th:nth-child(11) { width: 20mm; }
+.it-service-print .it-service-progress th:nth-child(1) { width: 9mm; }
+.it-service-print .it-service-progress th:nth-child(2) { width: 22mm; }
+.it-service-print .it-service-progress th:nth-child(3) { width: 28mm; }
+.it-service-print .it-service-progress th:nth-child(4) { width: 23mm; }
+.it-service-print .it-service-progress th:nth-child(5) { width: 16mm; }
+.it-service-print .it-service-progress th:nth-child(6) { width: 25mm; }
+.it-service-print .it-service-progress th:nth-child(7) { width: 100mm; }
+.it-service-print .it-service-progress th:nth-child(8) { width: 28mm; }
+.it-service-print .it-service-progress th:nth-child(9) { width: 38mm; }
+.it-service-print .it-service-pivot { width: auto; min-width: 80mm; max-width: 100%; margin: 2mm 0 0 2mm; table-layout: auto; }
+.it-service-print .it-service-pivot th,
+.it-service-print .it-service-pivot td { min-width: 16mm; padding: 1mm 2mm; font-weight: 400; white-space: nowrap; }
+.it-service-print .it-service-pivot th:first-child { min-width: 28mm; text-align: left; font-weight: 700; }
+.it-service-print .it-service-pivot th:last-child,
+.it-service-print .it-service-pivot td:last-child { width: 14mm; min-width: 14mm; }
+.it-service-print .it-service-pivot thead th,
+.it-service-print .it-service-pivot tr.summary th,
+.it-service-print .it-service-pivot tbody th:last-child { font-weight: 700; text-align: center; }
 .it-service-print .it-print-signatures { margin-top: 8mm; }
 
 @media print {

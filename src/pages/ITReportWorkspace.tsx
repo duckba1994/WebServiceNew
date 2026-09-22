@@ -55,19 +55,6 @@ const chunkItems = <T,>(items: T[], pageSize: number): T[][] => {
   return pages;
 };
 
-const chunkItemsWithFinalCapacity = <T,>(items: T[], pageSize: number, finalPageSize: number): T[][] => {
-  if (items.length === 0) return [[]];
-  const pages: T[][] = [];
-  let offset = 0;
-  while (items.length - offset > finalPageSize) {
-    const take = Math.min(pageSize, items.length - offset - finalPageSize);
-    pages.push(items.slice(offset, offset + take));
-    offset += take;
-  }
-  pages.push(items.slice(offset));
-  return pages;
-};
-
 export function ReportWorkspace({ reportKey }: { reportKey: ReportKey }) {
   const { user } = useAuth();
   const report = reportByKey(reportKey);
@@ -219,22 +206,58 @@ function SurveyPrint({ data, preview = false, zoom = 100 }: { data: DateRangeRep
 }
 
 function ServicePrint({ data, preview = false, zoom = 100 }: { data: DateRangeReport<ITServiceFormSummaryItem>; preview?: boolean; zoom?: number }) {
-  const inProgress = data.items.filter((item) => (item.wfStep ?? 0) < 6);
-  const allChunks = chunkItemsWithFinalCapacity(data.items, 12, inProgress.length === 0 ? 7 : 12);
-  const progressChunks = inProgress.length > 0 ? chunkItemsWithFinalCapacity(inProgress, 12, 7) : [];
-  const pages = [
-    ...allChunks.map((items, index) => ({ section: 'all' as const, items, startIndex: allChunks.slice(0, index).reduce((sum, page) => sum + page.length, 0) })),
-    ...progressChunks.map((items, index) => ({ section: 'progress' as const, items, startIndex: progressChunks.slice(0, index).reduce((sum, page) => sum + page.length, 0) })),
+  const inProgress = data.items.filter((item) => item.jobStatus !== '9' && item.closeBy === null);
+  const groupLabel = (value: string | null) => value?.trim() || 'ไม่ระบุ';
+  const departments = Array.from(new Set(data.items.map((item) => groupLabel(item.department)))).sort((a, b) => a.localeCompare(b, 'th'));
+  const hardwareGroups = Array.from(new Set(data.items.map((item) => groupLabel(item.hw)))).sort((a, b) => a.localeCompare(b, 'th'));
+  const countOf = (hardware: string, department: string) => data.items.filter((item) => groupLabel(item.hw) === hardware && groupLabel(item.department) === department).length;
+  const allChunks = chunkItems(data.items, 12);
+  const progressChunks = inProgress.length > 0 ? chunkItems(inProgress, 12) : [];
+  const summaryFitsLastAllPage = allChunks[allChunks.length - 1].length <= 6 && hardwareGroups.length <= 5 && departments.length <= 8;
+  const pivotRowCount = hardwareGroups.length + 2;
+  const canAppendProgressToPivotPage = progressChunks.length > 0
+    && (summaryFitsLastAllPage ? allChunks[allChunks.length - 1].length : 0) + pivotRowCount + progressChunks[0].length <= 13;
+  const appendedProgressItems = canAppendProgressToPivotPage ? progressChunks[0] : [];
+  const allPages = allChunks.map((items, index) => ({
+    section: 'all' as const,
+    items,
+    startIndex: allChunks.slice(0, index).reduce((sum, page) => sum + page.length, 0),
+    signaturesOnly: false,
+    showSummary: summaryFitsLastAllPage && index === allChunks.length - 1,
+    appendedProgressItems: summaryFitsLastAllPage && index === allChunks.length - 1 ? appendedProgressItems : [] as ITServiceFormSummaryItem[],
+  }));
+  const summaryPages = summaryFitsLastAllPage ? [] : [{ section: 'summary' as const, items: [] as ITServiceFormSummaryItem[], startIndex: 0, signaturesOnly: false, showSummary: true, appendedProgressItems }];
+  const remainingProgressChunks = canAppendProgressToPivotPage ? progressChunks.slice(1) : progressChunks;
+  const progressStartOffset = canAppendProgressToPivotPage ? progressChunks[0].length : 0;
+  const progressPages = remainingProgressChunks.map((items, index) => ({
+    section: 'progress' as const,
+    items,
+    startIndex: progressStartOffset + remainingProgressChunks.slice(0, index).reduce((sum, page) => sum + page.length, 0),
+    signaturesOnly: false,
+    showSummary: false,
+    appendedProgressItems: [] as ITServiceFormSummaryItem[],
+  }));
+  const contentPages = [
+    ...allPages,
+    ...summaryPages,
+    ...progressPages,
   ];
+  const lastContentPage = contentPages[contentPages.length - 1];
+  const signaturesNeedOwnPage = !lastContentPage.showSummary && lastContentPage.items.length > 7;
+  const pages = signaturesNeedOwnPage
+    ? [...contentPages, { section: lastContentPage.section, items: [] as ITServiceFormSummaryItem[], startIndex: lastContentPage.startIndex + lastContentPage.items.length, signaturesOnly: true, showSummary: false, appendedProgressItems: [] as ITServiceFormSummaryItem[] }]
+    : contentPages;
   return <div className={preview ? 'it-report-preview' : 'print-root'}>{pages.map((page, pageIndex) => {
     const isLastPage = pageIndex === pages.length - 1;
     return <article key={`${page.section}-${pageIndex}`} className="it-report-page it-report-print it-service-print" style={preview ? { zoom: zoom / 100 } : undefined}>
-      <PrintHeader title="รายงานทะเบียนคุมใบ Service Form" dateFrom={data.dateFrom} dateTo={data.dateTo} />
-      <h3>{page.section === 'all' ? 'งานทั้งหมด' : 'งานกำลังดำเนินการ'}</h3>
-      {page.section === 'all' ? <table><thead><tr>{['ลำดับ', 'เลขที่ใบรับเรื่อง', 'วันที่-เวลาในใบรับเรื่อง', 'ผู้แจ้งเรื่อง', 'หน่วยงาน', 'ชื่อคอมพิวเตอร์', 'รายละเอียดที่แจ้ง', 'การบริการ', 'สาเหตุหลัก', 'วันที่-เวลาปิดใบรับเรื่อง', 'ผู้ปิดงานรับเรื่อง', 'รายละเอียดการดำเนินงาน'].map((label) => <th key={label}>{label}</th>)}</tr></thead><tbody>{page.items.map((item, index) => <tr key={`${item.jobNo}-${index}`}><td>{page.startIndex + index + 1}</td><td>{item.jobNo}</td><td>{formatDateTime(item.requestDate)}</td><td>{item.requestBy ?? ''}</td><td>{item.department ?? ''}</td><td>{item.comName ?? ''}</td><td>{item.requestDetail ?? ''}</td><td>{item.solve ?? ''}</td><td>{[item.hw, item.hwDetail].filter(Boolean).join(' / ')}</td><td>{formatDateTime(item.closeDate)}</td><td>{item.closeBy ?? ''}</td><td>{item.repairDetail ?? ''}</td></tr>)}</tbody></table>
-        : <table><thead><tr>{['ลำดับ', 'เลขที่ใบรับเรื่อง', 'วันที่-เวลาในใบรับเรื่อง', 'ผู้แจ้งเรื่อง', 'หน่วยงาน', 'ชื่อคอมพิวเตอร์', 'รายละเอียดที่แจ้ง', 'กำหนดเสร็จ', 'หมายเหตุ'].map((label) => <th key={label}>{label}</th>)}</tr></thead><tbody>{page.items.map((item, index) => <tr key={`${item.jobNo}-${index}`}><td>{page.startIndex + index + 1}</td><td>{item.jobNo}</td><td>{formatDateTime(item.requestDate)}</td><td>{item.requestBy ?? ''}</td><td>{item.department ?? ''}</td><td>{item.comName ?? ''}</td><td>{item.requestDetail ?? ''}</td><td>{formatDateTime(item.exPlanDate)}</td><td>{item.remark ?? ''}</td></tr>)}</tbody></table>}
+      <PrintHeader title="รายงานทะเบียนคุมใบ Service Form" dateFrom={data.dateFrom} dateTo={data.dateTo} page={pageIndex + 1} totalPages={pages.length} />
+      {!page.signaturesOnly && page.section !== 'summary' && <><h3>{page.section === 'all' ? 'งานทั้งหมด' : 'งานค้างดำเนินการ'}</h3>
+        {page.section === 'all' ? <table><thead><tr>{['ลำดับ', 'เลขที่ใบรับเรื่อง', 'วันที่-เวลาในใบรับเรื่อง', 'ผู้แจ้งเรื่อง', 'หน่วยงาน', 'ชื่อคอมพิวเตอร์', 'รายละเอียดที่แจ้ง', 'การบริการ', 'สาเหตุหลัก', 'วันที่-เวลาปิดใบรับเรื่อง', 'ผู้ปิดงานรับเรื่อง', 'รายละเอียดการดำเนินงาน'].map((label) => <th key={label}>{label}</th>)}</tr></thead><tbody>{page.items.map((item, index) => <tr key={`${item.jobNo}-${index}`}><td>{page.startIndex + index + 1}</td><td>{item.jobNo}</td><td>{formatDateTime(item.requestDate)}</td><td>{item.requestBy ?? ''}</td><td>{item.department ?? ''}</td><td>{item.comName ?? ''}</td><td>{item.requestDetail ?? ''}</td><td>{item.solve ?? ''}</td><td>{[item.hw, item.hwDetail].filter(Boolean).join(' / ')}</td><td>{formatDateTime(item.closeDate)}</td><td>{item.closeBy ?? ''}</td><td>{item.repairDetail ?? ''}</td></tr>)}</tbody></table>
+          : <table className="it-service-progress"><thead><tr>{['ลำดับ', 'เลขที่ใบรับเรื่อง', 'วันที่-เวลาในใบรับเรื่อง', 'ผู้แจ้งเรื่อง', 'หน่วยงาน', 'ชื่อคอมพิวเตอร์', 'รายละเอียดที่แจ้ง', 'กำหนดเสร็จ', 'หมายเหตุ'].map((label) => <th key={label}>{label}</th>)}</tr></thead><tbody>{page.items.map((item, index) => <tr key={`${item.jobNo}-${index}`}><td>{page.startIndex + index + 1}</td><td>{item.jobNo}</td><td>{formatDateTime(item.requestDate)}</td><td>{item.requestBy ?? ''}</td><td>{item.department ?? ''}</td><td>{item.comName ?? ''}</td><td>{item.requestDetail ?? ''}</td><td>{formatDateTime(item.exPlanDate)}</td><td>{item.remark ?? ''}</td></tr>)}</tbody></table>}</>}
+      {page.showSummary && <table className="it-service-pivot"><thead><tr><th>HW</th>{departments.map((department) => <th key={department}>{department}</th>)}<th>Total</th></tr></thead><tbody>{hardwareGroups.map((hardware) => <tr key={hardware}><th>{hardware}</th>{departments.map((department) => <td key={department}>{countOf(hardware, department)}</td>)}<th>{departments.reduce((sum, department) => sum + countOf(hardware, department), 0)}</th></tr>)}<tr className="summary"><th>Total</th>{departments.map((department) => <th key={department}>{hardwareGroups.reduce((sum, hardware) => sum + countOf(hardware, department), 0)}</th>)}<th>{data.items.length}</th></tr></tbody></table>}
+      {page.appendedProgressItems.length > 0 && <><h3>งานค้างดำเนินการ</h3><table className="it-service-progress"><thead><tr>{['ลำดับ', 'เลขที่ใบรับเรื่อง', 'วันที่-เวลาในใบรับเรื่อง', 'ผู้แจ้งเรื่อง', 'หน่วยงาน', 'ชื่อคอมพิวเตอร์', 'รายละเอียดที่แจ้ง', 'กำหนดเสร็จ', 'หมายเหตุ'].map((label) => <th key={label}>{label}</th>)}</tr></thead><tbody>{page.appendedProgressItems.map((item, index) => <tr key={`${item.jobNo}-${index}`}><td>{index + 1}</td><td>{item.jobNo}</td><td>{formatDateTime(item.requestDate)}</td><td>{item.requestBy ?? ''}</td><td>{item.department ?? ''}</td><td>{item.comName ?? ''}</td><td>{item.requestDetail ?? ''}</td><td>{formatDateTime(item.exPlanDate)}</td><td>{item.remark ?? ''}</td></tr>)}</tbody></table></>}
       {isLastPage && <Signatures />}
-      <PrintFooter left="(P) Log-BC/IT-002/04" right="REV.03(16/03/66)" page={pageIndex + 1} totalPages={pages.length} />
+      <PrintFooter left="(P) Log-BC/IT-002/04" right="REV.03(16/03/66)" />
     </article>;
   })}</div>;
 }
