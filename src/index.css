@@ -475,6 +475,42 @@ html.dark {
   .it-report-print tr { break-inside: avoid; }
 }
 
+/* ══════════ รายงานสรุปประเภทการแจ้งเรื่อง SV ══════════ */
+.sv-report-print {
+  page: sv-report;
+  width: 297mm;
+  height: 210mm;
+  padding: 6mm 5mm 7mm;
+  overflow: hidden;
+  font-size: 11px;
+  line-height: 1.25;
+}
+@page sv-report { size: A4 landscape; margin: 0; }
+.sv-report-measure {
+  position: fixed;
+  top: 0;
+  left: -200vw;
+  width: 297mm;
+  visibility: hidden;
+  pointer-events: none;
+}
+.sv-report-heading { position: relative; min-height: 23mm; text-align: center; }
+.sv-report-heading > strong { display: block; font-size: 17px; }
+.sv-report-heading h2 { margin: 4mm 0 1mm; font-size: 16px; }
+.sv-report-meta { position: absolute; right: 0; top: 0; display: flex; gap: 8mm; font-size: 9px; }
+.sv-report-print .sv-report-table { margin: 0; table-layout: fixed; border-collapse: collapse; }
+.sv-report-print .sv-report-table th,
+.sv-report-print .sv-report-table td { border: 0.6px solid #111; padding: 1.4mm 1mm; font-size: 10.5px; line-height: 1.25; }
+.sv-report-print .sv-report-table thead th { height: 7mm; text-align: center; }
+.sv-report-print .sv-report-table thead .sv-group-head { border: 0; }
+.sv-report-print .sv-report-table tbody th { text-align: left; vertical-align: top; font-weight: 700; }
+.sv-report-print .sv-report-table tbody td { text-align: right; }
+.sv-report-print .sv-report-table .sv-total-row th { text-align: left; }
+.sv-report-print .sv-report-table .sv-total-row td,
+.sv-report-print .sv-report-table .sv-total-cell { font-weight: 700; }
+.sv-report-print .sv-report-table tr { break-inside: avoid; }
+@media print { .sv-report-measure { display: none; } }
+
 /* ══════════ ใบรับเรื่องฝ่ายเทคโนโลยีสารสนเทศ ══════════ */
 .it-work-order-print {
   page: it-work-order;

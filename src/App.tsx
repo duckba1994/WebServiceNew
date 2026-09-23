@@ -13,6 +13,7 @@ import { PhoneBook } from './pages/PhoneBook';
 import { Reports } from './pages/Reports';
 import { ReportWorkspace } from './pages/ITReportWorkspace';
 import { PLReportWorkspace } from './pages/PLReportWorkspace';
+import { SVReportWorkspace } from './pages/SVReportWorkspace';
 import { DraftScope } from './hooks/useSessionDraft';
 import { suspendDraftSession } from './utils/sessionDrafts';
 
@@ -53,6 +54,7 @@ export default function App() {
           <Route path="/reports/it/satisfaction-summary" element={<ProtectedRoute><ReportWorkspace reportKey="it-satisfaction-summary" /></ProtectedRoute>} />
           <Route path="/reports/it/request-register" element={<ProtectedRoute><ReportWorkspace reportKey="it-request-register" /></ProtectedRoute>} />
           <Route path="/reports/pl/request-report" element={<ProtectedRoute><PLReportWorkspace /></ProtectedRoute>} />
+          <Route path="/reports/sv/request-summary" element={<ProtectedRoute><SVReportWorkspace /></ProtectedRoute>} />
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Routes>
       </AuthProvider>

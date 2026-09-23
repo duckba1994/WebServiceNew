@@ -1,6 +1,6 @@
-export type ReportDepartment = 'IT' | 'PL';
+export type ReportDepartment = 'IT' | 'PL' | 'SV';
 export type ITReportKey = 'it-satisfaction-summary' | 'it-request-register';
-export type ReportKey = ITReportKey | 'pl-request-report';
+export type ReportKey = ITReportKey | 'pl-request-report' | 'sv-request-summary';
 
 export interface ReportDefinition {
   key: ReportKey;
@@ -31,6 +31,13 @@ export const REPORTS: ReportDefinition[] = [
     title: 'รายงานใบรับเรื่อง',
     description: 'รายงานรายละเอียดใบรับเรื่อง PL พร้อมสรุปสถานะและเรื่องที่แจ้ง',
     path: '/reports/pl/request-report',
+  },
+  {
+    key: 'sv-request-summary',
+    department: 'SV',
+    title: 'รายงานสรุปประเภทการแจ้งเรื่อง',
+    description: 'สรุปจำนวนใบแจ้งเรื่อง SV รายเดือน แยกตามส่วนงาน หน่วยงานผู้แจ้ง และประเภทเรื่อง',
+    path: '/reports/sv/request-summary',
   },
 ];
 

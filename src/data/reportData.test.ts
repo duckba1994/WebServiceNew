@@ -19,6 +19,11 @@ test('PL users see only the PL request report while an admin sees every report',
     }),
   ]);
   expect(reportsForDepartment('PL').every((report) => report.department === 'PL')).toBe(true);
-  expect(reportsForDepartment('PL', true)).toHaveLength(3);
+  expect(reportsForDepartment('PL', true)).toHaveLength(4);
   expect(reportByKey('it-request-register').path).toBe('/reports/it/request-register');
+});
+
+test('SV users see only the SV summary report', () => {
+  expect(reportsForDepartment(' sv ').map((report) => report.key)).toEqual(['sv-request-summary']);
+  expect(reportByKey('sv-request-summary').path).toBe('/reports/sv/request-summary');
 });
