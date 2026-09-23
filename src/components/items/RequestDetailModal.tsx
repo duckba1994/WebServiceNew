@@ -34,6 +34,7 @@ import { AfServicePanel } from './AfServicePanel';
 import { HrServicePanel } from './HrServicePanel';
 import { SqaReceivePanel, SqaServicePanel } from './SqaWorkflowPanel';
 import { ItWorkOrderPrint } from './ItWorkOrderPrint';
+import { PL_PRINT_OPTIONS, PlWorkOrderPrint } from './PlWorkOrderPrint';
 import {
   SvMgrRequestClosePanel,
   SvMgrReviewPanel,
@@ -118,6 +119,8 @@ import { DetailRow, InfoCard } from './RequestInfoCard';
 import { RequestLinesTable as PlLinesTable } from './RequestLinesTable';
 import { psWorkflowTabs } from '../../data/psWorkflowTabs';
 import { fetchItServiceForm } from '../../api/itReports';
+import { fetchPLRequestFormReport } from '../../api/plReports';
+import { PLRequestFormReport, PLRequestFormReportType } from '../../types/plReport';
 import { apiErrorText } from '../../api/client';
 import { ITServiceFormItem } from '../../types/itReport';
 
@@ -889,6 +892,8 @@ function RequestDetailContent({
   };
 
   const [printData, setPrintData] = useState<ITServiceFormItem | null>(null);
+  const [plPrintData, setPlPrintData] = useState<PLRequestFormReport | null>(null);
+  const [plPrintMenuOpen, setPlPrintMenuOpen] = useState(false);
   const [printLoading, setPrintLoading] = useState(false);
   const [printError, setPrintError] = useState('');
 
@@ -904,6 +909,26 @@ function RequestDetailContent({
       window.print();
     } catch (reason) {
       setPrintError(apiErrorText(reason, 'โหลดข้อมูลใบงานสำหรับพิมพ์ไม่สำเร็จ'));
+    } finally {
+      setPrintLoading(false);
+    }
+  };
+
+  const printPlWorkOrder = async (kind: PLRequestFormReportType) => {
+    if (item.module !== 'PL' || printLoading) return;
+    setPlPrintMenuOpen(false);
+    setPrintLoading(true);
+    setPrintError('');
+    try {
+      const [report, approvalReport] = await Promise.all([
+        fetchPLRequestFormReport(item.docNo, kind, user?.token),
+        kind === 'master' ? fetchPLRequestFormReport(item.docNo, 'approve', user?.token) : Promise.resolve(null),
+      ]);
+      setPlPrintData(approvalReport ? { ...report, approvals: approvalReport.approvals } : report);
+      await new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
+      window.print();
+    } catch (reason) {
+      setPrintError(apiErrorText(reason, 'โหลดข้อมูลใบแจ้งเรื่อง PL สำหรับพิมพ์ไม่สำเร็จ'));
     } finally {
       setPrintLoading(false);
     }
@@ -948,6 +973,24 @@ function RequestDetailContent({
                 {printLoading ? <IconLoader2 size={16} className="animate-spin" /> : <IconPrinter size={16} />}
                 <span className="hidden sm:inline">{printLoading ? 'กำลังโหลด...' : 'พิมพ์ใบงาน'}</span>
               </button>
+            )}
+            {item.module === 'PL' && (
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => setPlPrintMenuOpen((open) => !open)}
+                  disabled={printLoading}
+                  className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-lg border border-violet-200 bg-violet-50 px-3 text-xs font-semibold text-violet-700 transition hover:bg-violet-100 disabled:cursor-wait disabled:opacity-60 dark:border-violet-800 dark:bg-violet-950/40 dark:text-violet-200"
+                  aria-label="พิมพ์ใบแจ้งเรื่อง PL"
+                  aria-expanded={plPrintMenuOpen}
+                >
+                  {printLoading ? <IconLoader2 size={16} className="animate-spin" /> : <IconPrinter size={16} />}
+                  <span className="hidden sm:inline">{printLoading ? 'กำลังโหลด...' : 'พิมพ์ใบแจ้งเรื่อง'}</span>
+                </button>
+                {plPrintMenuOpen && <div className="absolute right-0 top-full z-50 mt-1 min-w-44 rounded-lg border border-slate-200 bg-white p-1 shadow-lg dark:border-slate-700 dark:bg-slate-800">
+                  {PL_PRINT_OPTIONS.map((option) => <button key={option.kind} type="button" onClick={() => void printPlWorkOrder(option.kind)} className="block w-full rounded px-3 py-2 text-left text-xs text-slate-700 hover:bg-violet-50 dark:text-slate-100 dark:hover:bg-slate-700">{option.label}</button>)}
+                </div>}
+              </div>
             )}
             <button
               onClick={onClose}
@@ -1410,6 +1453,7 @@ function RequestDetailContent({
       </div>
     </div>
     {item.module === 'IT' && printData && createPortal(<ItWorkOrderPrint item={printData} />, document.body)}
+    {item.module === 'PL' && plPrintData && createPortal(<PlWorkOrderPrint report={plPrintData} />, document.body)}
     </>
   );
 }

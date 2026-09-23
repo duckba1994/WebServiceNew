@@ -1,5 +1,15 @@
 import { apiGet } from './client';
-import { PLRequestReport } from '../types/plReport';
+import { PLRequestFormReport, PLRequestFormReportType, PLRequestReport } from '../types/plReport';
+
+export const fetchPLRequestFormReport = (
+  docNo: string,
+  reportType: PLRequestFormReportType,
+  token?: string
+): Promise<PLRequestFormReport> =>
+  apiGet<PLRequestFormReport>(
+    `/PLRequest/reports/request-form/${encodeURIComponent(docNo)}?reportType=${reportType}`,
+    token
+  );
 
 export const fetchPLRequestReport = (
   dateFrom: string,

@@ -561,3 +561,95 @@ html.dark {
 @media print {
   .it-work-order-print { margin: 0; box-shadow: none; }
 }
+
+/* ใบแจ้งเรื่อง PL — อ้างอิงฟอร์ม Crystal Report ทั้งสามแบบ */
+.pl-work-order-print {
+  page: pl-work-order;
+  box-sizing: border-box;
+  width: 210mm;
+  min-height: 297mm;
+  padding: 9mm 10mm 8mm;
+  background: #fff;
+  color: #000;
+  font-family: 'TH Sarabun New', 'Angsana New', Tahoma, sans-serif;
+  font-size: 11px;
+  line-height: 1.25;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+.pl-work-order-print, .pl-work-order-print * { box-sizing: border-box; font-family: inherit; }
+.pl-form-frame { border: 1px solid #111; }
+.pl-form-head { display: grid; grid-template-columns: 28mm 1fr 51mm; min-height: 21mm; border-bottom: 1px solid #111; }
+.pl-form-logo { display: flex; align-items: center; justify-content: center; border-right: 1px solid #111; }
+.pl-form-logo img { width: 19mm; height: 18mm; object-fit: contain; }
+.pl-form-title { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3mm; text-align: center; border-right: 1px solid #111; }
+.pl-form-title strong { font-size: 15px; }
+.pl-form-title span { font-size: 11px; }
+.pl-form-doc-meta { display: flex; flex-direction: column; justify-content: space-around; padding: 2mm 1.5mm; }
+.pl-form-doc-meta div { display: flex; justify-content: space-between; gap: 1mm; }
+.pl-form-doc-meta b { font-weight: 400; white-space: nowrap; }
+.pl-form-type-row { display: grid; grid-template-columns: repeat(3, 1fr); align-items: center; min-height: 7mm; padding: 0 10mm; border-bottom: 1px solid #111; }
+.pl-form-mark { display: inline-flex; align-items: center; gap: 2mm; min-width: 0; }
+.pl-form-box { display: inline-flex; align-items: center; justify-content: center; width: 3mm; height: 3mm; flex: 0 0 3mm; border: 1px solid #111; font-size: 13px; font-weight: 700; line-height: 1; }
+.pl-form-requester { padding: 2mm 3mm 1.5mm; border-bottom: 1px solid #111; }
+.pl-form-requester h2, .pl-form-master-work h2, .pl-form-approve-work h2, .pl-form-approvals h2 { margin: 0 0 2mm; font-size: 11px; font-weight: 700; }
+.pl-form-request-types { display: grid; grid-template-columns: repeat(3, 1fr); grid-auto-rows: minmax(6.2mm, auto); gap: 0 2mm; padding: 0 8mm; }
+.pl-form-small-label { display: block; margin: 1mm 0 1.5mm 8mm; }
+.pl-form-attachments { display: grid; grid-template-columns: repeat(2, 1fr); gap: 2mm 4mm; padding: 0 8mm 1mm; }
+.pl-form-attachment { display: flex; align-items: center; gap: 2mm; min-width: 0; }
+.pl-form-attachment .pl-form-mark { white-space: nowrap; }
+.pl-form-dotline { display: inline-block; min-width: 28mm; border-bottom: 1px dashed #333; text-align: center; }
+.pl-form-attachment .pl-form-dotline { min-width: 0; flex: 1; }
+.pl-form-request-detail { display: flex; align-items: flex-end; gap: 3mm; margin: 3mm 8mm 0; }
+.pl-form-request-detail .pl-form-dotline { flex: 1; text-align: left; }
+.pl-form-header-sign { display: flex; justify-content: flex-end; gap: 9mm; margin: 3mm 4mm 0; }
+.pl-form-header-sign .pl-form-dotline { min-width: 30mm; }
+.pl-form-lines, .pl-form-approvals table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+.pl-form-lines thead { display: table-header-group; }
+.pl-form-lines tr, .pl-form-approvals tr { break-inside: avoid; }
+.pl-form-lines th, .pl-form-lines td, .pl-form-approvals th, .pl-form-approvals td { border: 1px solid #111; padding: 1mm 1.5mm; vertical-align: top; overflow-wrap: anywhere; }
+.pl-form-lines th { height: 7mm; text-align: center; vertical-align: middle; }
+.pl-form-lines th:first-child { width: 9mm; }
+.pl-form-lines th:nth-child(3), .pl-form-lines th:nth-child(4) { width: 12mm; }
+.pl-form-lines th:nth-child(5) { width: 68mm; }
+.pl-form-lines td:first-child { text-align: center; }
+.pl-form-lines td:nth-child(3) { text-align: center; }
+.pl-form-lines tbody tr { min-height: 16mm; }
+.pl-form-master .pl-form-lines tbody tr { height: 40mm; }
+.pl-form-approve .pl-form-request-types { grid-auto-rows: minmax(5.8mm, auto); }
+.pl-form-approve .pl-form-lines th { height: 6mm; }
+.pl-form-approve .pl-form-lines td { padding: 0.7mm 1.3mm; }
+.pl-form-approve .pl-form-lines tbody tr { min-height: 0; height: 15mm; }
+.pl-form-master-signatures { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-rows: repeat(3, auto); align-items: center; column-gap: 4mm; row-gap: 1.5mm; min-height: 24mm; padding: 1.5mm 3mm; border-bottom: 1px solid #111; }
+.pl-form-master-signatures > div { white-space: nowrap; }
+.pl-form-master-signatures .pl-form-dotline { min-width: 28mm; }
+.pl-form-master-plan-date { grid-column: 1; grid-row: 1; }
+.pl-form-master-requester { grid-column: 1; grid-row: 2; }
+.pl-form-master-request-date { grid-column: 1; grid-row: 3; }
+.pl-form-master-manager { grid-column: 2; grid-row: 2; }
+.pl-form-master-manager-date { grid-column: 2; grid-row: 3; }
+.pl-form-master-requester .pl-form-dotline,
+.pl-form-master-manager .pl-form-dotline { min-width: 18mm; }
+.pl-form-master-work, .pl-form-master-results { padding: 2mm 2mm 1mm; border-bottom: 1px solid #111; }
+.pl-form-master-work { min-height: 53mm; }
+.pl-form-master-results { min-height: 51mm; border-bottom: 0; }
+.pl-form-master-work > strong, .pl-form-master-results > strong { margin-left: 14mm; }
+.pl-form-ruled { min-height: 29mm; padding: 1mm 4mm 0 14mm; line-height: 5mm; white-space: pre-wrap; overflow-wrap: anywhere; background-image: radial-gradient(circle at 1px calc(5mm - 1px), #333 0.7px, transparent 1px); background-size: 3px 5mm; }
+.pl-form-master-work .pl-form-ruled { background-image: linear-gradient(#fff, #fff), radial-gradient(circle at 1px calc(5mm - 1px), #333 0.7px, transparent 1px); background-size: 100% 6mm, 3px 5mm; background-repeat: no-repeat, repeat; }
+.pl-form-master-work-sign { display: grid; grid-template-columns: 1fr 1fr; gap: 4mm; margin-top: 2mm; }
+.pl-form-master-work-sign .pl-form-dotline { min-width: 30mm; }
+.pl-form-approve-signatures { display: grid; grid-template-columns: 1fr 1fr; gap: 1mm; min-height: 15mm; padding: 2mm 8mm; border-bottom: 1px solid #111; }
+.pl-form-approve-signatures span:nth-child(3) { grid-column: 2; }
+.pl-form-approve-work { min-height: 38mm; padding: 2mm 4mm; border-bottom: 1px solid #111; }
+.pl-form-approve-work > strong { display: block; margin: 1mm 0 1mm; }
+.pl-form-service-checks { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2mm; padding: 0 2mm; }
+.pl-form-result-checks { grid-template-columns: repeat(2, 1fr); max-width: 110mm; }
+.pl-form-approvals { min-height: 45mm; padding: 2mm 3mm 3mm; }
+.pl-form-approvals table { margin: 1mm auto; }
+.pl-form-approvals th, .pl-form-approvals td { height: 6mm; }
+.pl-form-approvals th:first-child { width: 12mm; }
+.pl-form-approvals th:nth-child(2) { width: 52mm; }
+.pl-form-approvals th:nth-child(3) { width: 36mm; }
+.pl-form-approvals td:first-child { text-align: center; }
+.pl-form-footer { display: flex; justify-content: space-between; margin-top: 5mm; font-size: 10px; }
+@page pl-work-order { size: A4 portrait; margin: 0; }
