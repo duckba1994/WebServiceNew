@@ -1,5 +1,6 @@
-export type ReportDepartment = 'IT';
-export type ReportKey = 'it-satisfaction-summary' | 'it-request-register';
+export type ReportDepartment = 'IT' | 'PL';
+export type ITReportKey = 'it-satisfaction-summary' | 'it-request-register';
+export type ReportKey = ITReportKey | 'pl-request-report';
 
 export interface ReportDefinition {
   key: ReportKey;
@@ -23,6 +24,13 @@ export const REPORTS: ReportDefinition[] = [
     title: 'รายงานทะเบียนคุมใบ Service Form',
     description: 'ทะเบียนรายการรับเรื่องและสถานะการดำเนินงานของหน่วยงาน IT',
     path: '/reports/it/request-register',
+  },
+  {
+    key: 'pl-request-report',
+    department: 'PL',
+    title: 'รายงานใบรับเรื่อง',
+    description: 'รายงานรายละเอียดใบรับเรื่อง PL พร้อมสรุปสถานะและเรื่องที่แจ้ง',
+    path: '/reports/pl/request-report',
   },
 ];
 

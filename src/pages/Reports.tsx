@@ -31,7 +31,13 @@ export function Reports() {
               })}
             </div>
           ) : (
-            <div className="flex h-full min-h-[260px] flex-col items-center justify-center text-center text-slate-400"><IconLock size={38} stroke={1.5} /><p className="mt-3 text-sm font-semibold">ยังไม่มีรายงานสำหรับหน่วยงานของคุณ</p></div>
+            <div className="flex h-full min-h-[260px] flex-col items-center justify-center text-center text-slate-400">
+              <IconLock size={38} stroke={1.5} />
+              <p className="mt-3 text-sm font-semibold">
+                รายงานของแผนก {(user?.departmentShort ?? '').trim().toUpperCase() || 'คุณ'} อยู่ระหว่างเชื่อมต่อ
+              </p>
+              <p className="mt-1 text-[12px]">เมื่อ API พร้อม รายงานของแผนกนี้จะแสดงในหน้านี้</p>
+            </div>
           )}
         </div>
       </section>

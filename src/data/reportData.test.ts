@@ -9,8 +9,16 @@ test('IT users see only IT reports', () => {
   expect(reports.every((report) => report.department === 'IT')).toBe(true);
 });
 
-test('another department cannot receive IT reports while an admin can', () => {
-  expect(reportsForDepartment('PL')).toEqual([]);
-  expect(reportsForDepartment('PL', true)).toHaveLength(2);
+test('PL users see only the PL request report while an admin sees every report', () => {
+  expect(reportsForDepartment(' pl ')).toEqual([
+    expect.objectContaining({
+      key: 'pl-request-report',
+      department: 'PL',
+      title: 'รายงานใบรับเรื่อง',
+      path: '/reports/pl/request-report',
+    }),
+  ]);
+  expect(reportsForDepartment('PL').every((report) => report.department === 'PL')).toBe(true);
+  expect(reportsForDepartment('PL', true)).toHaveLength(3);
   expect(reportByKey('it-request-register').path).toBe('/reports/it/request-register');
 });

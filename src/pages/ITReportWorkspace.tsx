@@ -8,7 +8,7 @@ import { Link, Navigate } from 'react-router-dom';
 import { Layout } from '../components/layout/Layout';
 import { DateQuickPick } from '../components/ui/DateQuickPick';
 import { useAuth } from '../context/AuthContext';
-import { reportByKey, ReportKey } from '../data/reportData';
+import { reportByKey, ITReportKey } from '../data/reportData';
 import { useItReport } from '../hooks/useItReport';
 import {
   DateRangeReport, ITServiceFormSummaryItem, ITSurveySummaryItem,
@@ -55,7 +55,7 @@ const chunkItems = <T,>(items: T[], pageSize: number): T[][] => {
   return pages;
 };
 
-export function ReportWorkspace({ reportKey }: { reportKey: ReportKey }) {
+export function ReportWorkspace({ reportKey }: { reportKey: ITReportKey }) {
   const { user } = useAuth();
   const report = reportByKey(reportKey);
   const allowed = user?.role === 'admin' || (user?.departmentShort ?? '').trim().toUpperCase() === report.department;

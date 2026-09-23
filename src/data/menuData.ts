@@ -83,7 +83,9 @@ export const MENU_GROUPS: MenuGroup[] = [
     color: '#475569',
     sidebarIconClass: 'text-slate-300',
     items: [
-      { label: 'รายงานหน่วยงาน', icon: IconChartBar, to: '/reports', departments: ['IT'] },
+      // เปิดทางเข้าหน้ารายงานให้ทุกแผนกไว้ก่อน แต่รายการรายงานภายในหน้า
+      // ยังถูกกรองด้วย departmentShort ของผู้ใช้ใน reportsForDepartment()
+      { label: 'รายงานหน่วยงาน', icon: IconChartBar, to: '/reports' },
     ],
   },
 ];
