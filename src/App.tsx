@@ -14,6 +14,8 @@ import { Reports } from './pages/Reports';
 import { ReportWorkspace } from './pages/ITReportWorkspace';
 import { PLReportWorkspace } from './pages/PLReportWorkspace';
 import { SVReportWorkspace } from './pages/SVReportWorkspace';
+import { HRReportWorkspace } from './pages/HRReportWorkspace';
+import { PSReportWorkspace } from './pages/PSReportWorkspace';
 import { DraftScope } from './hooks/useSessionDraft';
 import { suspendDraftSession } from './utils/sessionDrafts';
 
@@ -55,6 +57,16 @@ export default function App() {
           <Route path="/reports/it/request-register" element={<ProtectedRoute><ReportWorkspace reportKey="it-request-register" /></ProtectedRoute>} />
           <Route path="/reports/pl/request-report" element={<ProtectedRoute><PLReportWorkspace /></ProtectedRoute>} />
           <Route path="/reports/sv/request-summary" element={<ProtectedRoute><SVReportWorkspace /></ProtectedRoute>} />
+          <Route path="/reports/hr/request-summary" element={<ProtectedRoute><HRReportWorkspace reportKey="hr-request-summary" /></ProtectedRoute>} />
+          <Route path="/reports/hr/request-summary-year" element={<ProtectedRoute><HRReportWorkspace reportKey="hr-request-summary-year" /></ProtectedRoute>} />
+          <Route path="/reports/ps/summary" element={<ProtectedRoute><PSReportWorkspace reportKey="ps-summary" /></ProtectedRoute>} />
+          <Route path="/reports/ps/balance-form" element={<ProtectedRoute><PSReportWorkspace reportKey="ps-balance-form" /></ProtectedRoute>} />
+          <Route path="/reports/ps/bit60-057" element={<ProtectedRoute><PSReportWorkspace reportKey="ps-bit60-057" /></ProtectedRoute>} />
+          <Route path="/reports/ps/bit61-091" element={<ProtectedRoute><PSReportWorkspace reportKey="ps-bit61-091" /></ProtectedRoute>} />
+          <Route path="/reports/ps/bit61-118/quantity" element={<ProtectedRoute><PSReportWorkspace reportKey="ps-bit61-118-quantity" /></ProtectedRoute>} />
+          <Route path="/reports/ps/bit61-118/department" element={<ProtectedRoute><PSReportWorkspace reportKey="ps-bit61-118-department" /></ProtectedRoute>} />
+          <Route path="/reports/ps/bit61-118/month" element={<ProtectedRoute><PSReportWorkspace reportKey="ps-bit61-118-month" /></ProtectedRoute>} />
+          <Route path="/reports/ps/bit63-022" element={<ProtectedRoute><PSReportWorkspace reportKey="ps-bit63-022" /></ProtectedRoute>} />
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Routes>
       </AuthProvider>

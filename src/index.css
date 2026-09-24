@@ -511,6 +511,196 @@ html.dark {
 .sv-report-print .sv-report-table tr { break-inside: avoid; }
 @media print { .sv-report-measure { display: none; } }
 
+/* ══════════ รายงานสรุปการรับเรื่อง HR ══════════ */
+.hr-report-print {
+  page: hr-report;
+  width: 297mm;
+  height: 210mm;
+  padding: 5mm 4mm 6mm;
+  overflow: hidden;
+  font-size: 9px;
+  line-height: 1.2;
+}
+@page hr-report { size: A4 landscape; margin: 0; }
+.hr-report-measure {
+  position: fixed;
+  top: 0;
+  left: -200vw;
+  width: 297mm;
+  visibility: hidden;
+  pointer-events: none;
+}
+.hr-report-heading { position: relative; min-height: 15mm; padding: 0 50mm 1.5mm; text-align: center; }
+.hr-report-heading strong { display: block; font-size: 17px; }
+.hr-report-heading h2 { margin: 2mm 0 0; font-size: 13px; }
+.hr-report-heading > div { position: absolute; right: 0; top: 5mm; font-size: 9px; white-space: nowrap; }
+.hr-report-print table { border-collapse: collapse; }
+.hr-report-print th, .hr-report-print td { border: 0.6px solid #111; vertical-align: middle; overflow-wrap: anywhere; }
+.hr-detail-table { width: 100%; table-layout: fixed; }
+.hr-detail-table th, .hr-detail-table td { padding: 1mm 0.55mm; text-align: center; }
+.hr-detail-table thead th { height: 8mm; font-size: 8px; }
+.hr-detail-table tbody td { font-size: 8px; }
+.hr-summary-block { padding-top: 1mm; }
+.hr-matrix-block { margin-top: 2mm; break-inside: avoid; }
+.hr-matrix-block h3 { margin: 0 0 1mm; font-size: 11px; font-weight: 700; }
+.hr-matrix-table { max-width: 100%; table-layout: fixed; }
+.hr-matrix-table th, .hr-matrix-table td { min-width: 0; padding: 0.7mm 1.5mm; }
+.hr-matrix-table th:first-child { text-align: left; white-space: normal; }
+.hr-matrix-table thead th { font-weight: 700; text-align: center; }
+.hr-matrix-table tbody td,
+.hr-matrix-table tbody th:not(:first-child) { text-align: right; font-variant-numeric: tabular-nums; }
+.hr-matrix-table tr.summary th, .hr-matrix-table td:last-child { font-weight: 700; }
+.hr-annual-print { padding-top: 4mm; font-size: 10px; }
+.hr-annual-print .hr-report-heading { min-height: 17mm; }
+.hr-annual-print .hr-matrix-block { margin-top: 2.5mm; }
+.hr-annual-print .hr-matrix-block h3 { font-size: 12px; }
+.hr-annual-print .hr-matrix-table { width: 100%; table-layout: fixed; }
+.hr-annual-print .hr-matrix-table th, .hr-annual-print .hr-matrix-table td { min-width: 0; padding: 0.65mm 0.8mm; }
+.hr-annual-print .hr-matrix-table th:first-child { min-width: 0; }
+.hr-annual-print .hr-matrix-table th:not(:first-child), .hr-annual-print .hr-matrix-table td { text-align: right; }
+@media print {
+  .hr-report-measure { display: none; }
+  .hr-report-print tr { break-inside: avoid; }
+}
+
+/* ══════════ รายงานฝ่ายจัดซื้อ PS ══════════ */
+.ps-report-print {
+  page: ps-report;
+  width: 297mm;
+  height: 210mm;
+  padding: 4mm 3mm 6mm;
+  overflow: hidden;
+  font-size: 8.5px;
+  line-height: 1.2;
+}
+@page ps-report { size: A4 landscape; margin: 0; }
+.ps-report-measure { position: fixed; top: 0; left: -200vw; width: 297mm; visibility: hidden; pointer-events: none; }
+.ps-report-heading { position: relative; min-height: 19mm; padding: 0 55mm 1mm; text-align: center; }
+.ps-report-heading strong { display: block; font-size: 17px; }
+.ps-report-heading h2 { margin: 2mm 0 0; font-size: 15px; }
+.ps-report-heading h3 { margin: 1mm 0 0; font-size: 10px; }
+.ps-report-heading > div { position: absolute; right: 0; top: 0; font-size: 8.5px; white-space: nowrap; }
+.ps-report-print table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+.ps-report-print th, .ps-report-print td { border: 0.6px solid #111; padding: 0.8mm 0.5mm; text-align: center; vertical-align: middle; overflow-wrap: anywhere; }
+.ps-report-print thead th { font-weight: 700; }
+.ps-section-title { margin: 0 0 1.5mm; border-top: 0.6px solid #111; padding-top: 1.3mm; font-size: 11px; }
+.ps-summary-print { font-size: 7.5px; }
+.ps-summary-heading { min-height: 9mm; padding: 0; }
+.ps-summary-heading > div { top: 1mm; }
+.ps-summary-table th, .ps-summary-table td { padding: 0.7mm 0.4mm; }
+.ps-summary-table th:nth-child(1) { width: 20mm; }
+.ps-summary-table th:nth-child(2) { width: 23mm; }
+.ps-summary-table th:nth-child(3) { width: 14mm; }
+.ps-summary-table th:nth-child(4) { width: 18mm; }
+.ps-summary-table th:nth-child(5) { width: 48mm; }
+.ps-summary-table th:nth-child(6) { width: 19mm; }
+.ps-summary-table th:nth-child(7) { width: 20mm; }
+.ps-summary-table th:nth-child(8) { width: 14mm; }
+.ps-summary-table th:nth-child(9) { width: 10mm; }
+.ps-summary-table th:nth-child(10) { width: 29mm; }
+.ps-summary-table th:nth-child(11) { width: 17mm; }
+.ps-summary-table th:nth-child(12) { width: 22mm; }
+.ps-summary-table th:nth-child(13) { width: 17mm; }
+.ps-summary-table th:nth-child(14) { width: 20mm; }
+.ps-bit60-print { padding: 5mm 10mm 6mm; font-size: 7px; }
+.ps-bit60-heading { position: relative; display: flex; min-height: 10mm; align-items: flex-start; gap: 28mm; padding: 0 48mm 1.5mm 2mm; font-size: 9px; }
+.ps-bit60-heading strong, .ps-bit60-heading b { white-space: nowrap; }
+.ps-bit60-heading > div { position: absolute; right: 0; top: 0; white-space: nowrap; }
+.ps-bit60-summary { width: 200mm; margin-left: 3mm; }
+.ps-bit60-closers { width: 140mm !important; margin-bottom: 1mm; }
+.ps-bit60-closers th:first-child { width: 85mm; }
+.ps-bit60-pivot { width: 190mm !important; margin-bottom: 2mm; }
+.ps-bit60-pivot th:first-child { width: 31mm; text-align: left; }
+.ps-bit60-summary th, .ps-bit60-summary td { padding: 0.45mm 0.8mm; }
+.ps-bit60-detail th, .ps-bit60-detail td { padding: 0.45mm 0.25mm; }
+.ps-bit60-detail th:nth-child(1) { width: 20mm; }
+.ps-bit60-detail th:nth-child(2) { width: 15mm; }
+.ps-bit60-detail th:nth-child(3) { width: 17mm; }
+.ps-bit60-detail th:nth-child(4) { width: 18mm; }
+.ps-bit60-detail th:nth-child(5) { width: 42mm; }
+.ps-bit60-detail th:nth-child(6) { width: 16mm; }
+.ps-bit60-detail th:nth-child(7) { width: 19mm; }
+.ps-bit60-detail th:nth-child(8) { width: 12mm; }
+.ps-bit60-detail th:nth-child(9), .ps-bit60-detail th:nth-child(10) { width: 7mm; }
+.ps-bit60-detail th:nth-child(11) { width: 31mm; }
+.ps-bit60-detail th:nth-child(12) { width: 16mm; }
+.ps-bit60-detail th:nth-child(13) { width: 22mm; }
+.ps-bit60-detail th:nth-child(14) { width: 14mm; }
+.ps-bit60-detail th:nth-child(15) { width: 18mm; }
+.ps-bit60-signatures { display: grid; grid-template-columns: repeat(3, 58mm); justify-content: space-around; margin-top: 2mm; }
+.ps-bit60-signatures section { display: flex; height: 30mm; flex-direction: column; align-items: center; border: 0.6px solid #111; padding: 3mm; font-size: 11px; }
+.ps-bit60-signatures span { width: 48mm; margin-top: 9mm; border-top: 0.6px solid #111; }
+.ps-118-print { padding: 5mm 5mm 6mm; font-size: 8px; }
+.ps-118-heading { position: relative; min-height: 16mm; border-bottom: 0.6px solid #111; padding: 0 48mm 1.5mm; text-align: center; }
+.ps-118-heading strong { display: block; font-size: 16px; }
+.ps-118-heading h2 { margin: 1.5mm 0 0; font-size: 12px; }
+.ps-118-heading > b { position: absolute; left: 5mm; bottom: 2mm; }
+.ps-118-heading > span { position: absolute; right: 48mm; bottom: 2mm; font-weight: 700; }
+.ps-118-heading > div { position: absolute; right: 0; top: 0; white-space: nowrap; }
+.ps-118-detail { margin-top: 1mm; font-size: 6.8px; }
+.ps-118-detail th, .ps-118-detail td { padding: 0.5mm 0.3mm; }
+.ps-118-detail th:nth-child(1) { width: 20mm; }
+.ps-118-detail th:nth-child(2), .ps-118-detail th:nth-child(4), .ps-118-detail th:nth-child(7), .ps-118-detail th:nth-child(10), .ps-118-detail th:nth-child(11), .ps-118-detail th:nth-child(15) { width: 15mm; }
+.ps-118-detail th:nth-child(3) { width: 20mm; }
+.ps-118-detail th:nth-child(5) { width: 18mm; }
+.ps-118-detail th:nth-child(6) { width: 40mm; }
+.ps-118-detail th:nth-child(8) { width: 20mm; }
+.ps-118-detail th:nth-child(9) { width: 12mm; }
+.ps-118-detail th:nth-child(12) { width: 24mm; }
+.ps-118-detail th:nth-child(13), .ps-118-detail th:nth-child(14) { width: 25mm; }
+.ps-118-summary-block { padding-top: 1.5mm; }
+.ps-118-matrix { width: auto !important; min-width: 100mm; max-width: 100%; table-layout: auto !important; }
+.ps-118-matrix th, .ps-118-matrix td { min-width: 15mm; padding: 1.2mm 2mm; text-align: right; white-space: nowrap; }
+.ps-118-matrix th:first-child, .ps-118-matrix th:nth-child(2) { min-width: 38mm; text-align: left; white-space: normal; }
+.ps-118-matrix thead th { text-align: center; }
+.ps-118-matrix tr.summary th { font-weight: 700; text-align: right; }
+.ps-118-matrix tr.summary th:first-child { text-align: left; }
+.ps-balance-table th:nth-child(1) { width: 7mm; }
+.ps-balance-table th:nth-child(2) { width: 23mm; }
+.ps-balance-table th:nth-child(3) { width: 17mm; }
+.ps-balance-table th:nth-child(4) { width: 22mm; }
+.ps-balance-table th:nth-child(5) { width: 24mm; }
+.ps-balance-table th:nth-child(6) { width: 70mm; }
+.ps-balance-table th:nth-child(7) { width: 27mm; }
+.ps-balance-table th:nth-child(8) { width: 22mm; }
+.ps-balance-table th:nth-child(9), .ps-balance-table th:nth-child(10) { width: 22mm; }
+.ps-bit61-table th:nth-child(1) { width: 7mm; }
+.ps-bit61-table th:nth-child(2), .ps-bit61-table th:nth-child(3) { width: 17mm; }
+.ps-bit61-table th:nth-child(4) { width: 20mm; }
+.ps-bit61-table th:nth-child(5) { width: 21mm; }
+.ps-bit61-table th:nth-child(6), .ps-bit61-table th:nth-child(7) { width: 18mm; }
+.ps-bit61-table th:nth-child(8) { width: 14mm; }
+.ps-bit61-table th:nth-child(9) { width: 52mm; }
+.ps-bit61-table th:nth-child(10) { width: 22mm; }
+.ps-bit61-table th:nth-child(11) { width: 13mm; }
+.ps-bit61-table th:nth-child(12) { width: 18mm; }
+.ps-bit63-print { font-size: 7.2px; }
+.ps-bit63-table th, .ps-bit63-table td { padding: 0.65mm 0.35mm; }
+.ps-bit63-table th:nth-child(1) { width: 6mm; }
+.ps-bit63-table th:nth-child(2) { width: 13mm; }
+.ps-bit63-table th:nth-child(3) { width: 19mm; }
+.ps-bit63-table th:nth-child(4), .ps-bit63-table th:nth-child(5) { width: 14mm; }
+.ps-bit63-table th:nth-child(6) { width: 11mm; }
+.ps-bit63-table th:nth-child(7) { width: 18mm; }
+.ps-bit63-table th:nth-child(8) { width: 13mm; }
+.ps-bit63-table th:nth-child(9) { width: 17mm; }
+.ps-bit63-table th:nth-child(10) { width: 12mm; }
+.ps-bit63-table th:nth-child(11) { width: 38mm; }
+.ps-bit63-table th:nth-child(12), .ps-bit63-table th:nth-child(13) { width: 14mm; }
+.ps-bit63-table th:nth-child(14), .ps-bit63-table th:nth-child(15), .ps-bit63-table th:nth-child(17) { width: 20mm; }
+.ps-bit63-table th:nth-child(16), .ps-bit63-table th:nth-child(19) { width: 10mm; }
+.ps-weekly-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 7mm 10mm; }
+.ps-weekly-grid section { break-inside: avoid; }
+.ps-weekly-grid h4 { margin: 0 0 1mm; font-size: 10px; }
+.ps-weekly-grid table { table-layout: auto; }
+.ps-weekly-grid th, .ps-weekly-grid td { padding: 0.8mm 1mm; white-space: nowrap; }
+.ps-weekly-grid th:first-child { min-width: 46mm; text-align: left; }
+.ps-weekly-grid tr.summary th { text-align: center; }
+@media print {
+  .ps-report-measure { display: none; }
+  .ps-report-print tr { break-inside: avoid; }
+}
+
 /* ══════════ ใบรับเรื่องฝ่ายเทคโนโลยีสารสนเทศ ══════════ */
 .it-work-order-print {
   page: it-work-order;

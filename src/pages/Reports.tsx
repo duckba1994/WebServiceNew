@@ -21,13 +21,14 @@ export function Reports() {
             <div className="grid gap-4 lg:grid-cols-2">
               {reports.map((report, index) => {
                 const Icon = index === 0 ? IconChartBar : IconClipboardList;
-                return (
-                  <Link key={report.key} to={report.path} className="group flex items-start gap-4 rounded-xl border border-gray-200 bg-white p-5 shadow-sm transition hover:border-accent hover:shadow-md dark:border-slate-700 dark:bg-slate-900">
+                const content = <>
                     <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-accent dark:bg-blue-950/40"><Icon size={22} /></span>
-                    <span className="min-w-0 flex-1"><span className="block text-sm font-bold text-gray-900 group-hover:text-accent dark:text-white">{report.title}</span><span className="mt-1 block text-[12px] leading-5 text-slate-500 dark:text-slate-400">{report.description}</span><span className="mt-3 inline-flex rounded-full bg-slate-100 px-2.5 py-1 text-[10.5px] font-bold text-slate-600 dark:bg-slate-800 dark:text-slate-300">{report.department}</span></span>
-                    <IconChevronRight size={18} className="mt-1 shrink-0 text-slate-300 transition group-hover:translate-x-0.5 group-hover:text-accent" />
-                  </Link>
-                );
+                    <span className="min-w-0 flex-1"><span className="block text-sm font-bold text-gray-900 group-hover:text-accent dark:text-white">{report.title}</span><span className="mt-1 block text-[12px] leading-5 text-slate-500 dark:text-slate-400">{report.description}</span><span className="mt-3 inline-flex gap-2"><span className="rounded-full bg-slate-100 px-2.5 py-1 text-[10.5px] font-bold text-slate-600 dark:bg-slate-800 dark:text-slate-300">{report.department}</span>{report.pending && <span className="rounded-full bg-amber-50 px-2.5 py-1 text-[10.5px] font-bold text-amber-700 dark:bg-amber-950/40 dark:text-amber-300">รอตัวอย่างรายงาน</span>}</span></span>
+                    {!report.pending && <IconChevronRight size={18} className="mt-1 shrink-0 text-slate-300 transition group-hover:translate-x-0.5 group-hover:text-accent" />}
+                  </>;
+                return report.pending
+                  ? <div key={report.key} aria-disabled="true" className="flex items-start gap-4 rounded-xl border border-dashed border-amber-200 bg-white p-5 shadow-sm dark:border-amber-900/60 dark:bg-slate-900">{content}</div>
+                  : <Link key={report.key} to={report.path} className="group flex items-start gap-4 rounded-xl border border-gray-200 bg-white p-5 shadow-sm transition hover:border-accent hover:shadow-md dark:border-slate-700 dark:bg-slate-900">{content}</Link>;
               })}
             </div>
           ) : (
