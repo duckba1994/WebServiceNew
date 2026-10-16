@@ -126,8 +126,10 @@ export function ItWorkOrderPrint({ item }: { item: ITServiceFormItem }) {
         <footer className="it-work-footer">
           <span>(P) FM-BC/IT-002/04</span>
           <span>REV.05(16/03/66)</span>
-          <span>วันที่พิมพ์&nbsp;&nbsp;&nbsp;&nbsp;{printDate}</span>
-          <span>เวลาที่พิมพ์&nbsp;&nbsp;&nbsp;&nbsp;{printTime}</span>
+          <div className="it-work-print-stamp">
+            <span>วันที่พิมพ์&nbsp;&nbsp;&nbsp;&nbsp;{printDate}</span>
+            <span>เวลาที่พิมพ์&nbsp;&nbsp;&nbsp;&nbsp;{printTime}</span>
+          </div>
         </footer>
       </article>
     </div>

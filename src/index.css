@@ -301,11 +301,11 @@ html.dark {
 .it-print-title { display: flex; flex-direction: column; gap: 3mm; padding-top: 2mm; text-align: center; font-size: 14px; }
 .it-print-title strong { font-size: 16px; }
 .it-print-title b { font-size: 17px; }
-.it-survey-print .it-print-head { min-height: 21mm; }
+.it-survey-print .it-print-head { min-height: 21mm; grid-template-columns: 32mm 1fr 75mm; }
 .it-survey-print .it-print-title strong { font-size: 18px; }
 .it-survey-print .it-print-title b { font-size: 19px; }
 .it-print-meta { padding-top: 1mm; text-align: right; font-size: 10px; line-height: 1.8; }
-.it-survey-print .it-print-meta { font-size: 13px; }
+.it-survey-print .it-print-meta { font-size: 10px; white-space: nowrap; }
 .it-print-range { margin: 0 0 3mm; text-align: center; font-size: 13px; }
 .it-print-range b { margin: 0 8mm 0 3mm; }
 .it-report-print h3 { margin: 3mm 0 1.5mm 2mm; font-size: 13px; }
@@ -781,8 +781,8 @@ html.dark {
   row-gap: 3mm;
   font-size: 8.5px;
 }
-.it-work-footer span:nth-child(2), .it-work-footer span:nth-child(4) { text-align: right; }
-.it-work-footer span:nth-child(3) { grid-column: 1; margin-left: auto; }
+.it-work-footer > span:nth-child(2) { text-align: right; }
+.it-work-print-stamp { grid-column: 1 / -1; display: flex; justify-content: flex-end; gap: 4mm; white-space: nowrap; }
 @page it-work-order { size: A4 portrait; margin: 0; }
 @media print {
   .it-work-order-print { margin: 0; box-shadow: none; }
