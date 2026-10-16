@@ -336,12 +336,12 @@ html.dark {
 .it-print-footer span:nth-child(2) { text-align: center; }
 .it-print-footer span:last-child { text-align: right; }
 .it-survey-print .it-print-footer { bottom: 6mm; font-size: 12px; }
-.it-service-print .it-print-head { min-height: 19mm; grid-template-columns: 28mm 1fr 50mm; }
+.it-service-print .it-print-head { min-height: 19mm; grid-template-columns: 28mm 1fr 90mm; }
 .it-service-print .it-print-head img { width: 17mm; height: 15mm; }
 .it-service-print .it-print-title { gap: 2mm; padding-top: 1mm; font-size: 14px; }
 .it-service-print .it-print-title strong { font-size: 18px; }
 .it-service-print .it-print-title b { font-size: 19px; }
-.it-service-print .it-print-meta { font-size: 13px; }
+.it-service-print .it-print-meta { font-size: 13px; white-space: nowrap; }
 .it-service-print .it-print-range { margin-bottom: 2mm; font-size: 13px; }
 .it-service-print h3 { margin: 2mm 0 1mm; font-size: 13px; }
 .it-service-print .it-print-footer { bottom: 6mm; font-size: 12px; }
