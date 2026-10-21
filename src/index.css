@@ -419,6 +419,22 @@ html.dark {
 .pl-report-print .pl-report-items td { font-size: 9.5px; }
 .pl-report-print .pl-report-items thead th { height: 8mm; }
 .pl-report-print .pl-report-items tbody tr { min-height: 11mm; }
+.pl-viewer-summary-items { width: 100%; border-collapse: collapse; table-layout: fixed; }
+.pl-viewer-summary-items thead { display: table-header-group; }
+.pl-viewer-summary-items tr { break-inside: avoid; }
+.pl-viewer-summary-head { min-height: 6mm; padding: 0 0 0.5mm; }
+.pl-viewer-summary-head strong { font-size: 15px; }
+.pl-viewer-summary-head > span { top: 0.5mm; }
+.pl-report-print .pl-viewer-summary-items th,
+.pl-report-print .pl-viewer-summary-items td { border: 1px solid #111; padding: 0.45mm 0.4mm; overflow-wrap: anywhere; vertical-align: top; line-height: 1.15; }
+.pl-report-print .pl-viewer-summary-items thead th { height: 9mm; font-size: 10px; font-weight: 400; text-align: center; }
+.pl-report-print .pl-viewer-summary-items tbody tr { height: 8.5mm; }
+.pl-report-print .pl-viewer-summary-items td { font-size: 9.5px; }
+.pl-viewer-clamp { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; line-clamp: 3; overflow: hidden; }
+.pl-viewer-signatures { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 3mm; margin: 2mm 4mm 0; font-size: 10.5px; }
+.pl-viewer-signature-name { display: flex; align-items: baseline; gap: 1.5mm; white-space: nowrap; }
+.pl-viewer-signature-name > span { flex: 1; border-bottom: 1px solid #111; }
+.pl-viewer-signature-date { margin: 3mm 9mm 0 8mm; border-bottom: 1px solid #111; text-align: center; }
 .pl-summary-tables {
   display: grid;
   grid-template-columns: 62mm 1fr;
@@ -828,6 +844,10 @@ html.dark {
 .pl-form-attachment .pl-form-dotline { min-width: 0; flex: 1; }
 .pl-form-request-detail { display: flex; align-items: flex-end; gap: 3mm; margin: 3mm 8mm 0; }
 .pl-form-request-detail .pl-form-dotline { flex: 1; text-align: left; }
+.pl-form-header .pl-form-request-detail { align-items: flex-start; }
+.pl-form-header .pl-form-request-detail > strong { flex: none; line-height: 5mm; }
+.pl-form-request-detail .pl-form-multiline-dotline { position: relative; min-width: 0; min-height: 5mm; padding: 0 1mm 1px; border-bottom: 0; line-height: 5mm; white-space: pre-wrap; overflow-wrap: anywhere; }
+.pl-form-multiline-dotline::before { position: absolute; inset: 0; content: ''; pointer-events: none; background: repeating-linear-gradient(to right, #333 0 3px, transparent 3px 6px); -webkit-mask-image: repeating-linear-gradient(to bottom, transparent 0 calc(5mm - 2px), #000 calc(5mm - 2px) calc(5mm - 1px), transparent calc(5mm - 1px) 5mm); mask-image: repeating-linear-gradient(to bottom, transparent 0 calc(5mm - 2px), #000 calc(5mm - 2px) calc(5mm - 1px), transparent calc(5mm - 1px) 5mm); }
 .pl-form-header-sign { display: flex; justify-content: flex-end; gap: 9mm; margin: 3mm 4mm 0; }
 .pl-form-header-sign .pl-form-dotline { min-width: 30mm; }
 .pl-form-lines, .pl-form-approvals table { width: 100%; border-collapse: collapse; table-layout: fixed; }

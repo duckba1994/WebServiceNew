@@ -56,6 +56,7 @@ export default function App() {
           <Route path="/reports/it/satisfaction-summary" element={<ProtectedRoute><ReportWorkspace reportKey="it-satisfaction-summary" /></ProtectedRoute>} />
           <Route path="/reports/it/request-register" element={<ProtectedRoute><ReportWorkspace reportKey="it-request-register" /></ProtectedRoute>} />
           <Route path="/reports/pl/request-report" element={<ProtectedRoute><PLReportWorkspace /></ProtectedRoute>} />
+          <Route path="/reports/pl/print-summary" element={<ProtectedRoute><PLReportWorkspace reportKey="pl-print-summary" /></ProtectedRoute>} />
           <Route path="/reports/sv/request-summary" element={<ProtectedRoute><SVReportWorkspace /></ProtectedRoute>} />
           <Route path="/reports/hr/request-summary" element={<ProtectedRoute><HRReportWorkspace reportKey="hr-request-summary" /></ProtectedRoute>} />
           <Route path="/reports/hr/request-summary-year" element={<ProtectedRoute><HRReportWorkspace reportKey="hr-request-summary-year" /></ProtectedRoute>} />

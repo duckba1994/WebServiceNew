@@ -91,7 +91,7 @@ function RequesterSection({ header, kind }: { header: PLRequestFormHeader; kind:
       </div>)}
     </div>
     {kind === 'header' && <>
-      <div className="pl-form-request-detail"><strong>เรื่องที่ร้องขอ :</strong><span className="pl-form-dotline">{header.requestDetail || ''}</span></div>
+      <div className="pl-form-request-detail"><strong>เรื่องที่ร้องขอ :</strong><span className="pl-form-dotline pl-form-multiline-dotline">{header.requestDetail?.trim() || ''}</span></div>
       <div className="pl-form-header-sign"><span>ลงชื่อ <span className="pl-form-dotline">{header.requestBy || ''}</span> ผู้แจ้ง</span><span>หน่วยงาน <b>{header.departName || '—'}</b></span></div>
     </>}
   </section>;

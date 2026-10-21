@@ -14,11 +14,15 @@ import {
 import { Link, Navigate } from 'react-router-dom';
 import { Layout } from '../components/layout/Layout';
 import { DateQuickPick } from '../components/ui/DateQuickPick';
+import { SearchSelect } from '../components/ui/SearchSelect';
 import { useAuth } from '../context/AuthContext';
 import { MeasuredReportPage, paginateMeasuredRows } from '../data/plReportPagination';
+import { plViewerStatusOptions } from '../data/plViewerStatus';
 import { reportByKey } from '../data/reportData';
+import { useDepartments } from '../hooks/useDepartments';
 import { usePLRequestReport } from '../hooks/usePLRequestReport';
-import { PLReportCount, PLRequestReport, PLRequestReportItem } from '../types/plReport';
+import { usePLViewerSummary } from '../hooks/usePLViewerSummary';
+import { PLReportCount, PLRequestReport, PLRequestReportItem, PLViewerSummaryItem, PLViewerSummaryReport } from '../types/plReport';
 
 const INPUT = 'w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-[13px] outline-none transition focus:border-accent dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100';
 const PIE_COLORS = ['#facc15', '#2563eb', '#f97316', '#16a34a', '#a855f7', '#0891b2', '#e11d48', '#64748b'];
@@ -55,9 +59,18 @@ const formatDateTime = (value: string | null): string => {
   return `${date.toLocaleDateString('en-GB')} ${date.toLocaleTimeString('th-TH', { hour12: false })}`;
 };
 
-export function PLReportWorkspace() {
+const formatViewerDateTime = (value: string | null): string => {
+  if (!value) return '';
+  const match = value.match(/^(\d{4})-(\d{2})-(\d{2})(?:T(\d{2}):(\d{2}))?/);
+  if (!match) return formatDateTime(value);
+  const date = `${match[3]}/${match[2]}/${match[1]}`;
+  return match[4] && `${match[4]}:${match[5]}` !== '00:00' ? `${date} ${match[4]}:${match[5]}` : date;
+};
+
+export function PLReportWorkspace({ reportKey = 'pl-request-report' }: { reportKey?: 'pl-request-report' | 'pl-print-summary' }) {
   const { user } = useAuth();
-  const report = reportByKey('pl-request-report');
+  const report = reportByKey(reportKey);
+  const summaryOnly = reportKey === 'pl-print-summary';
   const department = (user?.departmentShort ?? '').trim().toUpperCase();
   const allowed = user?.role === 'admin' || department === report.department;
   const initial = useMemo(defaultRange, []);
@@ -65,8 +78,21 @@ export function PLReportWorkspace() {
   const [dateTo, setDateTo] = useState(initial.dateTo);
   const [validation, setValidation] = useState('');
   const [zoom, setZoom] = useState(100);
+  const [selectedDepartment, setSelectedDepartment] = useState('');
+  const [selectedStatus, setSelectedStatus] = useState('0');
   const previewHost = useRef<HTMLDivElement>(null);
   const current = usePLRequestReport(user?.token);
+  const viewer = usePLViewerSummary(user?.token);
+  const departmentMaster = useDepartments(user?.token, summaryOnly);
+  const departmentOptions = useMemo(() => [
+    { value: '', label: 'ทุกแผนก' },
+    ...departmentMaster.departments.map((item) => ({ value: item.departid, label: item.departmentName, hint: item.departmentShort })),
+  ], [departmentMaster.departments]);
+  const statusOptions = useMemo(() => plViewerStatusOptions(dateFrom, dateTo), [dateFrom, dateTo]);
+  const activeData = summaryOnly ? viewer.data : current.data;
+  const activeLoading = summaryOnly ? viewer.loading : current.loading;
+  const activeError = summaryOnly ? viewer.error : current.error;
+  const activeRetry = summaryOnly ? viewer.retry : current.retry;
 
   if (!allowed) return <Navigate to="/reports" replace />;
 
@@ -80,7 +106,11 @@ export function PLReportWorkspace() {
       return;
     }
     setValidation('');
-    void current.search(dateFrom, dateTo);
+    if (summaryOnly) {
+      void viewer.search({ dateFrom, dateTo, departId: selectedDepartment, wfStep: Number(selectedStatus) });
+    } else {
+      void current.search(dateFrom, dateTo);
+    }
   };
 
   const setSafeZoom = (value: number) => setZoom(Math.min(200, Math.max(35, Math.round(value / 5) * 5)));
@@ -103,15 +133,19 @@ export function PLReportWorkspace() {
         </div>
 
         <div className="flex shrink-0 flex-wrap items-end gap-3 border-b border-gray-200 bg-slate-50 px-5 py-3 dark:border-slate-700 dark:bg-slate-800/60">
-          <label className="w-full sm:w-[240px]"><span className="mb-1.5 block text-[11.5px] font-semibold text-slate-500 dark:text-slate-400">วันที่เริ่มต้น</span><DateQuickPick value={dateFrom} onChange={(value) => { setDateFrom(value); setValidation(''); }} inputClass={INPUT} showThaiLabel={false} /></label>
-          <label className="w-full sm:w-[240px]"><span className="mb-1.5 block text-[11.5px] font-semibold text-slate-500 dark:text-slate-400">วันที่สิ้นสุด</span><DateQuickPick value={dateTo} onChange={(value) => { setDateTo(value); setValidation(''); }} inputClass={INPUT} min={dateFrom || undefined} showThaiLabel={false} /></label>
-          <button type="button" disabled={current.loading} onClick={search} className="inline-flex h-[38px] items-center justify-center gap-2 rounded-lg bg-accent px-4 text-[12.5px] font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50">{current.loading ? <IconLoader2 size={16} className="animate-spin" /> : <IconSearch size={16} />}{current.loading ? 'กำลังโหลด…' : 'แสดงรายงาน'}</button>
+          <label className="w-full sm:w-[240px]"><span className="mb-1.5 block text-[11.5px] font-semibold text-slate-500 dark:text-slate-400">วันที่เริ่มต้น</span><DateQuickPick value={dateFrom} onChange={(value) => { setDateFrom(value); setSelectedStatus('0'); setValidation(''); }} inputClass={INPUT} showThaiLabel={false} /></label>
+          <label className="w-full sm:w-[240px]"><span className="mb-1.5 block text-[11.5px] font-semibold text-slate-500 dark:text-slate-400">วันที่สิ้นสุด</span><DateQuickPick value={dateTo} onChange={(value) => { setDateTo(value); setSelectedStatus('0'); setValidation(''); }} inputClass={INPUT} min={dateFrom || undefined} showThaiLabel={false} /></label>
+          {summaryOnly && <>
+            <div className="w-full sm:w-[220px]"><span className="mb-1.5 block text-[11.5px] font-semibold text-slate-500 dark:text-slate-400">แผนก</span><SearchSelect value={selectedDepartment} onChange={setSelectedDepartment} options={departmentOptions} disabled={departmentMaster.loading || Boolean(departmentMaster.error)} ariaLabel="แผนก" className="w-full" />{departmentMaster.error && <div className="mt-1 text-[11px] text-red-600">{departmentMaster.error} <button type="button" onClick={departmentMaster.reload} className="underline">ลองใหม่</button></div>}</div>
+            <div className="w-full sm:w-[220px]"><span className="mb-1.5 block text-[11.5px] font-semibold text-slate-500 dark:text-slate-400">สถานะ</span><SearchSelect value={selectedStatus} onChange={setSelectedStatus} options={statusOptions} ariaLabel="สถานะ" className="w-full" /></div>
+          </>}
+          <button type="button" disabled={activeLoading} onClick={search} className="inline-flex h-[38px] items-center justify-center gap-2 rounded-lg bg-accent px-4 text-[12.5px] font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50">{activeLoading ? <IconLoader2 size={16} className="animate-spin" /> : <IconSearch size={16} />}{activeLoading ? 'กำลังโหลด…' : summaryOnly ? 'ค้นหา' : 'แสดงรายงาน'}</button>
           {validation && <p className="w-full text-[11.5px] font-semibold text-red-600 dark:text-red-400">{validation}</p>}
         </div>
 
-        {current.error && <div className="flex shrink-0 items-center gap-2 border-b border-red-200 bg-red-50 px-5 py-2.5 text-[12.5px] font-semibold text-red-700 dark:border-red-900 dark:bg-red-950/40 dark:text-red-300"><IconAlertTriangle size={16} />{current.error}<button type="button" onClick={current.retry} className="ml-auto rounded border border-red-300 px-2.5 py-1 text-[11.5px]">ลองใหม่</button></div>}
+        {activeError && <div className="flex shrink-0 items-center gap-2 border-b border-red-200 bg-red-50 px-5 py-2.5 text-[12.5px] font-semibold text-red-700 dark:border-red-900 dark:bg-red-950/40 dark:text-red-300"><IconAlertTriangle size={16} />{activeError}<button type="button" onClick={activeRetry} className="ml-auto rounded border border-red-300 px-2.5 py-1 text-[11.5px]">ลองใหม่</button></div>}
 
-        {current.data && current.data.total > 0 && <div className="flex shrink-0 flex-wrap items-center gap-2 border-b border-gray-200 bg-white px-5 py-2 dark:border-slate-700 dark:bg-slate-900">
+        {activeData && activeData.total > 0 && <div className="flex shrink-0 flex-wrap items-center gap-2 border-b border-gray-200 bg-white px-5 py-2 dark:border-slate-700 dark:bg-slate-900">
           <div className="flex items-center rounded-lg border border-gray-200 dark:border-slate-700">
             <ToolButton title="ย่อ" onClick={() => setSafeZoom(zoom - 10)} disabled={zoom <= 35}><IconZoomOut size={15} /></ToolButton>
             <button type="button" onClick={() => setZoom(100)} title="กลับเป็น 100%" className="h-8 min-w-[58px] border-x border-gray-200 px-2 text-[12px] font-semibold text-slate-600 dark:border-slate-700 dark:text-slate-300">{zoom}%</button>
@@ -126,14 +160,16 @@ export function PLReportWorkspace() {
         </div>}
 
         <div ref={previewHost} className="relative min-h-0 flex-1">
-          {current.loading && !current.data ? <ReportState icon={<IconLoader2 size={28} className="animate-spin" />} text="กำลังโหลดรายงาน…" />
-            : !current.data ? <ReportState icon={<IconSearch size={32} />} text="เลือกช่วงวันที่แล้วกดแสดงรายงาน" />
-            : current.data.total === 0 ? <ReportState icon={<IconSearch size={32} />} text="ไม่พบข้อมูลในช่วงวันที่ที่เลือก" />
-            : <PLReportPrint data={current.data} preview zoom={zoom} />}
+          {activeLoading && !activeData ? <ReportState icon={<IconLoader2 size={28} className="animate-spin" />} text="กำลังโหลดรายงาน…" />
+            : !activeData ? <ReportState icon={<IconSearch size={32} />} text="เลือกตัวกรองแล้วกดค้นหา" />
+            : activeData.total === 0 ? <ReportState icon={<IconSearch size={32} />} text="ไม่พบข้อมูลตามตัวกรองที่เลือก" />
+            : summaryOnly && viewer.data ? <PLViewerSummaryPrint data={viewer.data} preview zoom={zoom} />
+            : current.data ? <PLReportPrint data={current.data} preview zoom={zoom} /> : null}
         </div>
       </section>
 
-      {current.data && current.data.total > 0 && <PLReportPrint data={current.data} />}
+      {summaryOnly && viewer.data && viewer.data.total > 0 && <PLViewerSummaryPrint data={viewer.data} />}
+      {!summaryOnly && current.data && current.data.total > 0 && <PLReportPrint data={current.data} />}
     </Layout>
   );
 }
@@ -190,10 +226,78 @@ function PLReportPrint({ data, preview = false, zoom = 100 }: { data: PLRequestR
   </>;
 }
 
-function PLPrintHeader({ data, page, totalPages }: { data: PLRequestReport; page: number; totalPages: number }) {
+function PLViewerSummaryPrint({ data, preview = false, zoom = 100 }: { data: PLViewerSummaryReport; preview?: boolean; zoom?: number }) {
+  const measureRef = useRef<HTMLElement>(null);
+  const [pages, setPages] = useState<MeasuredReportPage<PLViewerSummaryItem>[]>([{ items: data.items, showSummary: false }]);
+
+  useLayoutEffect(() => {
+    const measure = measureRef.current;
+    if (!measure) return;
+    const style = window.getComputedStyle(measure);
+    const contentHeight = measure.clientHeight - parseFloat(style.paddingTop || '0') - parseFloat(style.paddingBottom || '0');
+    const headingHeight = measure.querySelector<HTMLElement>('.pl-report-head')?.getBoundingClientRect().height ?? 0;
+    const tableHeaderHeight = measure.querySelector<HTMLElement>('.pl-viewer-summary-items thead')?.getBoundingClientRect().height ?? 0;
+    const signaturesHeight = measure.querySelector<HTMLElement>('.pl-viewer-signatures')?.getBoundingClientRect().height ?? 0;
+    const rowHeights = Array.from(measure.querySelectorAll<HTMLElement>('[data-pl-viewer-row]')).map((row) => row.getBoundingClientRect().height);
+    const budget = Math.max(1, contentHeight - headingHeight - tableHeaderHeight - 12);
+    setPages(paginateMeasuredRows(data.items, rowHeights, budget, Math.max(1, budget - signaturesHeight)));
+  }, [data]);
+
+  return <>
+    <div className="pl-report-measure" aria-hidden="true">
+      <article ref={measureRef} className="it-report-print pl-report-print">
+        <PLViewerSummaryHead page={1} totalPages={1} />
+        <PLViewerSummaryTable items={data.items} measure />
+        <PLViewerSignatures />
+      </article>
+    </div>
+    <div className={preview ? 'it-report-preview' : 'print-root'}>{pages.map((page, index) => (
+      <article key={index} className="it-report-page it-report-print pl-report-print" style={preview ? { zoom: zoom / 100 } : undefined}>
+        <PLViewerSummaryHead page={index + 1} totalPages={pages.length} />
+        <PLViewerSummaryTable items={page.items} />
+        {page.showSummary && <PLViewerSignatures />}
+      </article>
+    ))}</div>
+  </>;
+}
+
+function PLViewerSummaryHead({ page, totalPages }: { page: number; totalPages: number }) {
+  const now = new Date();
+  return <div className="pl-report-head pl-viewer-summary-head">
+    <strong>รายงานรับเรื่องประจำเดือน</strong>
+    <span>วันที่พิมพ์&nbsp; {now.toLocaleDateString('en-GB')} &nbsp;&nbsp; Page {page} of {totalPages}</span>
+  </div>;
+}
+
+function PLViewerSummaryTable({ items, measure = false }: { items: PLViewerSummaryItem[]; measure?: boolean }) {
+  const headers = ['เลขที่ใบรับเรื่อง', 'วันที่และเวลา', 'ประเภทลูกค้า', 'เรื่องที่แจ้ง', 'รายละเอียดเรื่องที่แจ้ง', 'กำหนดเสร็จ', 'ผู้แจ้งเรื่อง', 'หน่วยงาน', 'สถานะ', 'การอนุมัติ', 'ผู้อนุมัติ', 'อนุมัติวันที่และเวลา', 'วันที่ดำเนินการ', 'หมายเหตุ'];
+  const widths = ['7%', '8%', '5%', '7%', '15%', '6%', '7%', '5%', '3%', '10%', '6%', '7%', '5%', '9%'];
+  return <table className="pl-report-items pl-viewer-summary-items">
+    <colgroup>{widths.map((width, index) => <col key={index} style={{ width }} />)}</colgroup>
+    <thead><tr>{headers.map((header) => <th key={header}>{header}</th>)}</tr></thead>
+    <tbody>{items.map((item) => <tr key={item.docNo} data-pl-viewer-row={measure ? '' : undefined}>
+      <td>{item.docNo}</td><td>{formatViewerDateTime(item.docDate)}</td><td>{item.type ?? ''}</td><td>{item.requestType ?? ''}</td>
+      <td><span className="pl-viewer-clamp" title={item.requestDetail ?? ''}>{item.requestDetail ?? ''}</span></td><td>{formatDate(item.planDate)}</td><td>{item.requestBy ?? ''}</td><td>{item.department ?? ''}</td>
+      <td>{item.wfStep ?? ''}</td><td><span className="pl-viewer-clamp" title={item.description ?? ''}>{item.description ?? ''}</span></td><td>{item.approveBy ?? ''}</td>
+      <td>{formatViewerDateTime(item.approveDate)}</td><td>{item.dateService ?? ''}</td><td>{item.remark ?? ''}</td>
+    </tr>)}</tbody>
+  </table>;
+}
+
+function PLViewerSignatures() {
+  const roles = ['ผู้จัดทำ', 'หัวหน้าแผนกรับเรื่อง', 'ผู้ตรวจสอบ', 'ผู้อนุมัติ'];
+  return <div className="pl-viewer-signatures">
+    {roles.map((role) => <div className="pl-viewer-signature" key={role}>
+      <div className="pl-viewer-signature-name">ลงชื่อ <span />{role}</div>
+      <div className="pl-viewer-signature-date"><span> / &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; / </span></div>
+    </div>)}
+  </div>;
+}
+
+function PLPrintHeader({ data, page, totalPages, title = 'รายงานรับเรื่อง PL' }: { data: Pick<PLRequestReport, 'dateFrom' | 'dateTo'>; page: number; totalPages: number; title?: string }) {
   const now = new Date();
   return <div className="pl-report-head">
-    <strong>รายงานรับเรื่อง PL ประจำวันที่ <b>{formatDate(data.dateFrom)}</b> ถึงวันที่ <b>{formatDate(data.dateTo)}</b></strong>
+    <strong>{title} ประจำวันที่ <b>{formatDate(data.dateFrom)}</b> ถึงวันที่ <b>{formatDate(data.dateTo)}</b></strong>
     <span>วันที่พิมพ์ {now.toLocaleDateString('en-GB')} &nbsp;&nbsp; เวลาที่พิมพ์ {now.toLocaleTimeString('th-TH', { hour12: false })} &nbsp;&nbsp; Page {page} of {totalPages}</span>
   </div>;
 }

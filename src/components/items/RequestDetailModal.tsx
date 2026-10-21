@@ -35,6 +35,9 @@ import { HrServicePanel } from './HrServicePanel';
 import { SqaReceivePanel, SqaServicePanel } from './SqaWorkflowPanel';
 import { ItWorkOrderPrint } from './ItWorkOrderPrint';
 import { PL_PRINT_OPTIONS, PlWorkOrderPrint } from './PlWorkOrderPrint';
+import { BCWorkOrderPrint } from './BCWorkOrderPrint';
+import { fetchBCPrintForm, printModuleOf } from '../../api/bcPrintForms';
+import { BCPrintForm } from '../../types/bcPrintForm';
 import {
   SvMgrRequestClosePanel,
   SvMgrReviewPanel,
@@ -894,8 +897,10 @@ function RequestDetailContent({
   const [printData, setPrintData] = useState<ITServiceFormItem | null>(null);
   const [plPrintData, setPlPrintData] = useState<PLRequestFormReport | null>(null);
   const [plPrintMenuOpen, setPlPrintMenuOpen] = useState(false);
+  const [bcPrintData, setBcPrintData] = useState<BCPrintForm | null>(null);
   const [printLoading, setPrintLoading] = useState(false);
   const [printError, setPrintError] = useState('');
+  const bcPrintModule = printModuleOf(item.module);
 
   const printItWorkOrder = async () => {
     if (item.module !== 'IT' || printLoading) return;
@@ -929,6 +934,22 @@ function RequestDetailContent({
       window.print();
     } catch (reason) {
       setPrintError(apiErrorText(reason, 'โหลดข้อมูลใบแจ้งเรื่อง PL สำหรับพิมพ์ไม่สำเร็จ'));
+    } finally {
+      setPrintLoading(false);
+    }
+  };
+
+  const printBCWorkOrder = async () => {
+    if (!bcPrintModule || printLoading) return;
+    setPrintLoading(true);
+    setPrintError('');
+    try {
+      const report = await fetchBCPrintForm(bcPrintModule, item.docNo, user?.token);
+      setBcPrintData(report);
+      await new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
+      window.print();
+    } catch (reason) {
+      setPrintError(apiErrorText(reason, `โหลดข้อมูลใบแจ้งเรื่อง ${item.module} สำหรับพิมพ์ไม่สำเร็จ`));
     } finally {
       setPrintLoading(false);
     }
@@ -990,6 +1011,20 @@ function RequestDetailContent({
                 {plPrintMenuOpen && <div className="absolute right-0 top-full z-50 mt-1 min-w-44 rounded-lg border border-slate-200 bg-white p-1 shadow-lg dark:border-slate-700 dark:bg-slate-800">
                   {PL_PRINT_OPTIONS.map((option) => <button key={option.kind} type="button" onClick={() => void printPlWorkOrder(option.kind)} className="block w-full rounded px-3 py-2 text-left text-xs text-slate-700 hover:bg-violet-50 dark:text-slate-100 dark:hover:bg-slate-700">{option.label}</button>)}
                 </div>}
+              </div>
+            )}
+            {bcPrintModule && (
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => void printBCWorkOrder()}
+                  disabled={printLoading}
+                  className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 px-3 text-xs font-semibold text-slate-700 transition hover:bg-slate-100 disabled:cursor-wait disabled:opacity-60 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+                  aria-label={`พิมพ์ใบแจ้งเรื่อง ${item.module}`}
+                >
+                  {printLoading ? <IconLoader2 size={16} className="animate-spin" /> : <IconPrinter size={16} />}
+                  <span className="hidden sm:inline">{printLoading ? 'กำลังโหลด...' : 'พิมพ์ใบแจ้งเรื่อง'}</span>
+                </button>
               </div>
             )}
             <button
@@ -1454,6 +1489,7 @@ function RequestDetailContent({
     </div>
     {item.module === 'IT' && printData && createPortal(<ItWorkOrderPrint item={printData} />, document.body)}
     {item.module === 'PL' && plPrintData && createPortal(<PlWorkOrderPrint report={plPrintData} />, document.body)}
+    {bcPrintModule && bcPrintData?.module === bcPrintModule && bcPrintData.docNo === item.docNo && createPortal(<BCWorkOrderPrint form={bcPrintData} />, document.body)}
     </>
   );
 }

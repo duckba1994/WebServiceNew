@@ -34,6 +34,41 @@ export interface PLRequestReport {
   items: PLRequestReportItem[];
 }
 
+export interface PLViewerSummaryItem {
+  docNo: string;
+  docDate: string | null;
+  type: string | null;
+  requestDetail: string | null;
+  requestType: string | null;
+  planDate: string | null;
+  action: string | null;
+  workResults: string | null;
+  departId: string | null;
+  department: string | null;
+  requestBy: string | null;
+  requestDate: string | null;
+  remark: string | null;
+  wfStatus: string | null;
+  wfStep: number | null;
+  serviceBy: string | null;
+  serviceDate: string | null;
+  actionDetail: string | null;
+  jobStatus: number | null;
+  description: string | null;
+  approveBy: string | null;
+  approveDate: string | null;
+  dateService: number | null;
+}
+
+export interface PLViewerSummaryReport {
+  dateFrom: string;
+  dateTo: string;
+  departId: string | null;
+  wfStep: number | null;
+  total: number;
+  items: PLViewerSummaryItem[];
+}
+
 export type PLRequestFormReportType = 'master' | 'approve' | 'header';
 
 export interface PLRequestFormHeader {

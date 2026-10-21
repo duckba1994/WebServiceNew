@@ -10,7 +10,7 @@ export type PSReportKey =
   | 'ps-bit61-118-department'
   | 'ps-bit61-118-month'
   | 'ps-bit63-022';
-export type ReportKey = ITReportKey | HRReportKey | PSReportKey | 'pl-request-report' | 'sv-request-summary';
+export type ReportKey = ITReportKey | HRReportKey | PSReportKey | 'pl-request-report' | 'pl-print-summary' | 'sv-request-summary';
 
 export interface ReportDefinition {
   key: ReportKey;
@@ -42,6 +42,13 @@ export const REPORTS: ReportDefinition[] = [
     title: 'รายงานใบรับเรื่อง',
     description: 'รายงานรายละเอียดใบรับเรื่อง PL พร้อมสรุปสถานะและเรื่องที่แจ้ง',
     path: '/reports/pl/request-report',
+  },
+  {
+    key: 'pl-print-summary',
+    department: 'PL',
+    title: 'Print Summary',
+    description: 'รายการใบแจ้งเรื่อง PL ตามช่วงวันที่ แผนก และสถานะงาน',
+    path: '/reports/pl/print-summary',
   },
   {
     key: 'sv-request-summary',

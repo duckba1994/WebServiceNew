@@ -4,13 +4,17 @@ import { DepartmentApi } from '../types/masterData';
 
 // ── โหลดรายชื่อแผนกจาก GET /MasterData/departments ───────────
 // ใช้เป็นตัวเลือกแผนกปลายทางของใบแจ้งเรื่อง (ต้องเลือกจาก master เท่านั้น)
-export function useDepartments(token?: string) {
+export function useDepartments(token?: string, enabled = true) {
   const [departments, setDepartments] = useState<DepartmentApi[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
+    if (!enabled) {
+      setLoading(false);
+      return;
+    }
     let alive = true;
     setLoading(true);
     setError(null);
@@ -30,7 +34,7 @@ export function useDepartments(token?: string) {
     return () => {
       alive = false;
     };
-  }, [token, reloadKey]);
+  }, [token, reloadKey, enabled]);
 
   const reload = useCallback(() => setReloadKey((k) => k + 1), []);
 

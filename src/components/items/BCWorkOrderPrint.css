@@ -1,0 +1,116 @@
+.bc-work-order-print { page: bc-work-order; box-sizing: border-box; width: 210mm; min-height: 297mm; padding: 7mm 8mm 6mm; background: #fff; color: #111; font-size: 11px; line-height: 1.3; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+.bc-work-order-print, .bc-work-order-print * { box-sizing: border-box; font-family: inherit; }
+.bc-form-head { display: grid; grid-template-columns: 25mm minmax(0, 1fr) 55mm; min-height: 21mm; border: 1px solid #111; }
+.bc-form-logo { display: flex; align-items: center; justify-content: center; border-right: 1px solid #111; }
+.bc-form-logo img { width: 20mm; height: 18mm; object-fit: contain; }
+.bc-form-head-title { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1mm; border-right: 1px solid #111; text-align: center; }
+.bc-form-head-title strong { font-size: 13px; }
+.bc-form-head-title span { font-size: 12px; }
+.bc-form-head-title small { font-size: 8px; }
+.bc-form-head-meta { display: flex; flex-direction: column; justify-content: space-around; padding: 1mm 1.5mm; overflow-wrap: anywhere; }
+.bc-form-head-meta b { font-weight: 400; }
+.bc-form-head-meta-asset { padding: 0; }
+.bc-form-head-meta-details { display: flex; flex: 1; flex-direction: column; justify-content: space-around; }
+.bc-form-head-meta-asset .bc-form-head-meta-details { padding: 1mm 1.5mm; }
+.bc-form-head-asset-types { display: flex; align-items: center; justify-content: space-around; gap: 1mm; min-height: 6mm; border-top: 1px solid #111; padding: 0.5mm 1mm; font-size: 10px; white-space: nowrap; }
+.bc-form-head-asset-types .bc-form-check { gap: 1mm; }
+.bc-form-type-strip, .bc-form-short-strip { display: flex; align-items: center; justify-content: space-around; gap: 3mm; min-height: 6mm; border: 1px solid #111; border-top: 0; padding: 0.7mm 2mm; }
+.bc-form-section { border: 1px solid #111; border-top: 0; padding: 1.5mm 2mm; }
+.bc-form-section h2 { margin: 0 0 1.5mm; font-size: 11px; font-weight: 700; }
+.bc-form-section > strong { display: block; margin: 1mm 0; }
+.bc-form-check { display: inline-flex; align-items: flex-start; gap: 1.5mm; min-width: 0; }
+.bc-form-check i { display: inline-flex; align-items: center; justify-content: center; width: 3mm; height: 3mm; flex: 0 0 3mm; border: 1px solid #111; font-size: 10px; font-style: normal; font-weight: 700; line-height: 1; }
+.bc-form-check-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1.5mm 3mm; margin: 1mm 3mm 2mm; }
+.bc-form-budget-checks { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.bc-form-budget-checks > :nth-child(2), .bc-form-budget-checks > :nth-child(4) { grid-column: 2 / 4; }
+.bc-form-budget-checks > :nth-child(3) { grid-column: 1; grid-row: 2; }
+.bc-form-field-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1.5mm 3mm; margin: 1mm 1mm 2mm; }
+.bc-form-field { display: inline-flex; align-items: baseline; gap: 1mm; min-width: 0; }
+.bc-form-dotted { display: inline-block; min-width: 15mm; flex: 1; border-bottom: 1px dotted #333; overflow-wrap: anywhere; }
+.bc-form-sign-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 2mm 8mm; margin: 2mm 2mm 0; }
+.bc-form-sign-grid-three { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 2mm; }
+.bc-form-sign { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 1mm 2mm; align-items: baseline; }
+.bc-form-sign > .bc-form-field:last-child { grid-column: 1 / -1; }
+.bc-form-ga .bc-form-sign-grid { column-gap: 20mm; margin: 3mm 2mm 0 13mm; }
+.bc-form-ga .bc-form-sign-grid > .bc-form-sign:first-child { width: calc(100% - 5mm); }
+.bc-form-ga .bc-form-sign { grid-template-columns: 42mm minmax(0, 1fr); }
+.bc-form-ga .bc-form-sign > .bc-form-field:last-child { grid-column: 1; }
+.bc-form-ga .bc-form-sign > .bc-form-field { width: 100%; }
+.bc-form-ga .bc-form-sign > span { font-size: 11px; white-space: nowrap; }
+.bc-form-sign > .bc-form-field .bc-form-dotted { text-align: center; }
+.bc-form-lines, .bc-form-sv-lines, .bc-form-ps-attachments { width: 100%; border-collapse: collapse; table-layout: fixed; }
+.bc-form-lines th, .bc-form-lines td, .bc-form-sv-lines th, .bc-form-sv-lines td, .bc-form-ps-attachments th, .bc-form-ps-attachments td { border: 1px solid #111; padding: 0.6mm 1mm; overflow-wrap: anywhere; vertical-align: top; }
+.bc-form-lines th, .bc-form-sv-lines th, .bc-form-ps-attachments th { text-align: center; vertical-align: middle; }
+.bc-form-lines thead, .bc-form-sv-lines thead, .bc-form-ps-attachments thead { display: table-header-group; }
+.bc-form-lines tr, .bc-form-sv-lines tr, .bc-form-ps-attachments tr { break-inside: avoid; }
+.bc-form-lines th:first-child { width: 12mm; white-space: nowrap; }.bc-form-lines th:nth-child(3), .bc-form-lines th:nth-child(4) { width: 13mm; }.bc-form-lines th:last-child { width: 40%; }
+.bc-form-lines tbody tr { height: 5mm; }.bc-form-lines-tall tbody tr { height: 16mm; }
+.bc-form-lines td:first-child, .bc-form-lines td:nth-child(3), .bc-form-sv-lines td:first-child { text-align: center; }
+.bc-form-asset-people, .bc-form-ps-people, .bc-form-sv-request-sign { border: 1px solid #111; border-top: 0; padding: 1.5mm 2mm; }
+.bc-form-asset-request { min-height: 36mm; }.bc-form-asset-service { min-height: 38mm; }.bc-form-asset-result { min-height: 29mm; }
+.bc-form-ga-service { min-height: 42mm; font-size: 12px; }
+.bc-form-ga-service h2 { font-size: 12px; }
+.bc-form-ga-service > strong { margin-left: 13mm; }
+.bc-form-ga-actions { grid-template-columns: 23.5% 25% minmax(0, 1fr); margin-left: 13mm; margin-right: 2mm; }
+.bc-form-ga-actions > :nth-child(3) .bc-form-dotted { min-width: 8mm; }
+.bc-form-ga-result { min-height: 39mm; font-size: 12px; }
+.bc-form-ga-result-head { display: grid; grid-template-columns: 41mm 54mm minmax(0, 1fr); align-items: center; margin: 0 2mm 1mm 10mm; }
+.bc-form-ga-remark { display: grid; grid-template-columns: 17mm minmax(0, 1fr); margin: 3mm 2mm 0 10mm; }
+.bc-form-ga-remark-lines { display: flex; flex-direction: column; }
+.bc-form-ga-remark-lines > span { min-height: 5mm; border-bottom: 1px dotted #333; line-height: 5mm; white-space: pre-wrap; overflow-wrap: anywhere; }
+.bc-form-ga-result .bc-form-sign-grid { margin-top: 4mm; }
+.bc-form-im { display: flex; flex-direction: column; font-size: 12px; }
+.bc-form-im .bc-form-head { min-height: 27mm; }
+.bc-form-im .bc-form-section h2 { font-size: 12px; }
+.bc-form-im-request { min-height: 0; }
+.bc-form-im-types { grid-template-columns: 34% 27% 25% minmax(0, 1fr); row-gap: 3mm; margin: 2mm 2mm 3mm 4mm; }
+.bc-form-im-types > :nth-child(4) { grid-column: 1; grid-row: 2; }
+.bc-form-im-types > :nth-child(5) { grid-column: 2; grid-row: 2; }
+.bc-form-im-types > :nth-child(6) { grid-column: 3; grid-row: 2; }
+.bc-form-im-types > :nth-child(7) { grid-column: 4; grid-row: 2; }
+.bc-form-im-request > strong { margin-left: 4mm; }
+.bc-form-im .bc-form-budget-checks { grid-template-columns: 34% minmax(0, 1fr); row-gap: 2mm; margin: 2mm 2mm 1mm 4mm; }
+.bc-form-im .bc-form-budget-checks > :nth-child(2), .bc-form-im .bc-form-budget-checks > :nth-child(4) { grid-column: 2; }
+.bc-form-im .bc-form-lines tbody tr { height: 6.2mm; }
+.bc-form-im-people { min-height: 0; }
+.bc-form-im-people > .bc-form-field { margin-left: 1mm; }
+.bc-form-im-people > .bc-form-field .bc-form-dotted { flex: 0 0 40mm; text-align: center; }
+.bc-form-im-sign-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 14mm; margin: 3mm 4mm 0 5mm; }
+.bc-form-im-sign { min-width: 0; }
+.bc-form-im-sign-row { display: grid; grid-template-columns: 47mm minmax(0, 1fr); align-items: baseline; gap: 2mm; }
+.bc-form-im-sign-row > .bc-form-field { min-width: 0; }
+.bc-form-im-sign-row > span { white-space: nowrap; }
+.bc-form-im-sign > .bc-form-field { display: flex; width: 47mm; margin: 2mm 0 0 3mm; }
+.bc-form-im-sign .bc-form-dotted { text-align: center; }
+.bc-form-im-sign-footer { display: block; width: 47mm; text-align: center; margin-top: 2mm; }
+.bc-form-im-service { min-height: 0; }
+.bc-form-im-service > strong { margin-left: 5mm; }
+.bc-form-im-actions { display: grid; grid-template-columns: 45% minmax(0, 1fr); column-gap: 2mm; row-gap: 4mm; margin: 3mm 3mm 1mm 5mm; }
+.bc-form-im-actions > .bc-form-check { align-items: baseline; }
+.bc-form-im-actions .bc-form-dotted { min-width: 12mm; }
+.bc-form-im-result { min-height: 0; }
+.bc-form-im-result-head { display: grid; grid-template-columns: 34% 25% minmax(0, 1fr); align-items: center; margin: 0 2mm 1mm 1mm; }
+.bc-form-im-result .bc-form-ga-remark { margin: 3mm 2mm 0 5mm; }
+.bc-form-im-result .bc-form-im-sign-grid { margin-top: 4mm; }
+.bc-form-im .bc-form-footer { margin-top: auto; padding-top: 1mm; }
+.bc-form-footer { display: flex; justify-content: space-between; margin: 1mm 1mm 0; font-size: 8px; }
+.bc-form-ruled { min-height: 18mm; margin: 1mm 2mm; padding: 0.5mm 1mm; line-height: 5mm; white-space: pre-wrap; overflow-wrap: anywhere; background-image: repeating-linear-gradient(to bottom, transparent 0 calc(5mm - 1px), #777 calc(5mm - 1px) 5mm); }
+.bc-form-cr-request { min-height: 86mm; }.bc-form-cr-service { min-height: 76mm; }.bc-form-cr-close { min-height: 65mm; }
+.bc-form-cr-request .bc-form-cr-detail { min-height: 41mm; }.bc-form-cr-close .bc-form-ruled { min-height: 27mm; }
+.bc-form-sqa-request { min-height: 88mm; }.bc-form-sqa-receive { min-height: 44mm; margin-top: 1mm; border-top: 1px solid #111; }.bc-form-sqa-service { min-height: 94mm; margin-top: 1mm; border-top: 1px solid #111; }
+.bc-form-sqa-request .bc-form-ruled { min-height: 43mm; }.bc-form-sqa-service .bc-form-ruled { min-height: 60mm; }
+.bc-form-print-stamp { text-align: right; margin: 1mm 1mm 0; font-size: 8px; }
+.bc-form-hr-meta { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1mm 4mm; border: 1px solid #111; border-top: 0; padding: 1mm 2mm; }.bc-form-hr-meta > :first-child { grid-column: span 2; }
+.bc-form-hr-categories { display: grid; grid-template-columns: 1fr 1fr; gap: 5mm; border: 1px solid #111; border-top: 0; padding: 1mm 2mm; }.bc-form-hr-categories > div { display: flex; flex-direction: column; gap: 1mm; }.bc-form-hr-categories strong { margin-bottom: 1mm; }
+.bc-form-hr-detail { min-height: 59mm; }.bc-form-hr-detail > div { min-height: 53mm; padding: 1mm; overflow-wrap: anywhere; }
+.bc-form-hr-request-sign { border: 1px solid #111; border-top: 0; margin: 0; padding: 2mm; }.bc-form-hr-service { min-height: 39mm; }
+.bc-form-hr-policy { font-size: 9px; }.bc-form-hr-policy p { margin: 0.5mm 0 0 4mm; }
+.bc-form-ps-request { min-height: 40mm; }.bc-form-ps-attachments { font-size: 9px; }.bc-form-ps-attachments th:first-child { width: 6mm; }.bc-form-ps-attachments th:nth-child(2) { width: 30%; }
+.bc-form-ps-main-lines { min-height: 80mm; border-left: 1px solid #111; border-right: 1px solid #111; border-bottom: 1px solid #111; }
+.bc-form-ps-service { min-height: 33mm; }.bc-form-ps-result { min-height: 25mm; }.bc-form-ps-people .bc-form-sign-grid { margin-top: 3mm; }
+.bc-form-af-request { min-height: 22mm; }.bc-form-af-signatures { min-height: 17mm; }.bc-form-af-detail { min-height: 52mm; }.bc-form-af-quality { min-height: 42mm; }.bc-form-af-it { min-height: 19mm; }
+.bc-form-af-detail > .bc-form-field, .bc-form-af-quality > .bc-form-field, .bc-form-ps-result > .bc-form-field { display: flex; margin: 1.3mm 2mm; }
+.bc-form-sv-request { min-height: 57mm; }.bc-form-radio-list { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1mm; margin: 2mm 18mm; }.bc-form-radio-list span { display: flex; align-items: center; gap: 1mm; }.bc-form-radio-list i { display: inline-flex; align-items: center; justify-content: center; width: 3mm; height: 3mm; border: 1px solid #111; border-radius: 50%; font-size: 7px; font-style: normal; }
+.bc-form-sv-lines th:first-child { width: 7mm; }.bc-form-sv-lines th:nth-child(3) { width: 20mm; }.bc-form-sv-lines th:nth-child(4) { width: 25mm; }.bc-form-sv-lines tbody tr { height: 5mm; }
+.bc-form-sv-service { min-height: 48mm; }.bc-form-sv-review { min-height: 37mm; }.bc-form-sv-terms { min-height: 39mm; font-size: 9px; }.bc-form-sv-terms p { margin: 1mm 0 2mm 4mm; }
+@page bc-work-order { size: A4 portrait; margin: 0; }
