@@ -24,8 +24,8 @@ function dateText(value?: string | null): string {
 function Signature({ label = 'ลงชื่อ', role, name, date }: { label?: string; role: string; name?: string | null; date?: string | null }) {
   return (
     <div className="it-work-signature">
-      <div>{label} <span>{name || ''}</span> {role}</div>
-      <div>วันที่ <span>{date ? dateText(date) : ''}</span></div>
+      <div className="it-work-signature-line"><span className="it-work-signature-label">{label}</span><span className="it-work-signature-value">{name || ''}</span><span className="it-work-signature-role">{role}</span></div>
+      <div className="it-work-signature-line"><span className="it-work-signature-label">วันที่</span><span className="it-work-signature-value">{date ? dateText(date) : ''}</span></div>
     </div>
   );
 }

@@ -92,7 +92,7 @@ function RequesterSection({ header, kind }: { header: PLRequestFormHeader; kind:
     </div>
     {kind === 'header' && <>
       <div className="pl-form-request-detail"><strong>เรื่องที่ร้องขอ :</strong><span className="pl-form-dotline pl-form-multiline-dotline">{header.requestDetail?.trim() || ''}</span></div>
-      <div className="pl-form-header-sign"><span>ลงชื่อ <span className="pl-form-dotline">{header.requestBy || ''}</span> ผู้แจ้ง</span><span>หน่วยงาน <b>{header.departName || '—'}</b></span></div>
+      <div className="pl-form-header-sign"><Signature label="ลงชื่อ" name={header.requestBy} role="ผู้แจ้ง" /><span>หน่วยงาน <b>{header.departName || '—'}</b></span></div>
     </>}
   </section>;
 }
@@ -109,8 +109,11 @@ function RequestLines({ report }: { report: PLRequestFormReport }) {
   </table>;
 }
 
-function Signature({ label, name, role }: { label: string; name?: string | null; role: string }) {
-  return <span>{label} <span className="pl-form-dotline">{name || ''}</span> {role}</span>;
+function Signature({ label, name, role, date }: { label: string; name?: string | null; role: string; date?: string }) {
+  return <div className="pl-form-signature">
+    <div className="pl-form-signature-line"><span>{label}</span><span className="pl-form-signature-value">{name || ''}</span><span className="pl-form-signature-role">{role}</span></div>
+    {date !== undefined && <div className="pl-form-signature-line"><span>วันที่</span><span className="pl-form-signature-value">{date}</span></div>}
+  </div>;
 }
 
 function MasterService({ header, approvals }: { header: PLRequestFormHeader; approvals: PLRequestFormReport['approvals'] }) {
@@ -118,23 +121,19 @@ function MasterService({ header, approvals }: { header: PLRequestFormHeader; app
   return <>
     <section className="pl-form-master-signatures">
       <div className="pl-form-master-plan-date">วันที่ต้องการใช้งาน <span className="pl-form-dotline">{dateText(header.planDate)}</span></div>
-      <div className="pl-form-master-requester"><Signature label="ลงชื่อ" name={header.requestBy} role="ผู้แจ้ง" /> หน่วยงาน <b>{header.departName || '—'}</b></div>
-      <div className="pl-form-master-request-date">วันที่ <span className="pl-form-dotline">{dateText(header.requestDate)}</span></div>
-      <div className="pl-form-master-manager"><Signature label="ลงชื่อ" name={requesterManager?.approveBy} role="ผจก.ต้นสังกัด" /></div>
-      <div className="pl-form-master-manager-date">วันที่ <span className="pl-form-dotline">{requesterManager?.approveDate ? dateText(requesterManager.approveDate) : ''}</span></div>
+      <div className="pl-form-master-requester"><Signature label="ลงชื่อ" name={header.requestBy} role={`ผู้แจ้ง หน่วยงาน ${header.departName || '—'}`} date={dateText(header.requestDate)} /></div>
+      <div className="pl-form-master-manager"><Signature label="ลงชื่อ" name={requesterManager?.approveBy} role="ผจก.ต้นสังกัด" date={requesterManager?.approveDate ? dateText(requesterManager.approveDate) : ''} /></div>
     </section>
     <section className="pl-form-master-work">
       <h2>ส่วนที่ 2.สำหรับหน่วยงาน PL</h2>
       <strong>ดำเนินการ :</strong>
       <div className="pl-form-ruled">{header.actionDetail || header.action || ''}</div>
-      <div className="pl-form-master-work-sign"><Signature label="ลงชื่อ" role="ผู้รับเรื่อง เจ้าหน้าที่ควบคุมและดูแล อปต." /><Signature label="ลงชื่อ" role="ผู้ตรวจสอบ PL Mgr." /></div>
-      <div className="pl-form-master-work-sign"><span>วันที่ <span className="pl-form-dotline" /></span><span>วันที่ <span className="pl-form-dotline" /></span></div>
+      <div className="pl-form-master-work-sign"><Signature label="ลงชื่อ" role="ผู้รับเรื่อง เจ้าหน้าที่ควบคุมและดูแล อปต." date="" /><Signature label="ลงชื่อ" role="ผู้ตรวจสอบ PL Mgr." date="" /></div>
     </section>
     <section className="pl-form-master-results">
       <strong>ผลการดำเนินงาน :</strong>
       <div className="pl-form-ruled">{header.wrDetail || header.workResults || ''}</div>
-      <div className="pl-form-master-work-sign"><Signature label="ลงชื่อ" role="ผู้แจ้งรับทราบ" /><Signature label="ลงชื่อ" role="ผู้ตรวจสอบ PL Mgr." /></div>
-      <div className="pl-form-master-work-sign"><span>วันที่ <span className="pl-form-dotline" /></span><span>วันที่ <span className="pl-form-dotline" /></span></div>
+      <div className="pl-form-master-work-sign"><Signature label="ลงชื่อ" role="ผู้แจ้งรับทราบ" date="" /><Signature label="ลงชื่อ" role="ผู้ตรวจสอบ PL Mgr." date="" /></div>
     </section>
   </>;
 }
@@ -145,8 +144,7 @@ function ApproveService({ header }: { header: PLRequestFormHeader }) {
   return <>
     <section className="pl-form-approve-signatures">
       <span>วันที่ต้องการใช้งาน <span className="pl-form-dotline">{dateText(header.planDate, true)}</span></span>
-      <span><Signature label="ลงชื่อ" name={header.requestBy} role="ผู้แจ้ง" /> หน่วยงาน {header.departName || '—'}</span>
-      <span>วันที่ <span className="pl-form-dotline">{dateText(header.requestDate, true)}</span></span>
+      <Signature label="ลงชื่อ" name={header.requestBy} role={`ผู้แจ้ง หน่วยงาน ${header.departName || '—'}`} date={dateText(header.requestDate, true)} />
     </section>
     <section className="pl-form-approve-work">
       <h2>ส่วนที่ 2.สำหรับหน่วยงาน PL</h2>

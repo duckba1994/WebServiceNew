@@ -764,13 +764,15 @@ html.dark {
 .it-work-requester .detail { margin-top: 0; min-height: 24mm; }
 .it-work-service .cause { grid-template-columns: 10mm minmax(0, 1fr); column-gap: 0.5mm; }
 .it-work-service .detail { min-height: 25mm; margin-top: 4mm; grid-template-columns: 32mm minmax(0, 1fr); column-gap: 1.5mm; }
-.it-work-signature-row { display: grid; grid-template-columns: 1fr 1fr; gap: 18mm; padding: 0 10mm; }
+.it-work-signature-row { display: grid; grid-template-columns: 1fr 1fr; gap: 20mm; padding: 0 13mm; }
 .it-work-requester .it-work-signature-row { margin-top: 2mm; }
-.it-work-signature-row.single { grid-template-columns: 1fr; width: 88mm; margin: 1mm 9mm 0 auto; padding: 0; }
-.it-work-signature { text-align: center; line-height: 2.5; }
-.it-work-signature div:first-child { white-space: nowrap; }
-.it-work-signature span { display: inline-block; min-width: 35mm; min-height: 4mm; margin: 0 2mm; border-bottom: 0.6px dashed #333; text-align: center; line-height: 1.4; }
-.it-work-signature div:last-child span { min-width: 29mm; }
+.it-work-signature-row.single { grid-template-columns: 1fr; width: 78mm; margin: 1mm 13mm 0 auto; padding: 0; }
+.it-work-signature { display: flex; flex-direction: column; gap: 1mm; min-width: 0; }
+.it-work-signature-line { display: grid; grid-template-columns: 9mm 33mm minmax(0, 1fr); align-items: start; gap: 0; min-height: 5mm; }
+.it-work-signature-line:first-child { min-height: 9mm; }
+.it-work-signature-label { white-space: nowrap; }
+.it-work-signature-value { min-height: 4mm; border-bottom: 0.6px dashed #333; text-align: center; overflow-wrap: anywhere; }
+.it-work-signature-role { padding-left: 2mm; }
 .it-work-survey-intro { margin: 2mm 7mm; }
 .it-work-survey table { width: calc(100% - 14mm); margin: 0 7mm; border-collapse: collapse; table-layout: fixed; }
 .it-work-survey th, .it-work-survey td { height: 5.6mm; border: 0.6px solid #111; padding: 0.5mm 1mm; text-align: center; vertical-align: middle; font-weight: 400; }
@@ -786,7 +788,7 @@ html.dark {
 .it-work-criteria { margin: 1.2mm 4mm 0; font-size: 9.5px; }
 .it-work-criteria strong { display: block; margin-bottom: 0.8mm; }
 .it-work-criteria p { margin: 0 0 0.7mm; }
-.it-work-signature-row.survey-signatures { margin-top: 1.5mm; padding: 0 30mm; gap: 20mm; }
+.it-work-signature-row.survey-signatures { margin-top: 1.5mm; padding: 0 13mm; gap: 20mm; }
 .it-work-footer {
   position: absolute;
   right: 7mm;
@@ -848,8 +850,12 @@ html.dark {
 .pl-form-header .pl-form-request-detail > strong { flex: none; line-height: 5mm; }
 .pl-form-request-detail .pl-form-multiline-dotline { position: relative; min-width: 0; min-height: 5mm; padding: 0 1mm 1px; border-bottom: 0; line-height: 5mm; white-space: pre-wrap; overflow-wrap: anywhere; }
 .pl-form-multiline-dotline::before { position: absolute; inset: 0; content: ''; pointer-events: none; background: repeating-linear-gradient(to right, #333 0 3px, transparent 3px 6px); -webkit-mask-image: repeating-linear-gradient(to bottom, transparent 0 calc(5mm - 2px), #000 calc(5mm - 2px) calc(5mm - 1px), transparent calc(5mm - 1px) 5mm); mask-image: repeating-linear-gradient(to bottom, transparent 0 calc(5mm - 2px), #000 calc(5mm - 2px) calc(5mm - 1px), transparent calc(5mm - 1px) 5mm); }
-.pl-form-header-sign { display: flex; justify-content: flex-end; gap: 9mm; margin: 3mm 4mm 0; }
-.pl-form-header-sign .pl-form-dotline { min-width: 30mm; }
+.pl-form-header-sign { display: flex; align-items: flex-start; justify-content: flex-end; gap: 9mm; margin: 3mm 4mm 0; }
+.pl-form-signature { min-width: 0; }
+.pl-form-signature-line { display: grid; grid-template-columns: 9mm 33mm minmax(0, 1fr); align-items: start; min-height: 5mm; }
+.pl-form-signature-line:first-child { min-height: 9mm; }
+.pl-form-signature-value { min-height: 4mm; border-bottom: 1px dashed #333; text-align: center; overflow-wrap: anywhere; }
+.pl-form-signature-role { padding-left: 2mm; }
 .pl-form-lines, .pl-form-approvals table { width: 100%; border-collapse: collapse; table-layout: fixed; }
 .pl-form-lines thead { display: table-header-group; }
 .pl-form-lines tr, .pl-form-approvals tr { break-inside: avoid; }
@@ -866,26 +872,19 @@ html.dark {
 .pl-form-approve .pl-form-lines th { height: 6mm; }
 .pl-form-approve .pl-form-lines td { padding: 0.7mm 1.3mm; }
 .pl-form-approve .pl-form-lines tbody tr { min-height: 0; height: 15mm; }
-.pl-form-master-signatures { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-rows: repeat(3, auto); align-items: center; column-gap: 4mm; row-gap: 1.5mm; min-height: 24mm; padding: 1.5mm 3mm; border-bottom: 1px solid #111; }
-.pl-form-master-signatures > div { white-space: nowrap; }
+.pl-form-master-signatures { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-rows: repeat(2, auto); align-items: center; column-gap: 20mm; row-gap: 1.5mm; min-height: 24mm; padding: 1.5mm 2mm 1.5mm 13mm; border-bottom: 1px solid #111; }
 .pl-form-master-signatures .pl-form-dotline { min-width: 28mm; }
 .pl-form-master-plan-date { grid-column: 1; grid-row: 1; }
 .pl-form-master-requester { grid-column: 1; grid-row: 2; }
-.pl-form-master-request-date { grid-column: 1; grid-row: 3; }
 .pl-form-master-manager { grid-column: 2; grid-row: 2; }
-.pl-form-master-manager-date { grid-column: 2; grid-row: 3; }
-.pl-form-master-requester .pl-form-dotline,
-.pl-form-master-manager .pl-form-dotline { min-width: 18mm; }
 .pl-form-master-work, .pl-form-master-results { padding: 2mm 2mm 1mm; border-bottom: 1px solid #111; }
 .pl-form-master-work { min-height: 53mm; }
 .pl-form-master-results { min-height: 51mm; border-bottom: 0; }
 .pl-form-master-work > strong, .pl-form-master-results > strong { margin-left: 14mm; }
 .pl-form-ruled { min-height: 29mm; padding: 1mm 4mm 0 14mm; line-height: 5mm; white-space: pre-wrap; overflow-wrap: anywhere; background-image: radial-gradient(circle at 1px calc(5mm - 1px), #333 0.7px, transparent 1px); background-size: 3px 5mm; }
 .pl-form-master-work .pl-form-ruled { background-image: linear-gradient(#fff, #fff), radial-gradient(circle at 1px calc(5mm - 1px), #333 0.7px, transparent 1px); background-size: 100% 6mm, 3px 5mm; background-repeat: no-repeat, repeat; }
-.pl-form-master-work-sign { display: grid; grid-template-columns: 1fr 1fr; gap: 4mm; margin-top: 2mm; }
-.pl-form-master-work-sign .pl-form-dotline { min-width: 30mm; }
-.pl-form-approve-signatures { display: grid; grid-template-columns: 1fr 1fr; gap: 1mm; min-height: 15mm; padding: 2mm 8mm; border-bottom: 1px solid #111; }
-.pl-form-approve-signatures span:nth-child(3) { grid-column: 2; }
+.pl-form-master-work-sign { display: grid; grid-template-columns: 1fr 1fr; gap: 20mm; margin: 2mm 2mm 0 13mm; }
+.pl-form-approve-signatures { display: grid; grid-template-columns: 1fr 1fr; gap: 20mm; min-height: 15mm; padding: 2mm 2mm 2mm 13mm; border-bottom: 1px solid #111; }
 .pl-form-approve-work { min-height: 38mm; padding: 2mm 4mm; border-bottom: 1px solid #111; }
 .pl-form-approve-work > strong { display: block; margin: 1mm 0 1mm; }
 .pl-form-service-checks { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2mm; padding: 0 2mm; }

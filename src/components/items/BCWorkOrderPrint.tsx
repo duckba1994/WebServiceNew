@@ -34,6 +34,9 @@ function Dotted({ children }: { children?: React.ReactNode }) {
 function Field({ label, value }: { label: string; value?: React.ReactNode }) {
   return <span className="bc-form-field">{label} <Dotted>{value}</Dotted></span>;
 }
+function PsPrelimField({ label, value }: { label: string; value?: React.ReactNode }) {
+  return <span className="bc-form-ps-prelim-field"><span>{label}</span><Dotted>{value}</Dotted></span>;
+}
 function Sign({ label, name, dateText }: { label: string; name?: string; dateText?: string }) {
   return <div className="bc-form-sign"><Field label="ลงชื่อ" value={name} /><span>{label}</span><Field label="วันที่" value={dateText} /></div>;
 }
@@ -160,20 +163,46 @@ function ImForm({ form }: { form: BCPrintForm }) {
   </>;
 }
 const PS_PARTS = [
-  { flag: 'chkPartTrue', prefix: 'PartTrue1', prelim: 'PartTrue_Prelim', label: 'อะไหล่แท้' },
-  { flag: 'chkPartTrue2', prefix: 'PartTrue2', prelim: 'PartTrue2_Prelim', label: 'อะไหล่เทียบ' },
-  { flag: 'chkPartCompare1', prefix: 'PartCompare1', prelim: 'PartCompare1_Prelim', label: 'เทียบราคา' },
-  { flag: 'chkPartCompare2', prefix: 'PartCompare2', prelim: 'PartCompare2_Prelim', label: 'เทียบราคาเพิ่มเติม' },
-  { flag: 'chkPartOrder', prefix: 'PartOrder', prelim: 'PartOrder_Prelim', label: 'สั่งซื้อ' },
-  { flag: 'chkPartRepair', prefix: 'PartRepair', prelim: 'PartRepair_Prelim', label: 'ซ่อมอะไหล่' },
-  { flag: 'chkRepairValueInCompany', prefix: 'RepairValueInCompany', prelim: 'RepairValueInCompany_Prelim', label: 'ซ่อมในบริษัท' },
-  { flag: 'chkRepairValueOutCompany', prefix: 'RepairValueOutCompany', prelim: 'RepairValueOutCompany_Prelim', label: 'ซ่อมนอกบริษัท' },
-  { flag: 'chkPartOnSite_True1', prefix: 'PartOnSite_True1', prelim: 'PartOnSite_True1_Prelim', label: 'อะไหล่แท้หน้างาน' },
-  { flag: 'chkPartOnSite_True2', prefix: 'PartOnSite_True2', prelim: 'PartOnSite_True2_Prelim', label: 'อะไหล่เทียบหน้างาน' },
-  { flag: 'chkPartOnSite_Compare1', prefix: 'PartOnSite_Compare1', prelim: 'PartOnSite_Compare1_Prelim', label: 'เทียบราคาหน้างาน' },
-  { flag: 'chkPartOnSite_Compare2', prefix: 'PartOnSite_Compare2', prelim: 'PartOnSite_Compare2_Prelim', label: 'เทียบราคาเพิ่มเติมหน้างาน' },
-  { flag: 'chkServiceCenter', prefix: 'ServiceCenter', prelim: 'ServiceCenter_Prelim', label: 'ศูนย์บริการ' },
+  { code: '1', check: 'chkPartTrue', prefix: 'partTrue1', prelim: 'partTrue_Prelim', label: 'อะไหล่แท้ มือ1' },
+  { code: '2', check: 'chkPartTrue2', prefix: 'partTrue2', label: 'อะไหล่แท้ มือ2' },
+  { code: '3', check: 'chkPartCompare1', prefix: 'partCompare1', label: 'อะไหล่เทียบ มือ1' },
+  { code: '4', check: 'chkPartCompare2', prefix: 'partCompare2', label: 'อะไหล่เทียบ มือ2' },
+  { code: '5', check: 'chkPartOrder', prefix: 'partOrder', label: 'อะไหล่สั่งทำ' },
+  { code: '6', check: 'chkPartRepair', prefix: 'partRepair', label: 'อะไหล่ส่งซ่อม' },
+  { code: '7', check: 'chkRepairValueInCompany', prefix: 'repairValueInCompany', label: 'ค่าแรงในการซ่อมในบริษัท', kind: 'estimateOnly' },
+  { code: '8', check: 'chkRepairValueOutCompany', prefix: 'repairValueOutCompany', label: 'ค่าแรงในการซ่อมนอกสถานที่', kind: 'location' },
+  { code: '9', check: 'chkPartOnSite', prefix: 'partOnSite', label: 'อะไหล่ตามหน้างาน (ต่างจังหวัด)', kind: 'location' },
+  { code: '9.1', check: 'chkPartOnSite_True1', prefix: 'partOnSite_True1', label: 'อะไหล่แท้ มือ1' },
+  { code: '9.2', check: 'chkPartOnSite_True2', prefix: 'partOnSite_True2', label: 'อะไหล่แท้ มือ2' },
+  { code: '9.3', check: 'chkPartOnSite_Compare1', prefix: 'partOnSite_Compare1', label: 'อะไหล่เทียบ มือ1' },
+  { code: '9.4', check: 'chkPartOnSite_Compare2', prefix: 'partOnSite_Compare2', label: 'อะไหล่เทียบ มือ2' },
+  { code: '10', check: 'chkServiceCenter', prefix: 'serviceCenter', label: 'นำเข้าศูนย์บริการ', kind: 'center' },
 ] as const;
+function PsTableCheck({ checked }: { checked: boolean }) {
+  return <span className="bc-form-ps-table-check">{checked ? '✓' : ''}</span>;
+}
+function PsAttachmentRows({ attachment }: { attachment: BCPrintFields | null }) {
+  const selectedRows = PS_PARTS.filter((row) => yes(attachment, row.check));
+  return <>{selectedRows.map((row) => {
+    const prelim = 'prelim' in row ? row.prelim : `${row.prefix}_Prelim`;
+    const isLocation = 'kind' in row && row.kind === 'location';
+    const isCenter = 'kind' in row && row.kind === 'center';
+    const isEstimateOnly = 'kind' in row && row.kind === 'estimateOnly';
+    return <tr key={row.code}>
+      <td>{row.code}</td><td>{row.label}</td><td><PsTableCheck checked={yes(attachment, prelim)} /></td>
+      {isLocation || isCenter || isEstimateOnly ? <td colSpan={5} className="bc-form-ps-table-extra">
+        {isLocation && <><Field label="อำเภอ" value={txt(attachment, `${row.prefix}_Area`)} /><Field label="จังหวัด" value={txt(attachment, `${row.prefix}_City`)} /></>}
+        {isCenter && <><Field label="ชื่อศูนย์บริการ" value={txt(attachment, `${row.prefix}_Name`)} /><Field label="จังหวัด" value={txt(attachment, `${row.prefix}_City`)} /></>}
+      </td> : <>
+        <td><PsTableCheck checked={yes(attachment, `${row.prefix}_PartBook`)} /></td>
+        <td><PsTableCheck checked={yes(attachment, `${row.prefix}_Pic`)} /></td>
+        <td><PsTableCheck checked={yes(attachment, `${row.prefix}_PartEx`)} /></td>
+        <td><PsTableCheck checked={yes(attachment, `${row.prefix}_PartOldRepair`)} /></td>
+        <td><PsTableCheck checked={yes(attachment, `${row.prefix}_Other`)} /></td>
+      </>}
+    </tr>;
+  })}</>;
+}
 function PSForm({ form }: { form: BCPrintForm }) {
   const h = form.header;
   const a = form.attachment;
@@ -182,12 +211,28 @@ function PSForm({ form }: { form: BCPrintForm }) {
     <Head form={form} title="ใบขอราคาเกี่ยวกับลูกค้าภายนอก ลูกค้าภายในและภายในแผนก" />
     <div className="bc-form-type-strip"><Check checked={txt(h, 'type').includes('ภายนอก')}>ลูกค้าภายนอก</Check><Check checked={txt(h, 'type').includes('ภายใน')}>ลูกค้าภายใน</Check><Check checked={txt(h, 'type').includes('แผนก')}>ภายในแผนก</Check></div>
     <Section title="ส่วนที่ 1. สำหรับผู้ร้องขอ" className="bc-form-ps-request">
-      <div className="bc-form-check-grid"><Check checked={txt(h, 'requestType').includes('ขอราคา')}>ขอราคา</Check><Check checked={txt(h, 'requestType').includes('งานเคลม')}>งานเคลมสินค้า</Check><Check checked={txt(h, 'requestType').includes('งบประมาณ')}>งบประมาณ</Check><Check checked={Boolean(txt(h, 'requestOther'))}>อื่น ๆ {txt(h, 'requestOther')}</Check></div>
-      <strong>สิ่งที่แนบมาด้วย :</strong><div className="bc-form-check-grid"><Check checked={yes(h, 'attach_Spec')}>รายละเอียด/Spec</Check><Check checked={yes(h, 'attach_Quatation')}>Quotation เปรียบเทียบราคา</Check><Check checked={yes(h, 'attach_Picture')}>รูปภาพ</Check><Check checked={yes(h, 'attach_Other')}>อื่น ๆ {txt(h, 'attach_Other_Detail')}</Check></div>
-      <strong>ข้อมูลใบประเมิน :</strong><div className="bc-form-field-grid"><Field label="หมายเลขเครื่องจักร" value={txt(h, 'prelim_CarID')} /><Field label="เลขที่ใบประเมิน" value={txt(h, 'prelim_ID')} /><Field label="วันที่ประเมิน" value={d(h, 'prelim_Date')} /><Field label="ประเภทรถ" value={txt(h, 'car_type')} /><Field label="รุ่นเครื่องยนต์" value={txt(h, 'car_model')} /><Field label="รายละเอียดอาการ" value={txt(h, 'requestDetail')} /></div>
+      <div className="bc-form-check-grid bc-form-ps-request-types"><Check checked={txt(h, 'requestType').includes('ขอราคา')}>ขอราคา</Check><Check checked={txt(h, 'requestType').includes('งานเคลม')}>งานเคลมสินค้า</Check><Check checked={txt(h, 'requestType').includes('งบประมาณ')}>งบประมาณ</Check><Check checked={txt(h, 'requestType') === 'อื่น ๆ' || Boolean(txt(h, 'requestOther'))}>อื่น ๆ {txt(h, 'requestOther')}</Check></div>
+      <strong>สิ่งที่แนบมาด้วย :</strong>
+      <div className="bc-form-ps-attachment-rows">
+        <div><Check checked={yes(h, 'attach_Spec')}>รายละเอียด/Spec</Check><Field label="เลขที่ใบ Spec" value={txt(h, 'budget_DocNo')} /></div>
+        <div><Check checked={yes(h, 'attach_Quatation')}>Quotation เปรียบเทียบราคา</Check><Field label="เลขที่ Quotation" value={txt(h, 'exBudget_DocNo')} /></div>
+      </div>
+      <strong>ข้อมูลใบประเมิน :</strong>
+      <div className="bc-form-ps-prelim">
+        <PsPrelimField label="หมายเลขเครื่องจักร" value={txt(h, 'prelim_CarID')} />
+        <PsPrelimField label="เลขที่ใบประเมิน" value={txt(h, 'prelim_ID')} />
+        <PsPrelimField label="วันที่ประเมิน" value={d(h, 'prelim_Date')} />
+        <PsPrelimField label="ประเภทรถ" value={txt(h, 'car_type')} />
+        <PsPrelimField label="รุ่นเครื่องยนต์" value={txt(h, 'car_engineno')} />
+        <PsPrelimField label="รุ่นรถ" value={txt(h, 'car_model')} />
+        <PsPrelimField label="ทะเบียน S/N" value={txt(h, 'car_serial')} />
+        <PsPrelimField label="ระบบ" value={txt(h, 'groupName')} />
+        <PsPrelimField label="รายละเอียดอาการ" value={txt(h, 'subGroupName')} />
+        <PsPrelimField label="รายละเอียดเพิ่มเติม" value={txt(h, 'rE_Comment', 're_Comment')} />
+      </div>
     </Section>
-    <table className="bc-form-ps-attachments"><thead><tr><th>ลำดับ</th><th>รายการที่ต้องขอราคา</th><th>ใบประเมิน</th><th>Part book</th><th>รูปภาพ</th><th>อะไหล่ตัวอย่าง</th><th>อะไหล่เก่าที่ส่งไปซ่อม</th><th>อื่น ๆ</th></tr></thead><tbody>
-      {PS_PARTS.filter(({ flag, prefix, prelim }) => yes(a, flag) || yes(a, prelim) || yes(a, `${prefix}_Pic`)).map(({ flag, prefix, prelim, label }, index) => <tr key={flag}><td>{index + 1}</td><td>{label}</td><td>{yes(a, prelim) ? '✓' : ''}</td><td>{yes(a, `${prefix}_PartBook`) ? '✓' : ''}</td><td>{yes(a, `${prefix}_Pic`) ? '✓' : ''}</td><td>{yes(a, `${prefix}_PartEx`) ? '✓' : ''}</td><td>{yes(a, `${prefix}_PartOldRepair`) ? '✓' : ''}</td><td>{yes(a, `${prefix}_Other`) ? '✓' : ''}</td></tr>)}
+    <table className="bc-form-ps-attachments"><colgroup><col className="bc-form-ps-col-no" /><col className="bc-form-ps-col-item" /><col className="bc-form-ps-col-prelim" /><col className="bc-form-ps-col-partbook" /><col className="bc-form-ps-col-picture" /><col className="bc-form-ps-col-example" /><col className="bc-form-ps-col-repair" /><col className="bc-form-ps-col-other" /></colgroup><thead><tr><th rowSpan={2}>ลำดับ</th><th rowSpan={2}>รายการที่ต้องขอราคา</th><th colSpan={6}>เอกสารแนบการขอราคา</th></tr><tr><th>ใบประเมิน</th><th>Part book<br />(รูปอะไหล่+ตำแหน่งที่ใส่)</th><th>รูปภาพ<br />ประกอบ</th><th>อะไหล่<br />ตัวอย่าง</th><th>อะไหล่เก่าเพื่อ<br />เอาไปซ่อม</th><th>อื่นๆ</th></tr></thead><tbody>
+      <PsAttachmentRows attachment={a} />
     </tbody></table>
     <div className="bc-form-ps-main-lines"><LineTable form={form} minRows={Math.max(1, form.lines.length)} /></div>
     <div className="bc-form-ps-people"><div><Field label="วันที่ต้องการใช้งาน" value={d(h, 'planDate')} /><Field label="วันที่ต้องการราคา" value={d(h, 'priceDate')} /></div><div className="bc-form-sign-grid"><Sign label="ผู้ขอราคา PS" name={txt(h, 'requestBy')} dateText={d(h, 'requestDate')} /><Sign label="ผู้จัดการฝ่าย PS" name={first?.approveBy ?? ''} dateText={date(first?.approveDate)} /></div></div>
