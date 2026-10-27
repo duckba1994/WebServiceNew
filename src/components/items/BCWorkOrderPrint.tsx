@@ -23,6 +23,7 @@ const date = (value: unknown, withTime = false, withSeconds = false): string => 
   return withTime && parts[4] ? `${day} ${parts[4]}:${parts[5]}${withSeconds && parts[6] ? `:${parts[6]}` : ''}` : day;
 };
 const d = (data: BCPrintFields | null, key: string, withTime = false, withSeconds = false): string => date(raw(data, key), withTime, withSeconds);
+const time = (value: unknown): string => typeof value === 'string' ? value.match(/[T\s](\d{2}:\d{2})/)?.[1] ?? '' : '';
 const approval = (rows: BCPrintApproval[], step: number): BCPrintApproval | undefined => rows.find((row) => row.step === step);
 
 function Check({ checked, children }: { checked: boolean; children: React.ReactNode }) {
@@ -40,16 +41,81 @@ function PsPrelimField({ label, value }: { label: string; value?: React.ReactNod
 function Sign({ label, name, dateText }: { label: string; name?: string; dateText?: string }) {
   return <div className="bc-form-sign"><Field label="ลงชื่อ" value={name} /><span>{label}</span><Field label="วันที่" value={dateText} /></div>;
 }
+function CRSign({ label }: { label: string }) {
+  return <div className="bc-form-cr-sign">
+    <Field label="ลงชื่อ" /><span>{label}</span>
+    <Field label="ตำแหน่ง" />
+    <Field label="วันที่" />
+  </div>;
+}
+function SQASign({ label, name, dateText, position }: { label: string; name: string; dateText: string; position?: string }) {
+  return <div className="bc-form-sqa-signature">
+    <div><Field label="ลงชื่อ" value={name} /><span>{label}</span></div>
+    {position !== undefined && <Field label="ตำแหน่ง" value={position} />}
+    <Field label="วันที่" value={dateText} />
+  </div>;
+}
+function SQARuledField({ label, value, lines, className = '' }: { label: string; value: string; lines: number; className?: string }) {
+  return <div className={`bc-form-sqa-ruled-field ${className}`}>
+    <span>{label}</span>
+    <div className="bc-form-sqa-ruled-lines" style={{ minHeight: `${lines * 4.5}mm` }}>
+      <span>{value}</span>
+      {Array.from({ length: lines }, (_, index) => <i key={index} aria-hidden="true" style={{ top: `${(index + 1) * 4.5}mm` }} />)}
+    </div>
+  </div>;
+}
 function Head({ form, title, subtitle, assetType }: { form: BCPrintForm; title: string; subtitle?: string; assetType?: string }) {
   const h = form.header;
-  return <header className="bc-form-head">
+  return <header className={`bc-form-head${form.module === 'AF' ? ' bc-form-head-af' : ''}`}>
     <div className="bc-form-logo"><img src={logo} alt="Big Crane" /></div>
     <div className="bc-form-head-title"><strong>บริษัท บิ๊กเครน แอนด์ อิควิปเม้นต์ เร้นทัลส์ จำกัด</strong><span>{title}</span>{subtitle && <small>{subtitle}</small>}</div>
     <div className={`bc-form-head-meta${assetType !== undefined ? ' bc-form-head-meta-asset' : ''}`}>
-      <div className="bc-form-head-meta-details"><div>เลขที่ใบรับเรื่อง : <b>{form.docNo}</b></div><div>วันที่ : {d(h, 'docDate', true, form.module === 'IM')}</div></div>
+      <div className="bc-form-head-meta-details"><div>เลขที่ใบรับเรื่อง : <b>{form.docNo}</b></div>{form.module === 'AF'
+        ? <div className="bc-form-af-head-date-time"><Field label="วันที่ :" value={d(h, 'docDate')} /><Field label="เวลา :" value={time(raw(h, 'docDate'))} /></div>
+        : <div>วันที่ : {d(h, 'docDate', true, form.module === 'IM')}</div>}</div>
       {assetType !== undefined && <div className="bc-form-head-asset-types"><Check checked={assetType.includes('ทรัพย์สิน')}>ทรัพย์สิน</Check><Check checked={assetType.includes('ค่าใช้จ่าย')}>ค่าใช้จ่าย</Check></div>}
     </div>
   </header>;
+}
+function DocumentHead({ form, title }: { form: BCPrintForm; title: string }) {
+  return <header className={`bc-form-head bc-form-head-${form.module.toLowerCase()}`}>
+    <div className="bc-form-logo"><img src={logo} alt="Big Crane" /></div>
+    <div className="bc-form-head-title">
+      <strong>บริษัท บิ๊กเครน แอนด์ อิควิปเม้นต์ เร้นทัลส์ จำกัด</strong>
+      <small>3/4-5 ม.9 ถ.บางนา-ตราด กม.18 ต.บางโฉลง อ.บางพลี จ.สมุทรปราการ 10540</small>
+      <span>{title}</span>
+    </div>
+    <div className="bc-form-document-head-meta">
+      <span>เลขที่เอกสาร</span><strong>{form.docNo}</strong>
+      <span>วันที่</span><span>เวลา</span>
+      <span>{d(form.header, 'docDate')}</span><span>{time(raw(form.header, 'docDate'))}</span>
+    </div>
+  </header>;
+}
+function SVHead({ form, title }: { form: BCPrintForm; title: string }) {
+  return <header className="bc-form-head bc-form-head-sv">
+    <div className="bc-form-logo"><img src={logo} alt="Big Crane" /></div>
+    <div className="bc-form-head-title">
+      <strong>บริษัท บิ๊กเครน แอนด์ อิควิปเม้นต์ เร้นทัลส์ จำกัด</strong>
+      <span>{title}</span>
+    </div>
+    <div className="bc-form-sv-head-meta">
+      <Field label="เลขที่ใบรับเรื่อง :" value={form.docNo} />
+      <div><Field label="วันที่" value={d(form.header, 'docDate')} /><Field label="เวลา" value={time(raw(form.header, 'docDate'))} /></div>
+    </div>
+  </header>;
+}
+function SVSign({ caption, role, name, signedAt }: { caption: string; role: string; name: string; signedAt: unknown }) {
+  return <div className="bc-form-sv-signature">
+    <div className="bc-form-sv-sign-name"><Field label={caption} value={name} /><span>{role}</span></div>
+    <div className="bc-form-sv-sign-date"><Field label="วันที่" value={date(signedAt)} /><Field label="เวลา" value={time(signedAt)} /></div>
+  </div>;
+}
+function HRSign({ label, name, dateText }: { label: string; name: string; dateText: string }) {
+  return <div className="bc-form-hr-signature">
+    <div><Field label="ลงชื่อ" value={name} /><span>{label}</span></div>
+    <Dotted>{dateText}</Dotted>
+  </div>;
 }
 function Section({ title, children, className = '' }: { title: string; children: React.ReactNode; className?: string }) {
   return <section className={`bc-form-section ${className}`}><h2>{title}</h2>{children}</section>;
@@ -59,6 +125,18 @@ function LineTable({ form, minRows = 1, tall = false }: { form: BCPrintForm; min
   return <table className={`bc-form-lines${tall ? ' bc-form-lines-tall' : ''}`}><thead><tr><th>ลำดับ</th><th>รายการ</th><th>จำนวน</th><th>หน่วย</th><th>เหตุผลการขอ</th></tr></thead><tbody>
     {rows.map((line, index) => <tr key={txt(line, 'recNo') || `blank-${index}`}><td>{index + 1}</td><td>{txt(line, 'item')}</td><td>{txt(line, 'qty')}</td><td>{txt(line, 'unit')}</td><td>{txt(line, 'remark')}</td></tr>)}
   </tbody></table>;
+}
+function AFLineTable({ form }: { form: BCPrintForm }) {
+  const rows = form.lines.length ? form.lines : [null];
+  return <table className="bc-form-lines bc-form-af-lines"><colgroup><col className="bc-form-af-col-item" /><col className="bc-form-af-col-qty" /><col className="bc-form-af-col-unit" /><col className="bc-form-af-col-reason" /></colgroup><thead><tr><th>รายการ</th><th>จำนวน</th><th>หน่วย</th><th>เหตุผลการขอ</th></tr></thead><tbody>
+    {rows.map((line, index) => <tr key={txt(line, 'recNo') || `blank-${index}`}><td>{txt(line, 'item')}</td><td>{txt(line, 'qty')}</td><td>{txt(line, 'unit')}</td><td>{txt(line, 'remark')}</td></tr>)}
+  </tbody></table>;
+}
+function AFClosingSign({ name, dateText, role, dateRole }: { name?: string; dateText?: string; role: string; dateRole?: string }) {
+  return <div className="bc-form-af-closing-sign">
+    <div><Field label="ลงชื่อ" value={name} /><span>{role}</span></div>
+    <div><Field label="วันที่" value={dateText} /><span>{dateRole}</span></div>
+  </div>;
 }
 function Footer({ code, revision }: { code: string; revision: string }) {
   return <footer className="bc-form-footer"><span>{code}</span><span>{revision}</span></footer>;
@@ -203,10 +281,22 @@ function PsAttachmentRows({ attachment }: { attachment: BCPrintFields | null }) 
     </tr>;
   })}</>;
 }
+function PsRequestSign({ name, role, dateText, underlineName = false }: { name?: string; role: string; dateText?: string; underlineName?: boolean }) {
+  return <div className="bc-form-ps-request-sign">
+    <span className="bc-form-ps-request-sign-line" />
+    <span className={underlineName ? 'bc-form-ps-request-sign-name-underline' : undefined}>({name || '....................'})</span>
+    <span>{role}</span>
+    <span className="bc-form-ps-request-sign-date">วันที่ <Dotted>{dateText}</Dotted></span>
+  </div>;
+}
 function PSForm({ form }: { form: BCPrintForm }) {
   const h = form.header;
   const a = form.attachment;
   const first = approval(form.approvals, 1);
+  const workResults = txt(h, 'workResults');
+  const refPR = txt(h, 'refPR');
+  const refPO = txt(h, 'refPO');
+  const otherRemark = txt(h, 'otherRemark');
   return <>
     <Head form={form} title="ใบขอราคาเกี่ยวกับลูกค้าภายนอก ลูกค้าภายในและภายในแผนก" />
     <div className="bc-form-type-strip"><Check checked={txt(h, 'type').includes('ภายนอก')}>ลูกค้าภายนอก</Check><Check checked={txt(h, 'type').includes('ภายใน')}>ลูกค้าภายใน</Check><Check checked={txt(h, 'type').includes('แผนก')}>ภายในแผนก</Check></div>
@@ -235,9 +325,31 @@ function PSForm({ form }: { form: BCPrintForm }) {
       <PsAttachmentRows attachment={a} />
     </tbody></table>
     <div className="bc-form-ps-main-lines"><LineTable form={form} minRows={Math.max(1, form.lines.length)} /></div>
-    <div className="bc-form-ps-people"><div><Field label="วันที่ต้องการใช้งาน" value={d(h, 'planDate')} /><Field label="วันที่ต้องการราคา" value={d(h, 'priceDate')} /></div><div className="bc-form-sign-grid"><Sign label="ผู้ขอราคา PS" name={txt(h, 'requestBy')} dateText={d(h, 'requestDate')} /><Sign label="ผู้จัดการฝ่าย PS" name={first?.approveBy ?? ''} dateText={date(first?.approveDate)} /></div></div>
-    <Section title="ส่วนที่ 2. สำหรับหน่วยงาน PS" className="bc-form-ps-service"><strong>ดำเนินการ :</strong><div className="bc-form-field-grid"><Field label="สถานะ" value={txt(h, 'action')} /><Field label="Reference PR" value={txt(h, 'refPR')} /><Field label="Reference PO" value={txt(h, 'refPO')} /><Field label="Supplier Name" value={txt(h, 'suplier')} /><Field label="Status Report" value={txt(h, 'rp_Status')} /></div><div className="bc-form-sign-grid"><Sign label="ผู้รับเรื่องเจ้าหน้าที่ PS" name={txt(h, 'serviceBy')} dateText={d(h, 'serviceDate')} /><Sign label="ผู้ตรวจสอบ PS Mgr." /></div></Section>
-    <Section title="ผลการดำเนินงาน :" className="bc-form-ps-result"><div className="bc-form-check-grid"><Check checked={txt(h, 'workResults').includes('เรียบร้อย') && !txt(h, 'workResults').includes('ยัง')}>จัดการเรียบร้อย</Check><Check checked={txt(h, 'workResults').includes('ยังไม่')}>ยังไม่เรียบร้อย</Check></div><Field label="หมายเหตุ" value={txt(h, 'wrDetail', 'wRDetail', 'remark')} /><div className="bc-form-sign-grid"><Sign label="ผู้แจ้งรับทราบ" /><Sign label="ผู้ตรวจสอบ PS Mgr." /></div></Section>
+    <div className="bc-form-ps-people">
+      <div className="bc-form-ps-people-dates"><Field label="วันที่ต้องการใช้งาน" value={d(h, 'planDate')} /><Field label="วันที่ต้องการราคา" value={d(h, 'priceDate')} /></div>
+      <div className="bc-form-ps-people-signatures"><PsRequestSign name={txt(h, 'requestBy')} role="ผู้ขอราคาPS" dateText={d(h, 'requestDate')} underlineName /><PsRequestSign name={first?.approveBy ?? ''} role="ผู้จัดการฝ่ายPS" dateText={date(first?.approveDate)} /></div>
+    </div>
+    <Section title="ส่วนที่ 2. สำหรับหน่วยงาน PS" className="bc-form-ps-service">
+      <strong>ดำเนินการ :</strong>
+      <div className="bc-form-ps-service-fields">
+        <div className="bc-form-ps-service-column">
+          <Check checked={Boolean(workResults)}>{workResults || '\u00a0'}</Check>
+          <Check checked={Boolean(refPR)}>Reference PR <Dotted>{refPR}</Dotted></Check>
+          <Check checked={Boolean(otherRemark)}>อื่น ๆ ระบุหมายเหตุ <Dotted>{otherRemark}</Dotted></Check>
+        </div>
+        <div className="bc-form-ps-service-column">
+          <Field label="Status Report" value={txt(h, 'rp_Status')} />
+          <Check checked={Boolean(refPO)}>Reference PO <Dotted>{refPO}</Dotted></Check>
+          <Field label="Supplier Name" value={txt(h, 'suplier')} />
+        </div>
+      </div>
+      <div className="bc-form-sign-grid"><Sign label="ผู้รับเรื่องเจ้าหน้าที่ PS" name={txt(h, 'serviceBy')} dateText={d(h, 'serviceDate')} /><Sign label="ผู้ตรวจสอบ PS Mgr." /></div>
+    </Section>
+    <section className="bc-form-section bc-form-ps-result">
+      <div className="bc-form-ps-result-head"><strong>ผลการดำเนินงาน :</strong><Check checked={workResults.includes('เรียบร้อย') && !workResults.includes('ยัง')}>จัดการเรียบร้อย</Check><Check checked={workResults.includes('ยังไม่')}>ยังไม่เรียบร้อย</Check></div>
+      <div className="bc-form-ps-result-remark"><span>หมายเหตุ</span><div>{txt(h, 'wrDetail', 'wRDetail', 'remark')}</div></div>
+      <div className="bc-form-sign-grid"><Sign label="ผู้แจ้งรับทราบ" /><Sign label="ผู้ตรวจสอบ PS Mgr." /></div>
+    </section>
     <Footer code="(P)FM-BC/PS-001/08" revision="REV.02 (04/12/67)" />
   </>;
 }
@@ -246,20 +358,50 @@ const AF_OPTIONS = [
   ['chkProduct', 'ขอให้ผลิต'], ['chkSaveAcc', 'ขอวิธีปฏิบัติการในการบันทึกเพื่อบัญชี'],
   ['chkRule', 'ขอข้อกำหนด/กติกา'], ['chkTracking', 'ขอติดตามงาน'],
   ['chkComplain', 'ข้อร้องเรียน'], ['chkDevelop', 'ขอส่งมอบงานพัฒนาและอบรม'],
-  ['chkOther', 'อื่น ๆ'],
+  ['chkOther', 'อื่นๆ'],
 ] as const;
 function AFForm({ form }: { form: BCPrintForm }) {
   const h = form.header;
   return <>
     <Head form={form} title="ใบรับเรื่อง AF" />
-    <div className="bc-form-short-strip"><Field label="ชื่อผู้เปิดเรื่อง" value={txt(h, 'requestBy')} /><Field label="แผนก" value={form.department ?? ''} /></div>
-    <Section title="ส่วนที่ 1.ส่วนเปิดเรื่อง" className="bc-form-af-request"><div className="bc-form-check-grid">{AF_OPTIONS.map(([key, label]) => <Check key={key} checked={yes(h, key)}>{label}{key === 'chkOther' ? ` ${txt(h, 'other')}` : ''}</Check>)}</div></Section>
-    <LineTable form={form} minRows={1} tall />
-    <div className="bc-form-short-strip"><Field label="วันที่ต้องการใช้งาน" value={d(h, 'plantDate')} /></div>
-    <Section title="ส่วนผู้ร้องขอ" className="bc-form-af-signatures"><div className="bc-form-sign-grid bc-form-sign-grid-three"><Sign label="ผู้ร้องขอ" name={txt(h, 'req1')} dateText={d(h, 'reqDate1')} /><Sign label="ผู้จัดการผู้ร้องขอ" name={txt(h, 'mgrReq1')} dateText={d(h, 'mgrReqDate1')} /><Sign label="ผู้บริหารผู้ร้องขอ" /></div></Section>
-    <Section title="ส่วน AF รับทราบการร้องขอ" className="bc-form-af-signatures"><div className="bc-form-sign-grid"><Sign label="ผู้จัดการฝ่าย AF" name={txt(h, 'aFMgr1')} dateText={d(h, 'aFMgrDate1')} /><Sign label="ผู้บริหารฝ่าย AF" /></div></Section>
-    <Section title="ส่วนที่ 2. ส่วนเปิดเรื่อง" className="bc-form-af-detail"><Field label="รายละเอียดการเปิด" value={txt(h, 'action2')} /><Field label="เอกสารแนบการเปิด" value={txt(h, 'attach2')} /><Field label="วันที่ปิดเรื่อง" value={d(h, 'closeJobDate2')} /><div className="bc-form-sign-grid bc-form-sign-grid-three"><Sign label="ผู้เปิดเรื่องฝ่าย AF" name={txt(h, 'closeAF2')} dateText={d(h, 'closeAFDate2')} /><Sign label="ผู้ตรวจสอบการปิดเรื่อง" name={txt(h, 'closeAFMgr2')} dateText={d(h, 'closeAFMgrDate2')} /><Sign label="ผู้รับรองการปิดเรื่อง" /></div></Section>
-    <Section title="ส่วนระบบคุณภาพ" className="bc-form-af-quality"><div className="bc-form-check-grid"><Check checked={yes(h, 'chkQSDAR')}>มี Ref. DAR No. {txt(h, 'qSDAR')}</Check><Check checked={yes(h, 'chkQSNothing')}>ไม่มี</Check><Check checked={yes(h, 'chkQSDoc')}>จัดทำ/แก้ไข WI</Check><Check checked={yes(h, 'chkQSDocFlow')}>จัดทำ/แก้ไข Flow การทำงาน</Check><Check checked={yes(h, 'chkQSManuel')}>จัดทำ/แก้ไข คู่มือการใช้โปรแกรม</Check></div><Field label="คำอธิบายเพิ่มเติม" value={txt(h, 'qSRemark')} /><div className="bc-form-sign-grid"><Sign label="QMR รับทราบ" /><Sign label="ผู้บริหารดูแลด้านคุณภาพ" /></div></Section>
+    <div className="bc-form-short-strip bc-form-af-request-meta"><Field label="ชื่อผู้เปิดเรื่อง" value={txt(h, 'requestBy')} /><Field label="แผนก" value={form.department ?? ''} /></div>
+    <Section title="ส่วนที่ 1.ส่วนเปิดเรื่อง" className="bc-form-af-request"><div className="bc-form-check-grid">{AF_OPTIONS.map(([key, label]) => <Check key={key} checked={yes(h, key)}>{label}{key === 'chkOther' && <Dotted>{txt(h, 'other')}</Dotted>}</Check>)}</div></Section>
+    <AFLineTable form={form} />
+    <div className="bc-form-short-strip bc-form-af-plan-date"><Field label="วันที่ต้องการใช้งาน" value={d(h, 'plantDate')} /></div>
+    <Section title="ส่วนผู้ร้องขอ" className="bc-form-af-signatures"><div className="bc-form-sign-grid bc-form-sign-grid-three bc-form-af-sign-grid-three"><Sign label="ผู้ร้องขอ" name={txt(h, 'req1')} dateText={d(h, 'reqDate1')} /><Sign label="ผู้จัดการผู้ร้องขอ" name={txt(h, 'mgrReq1')} dateText={d(h, 'mgrReqDate1')} /><Sign label="ผู้บริหารผู้ร้องขอ" /></div></Section>
+    <Section title="ส่วน AF รับทราบการร้องขอ" className="bc-form-af-signatures"><div className="bc-form-sign-grid"><Sign label="ผู้จัดการฝ่าย AF" name={txt(h, 'afMgr1')} dateText={d(h, 'afMgrDate1')} /><Sign label="ผู้บริหารฝ่าย AF" /></div></Section>
+    <Section title="ส่วนที่ 2. ส่วนเปิดเรื่อง" className="bc-form-af-detail">
+      <div className="bc-form-af-ruled-field"><span>รายละเอียดการปิด</span><div>{txt(h, 'action2')}</div></div>
+      <div className="bc-form-af-ruled-field"><span>เอกสารแนบการปิด</span><div>{txt(h, 'attach2')}</div></div>
+      <div className="bc-form-af-close-date"><Field label="วันที่ปิดเรื่อง" value={d(h, 'closeJobDate2')} /></div>
+      <div className="bc-form-af-closing-signatures">
+        <AFClosingSign name={txt(h, 'closeAF2')} dateText={d(h, 'closeAFDate2')} role="ผู้เปิดเรื่องฝ่าย AF" />
+        <AFClosingSign name={txt(h, 'closeAFMgr2')} dateText={d(h, 'closeAFMgrDate2')} role="ผู้ตรวจสอบการปิดเรื่อง" dateRole="ผู้จัดการฝ่าย AF" />
+        <AFClosingSign role="ผู้รับรองการปิดเรื่อง" dateRole="ผู้บริหารฝ่าย AF" />
+      </div>
+    </Section>
+    <Section title="ผู้ร้องขอที่ได้รับงาน" className="bc-form-af-received">
+      <div className="bc-form-af-received-signatures">
+        <AFClosingSign role="ผู้ตรวจสอบและรับทราบ" dateRole="ผู้จัดการผู้ร้องขอ" />
+        <AFClosingSign role="ผู้เห็นชอบการรับงาน" dateRole="ผู้บริหารผู้ร้องขอ" />
+      </div>
+    </Section>
+    <Section title="ส่วนระบบคุณภาพ" className="bc-form-af-quality">
+      <div className="bc-form-af-quality-options">
+        <strong>ผลกระทบด้านระบบคุณภาพ</strong>
+        <Check checked={yes(h, 'chkQSDAR')}><span className="bc-form-af-quality-dar">มี Ref. DAR No. : <Dotted>{txt(h, 'qSDAR')}</Dotted></span></Check>
+        <Check checked={yes(h, 'chkQSNothing')}>ไม่มี</Check>
+        <strong>ระบบเอกสาร</strong>
+        <Check checked={yes(h, 'chkQSDoc')}>จัดทำ/แก้ไข WI</Check>
+        <Check checked={yes(h, 'chkQSDocFlow')}>จัดทำ/แก้ไข Flow การทำงาน</Check>
+        <Check checked={yes(h, 'chkQSManuel')}>จัดทำ/แก้ไข คู่มือการใช้โปรแกรม</Check>
+      </div>
+      <div className="bc-form-af-ruled-field bc-form-af-quality-description"><span>คำอธิบายเพิ่มเติม</span><div>{txt(h, 'qSRemark')}</div></div>
+      <div className="bc-form-af-quality-signatures">
+        <AFClosingSign role="QMR รับทราบ" />
+        <AFClosingSign role="รับทราบ" dateRole="ผู้บริหารดูแลด้านคุณภาพ" />
+      </div>
+    </Section>
     <Section title="ส่วน IT" className="bc-form-af-it"><div className="bc-form-field-grid"><Field label="ผลกระทบด้านรายงาน No." value={txt(h, 'reportIT')} /><Field label="ผลกระทบด้าน AX No." value={txt(h, 'aXIT')} /></div><div className="bc-form-sign-grid"><Sign label="IT รับทราบ" /><Sign label="IT Mgr." /></div></Section>
     <Footer code="(P)FM-BC/AF-002/13" revision="REV.:01 (12/05/65)" />
   </>;
@@ -272,53 +414,237 @@ function HRForm({ form }: { form: BCPrintForm }) {
   const selected = txt(h, 'requestType');
   const first = approval(form.approvals, 1);
   return <>
-    <Head form={form} title="ใบรับเรื่องบุคคล" />
-    <div className="bc-form-hr-meta"><Field label="เลขที่" value={form.docNo} /><Field label="วันที่" value={d(h, 'docDate')} /><Field label="ชื่อ - สกุล" value={txt(h, 'requestBy')} /><Field label="ตำแหน่ง" value={txt(h, 'position')} /><Field label="สังกัด" value={form.department ?? ''} /></div>
-    <div className="bc-form-hr-categories"><div><strong>ส่วนงาน : สวัสดิการ</strong>{HR_WELFARE.map((label) => <Check key={label} checked={selected === label}>{label}</Check>)}</div><div><strong>ส่วนงาน : Payroll</strong>{HR_PAYROLL.map((label) => <Check key={label} checked={selected === label}>{label}</Check>)}</div></div>
-    <Section title="เรื่องที่แจ้ง" className="bc-form-hr-detail"><div>{txt(h, 'requestDetail')}</div></Section>
-    <div className="bc-form-sign-grid bc-form-hr-request-sign"><Sign label="ผู้ร้องขอ" name={txt(h, 'requestBy')} dateText={d(h, 'requestDate')} /><Sign label="ผู้บังคับบัญชาต้นสังกัด" name={first?.approveBy ?? ''} dateText={date(first?.approveDate)} /></div>
-    <Section title="สำหรับฝ่ายทรัพยากรมนุษย์" className="bc-form-hr-service"><div className="bc-form-sign-grid"><Sign label="ผู้รับเรื่อง" name={txt(h, 'receiptBy')} dateText={d(h, 'receiptDate')} /><Sign label="ผช./ผจก ฝ่ายทรัพยากรมนุษย์" name={txt(h, 'inspectorBy')} dateText={d(h, 'inspectorDate')} /></div><strong>ผลการดำเนินงาน :</strong><Field label="การดำเนินการ" value={txt(h, 'action')} /><div className="bc-form-sign-grid"><Sign label="ผู้ดำเนินการ" name={txt(h, 'serviceBy')} dateText={d(h, 'serviceDate')} /><Sign label="ผู้รับเอกสาร" name={txt(h, 'receiptDocBy')} dateText={d(h, 'receiptDocDate')} /></div></Section>
-    <Section title="นโยบาย :" className="bc-form-hr-policy"><p>1. ดำเนินการด้านเอกสาร โดยมีเงื่อนไขดังนี้</p><p>1.1 สแกนลายนิ้วมือ ดำเนินการภายใน 1 วันทำการ</p><p>1.2 สวัสดิการช่วยเหลืองานศพ สวัสดิการเยี่ยมไข้ และ ER อื่นๆ ดำเนินการภายใน 3 วันทำการ</p><p>1.3 ทบทวนการคิดเงินเดือน เงินประกัน หนังสือรับรองเงินเดือน รับรองการทำงาน และ PR อื่นๆ ดำเนินการภายใน 3 วันทำการ</p><p>1.4 ใบเตือน ดำเนินการภายใน 7 วันทำการ</p><p>2. พนักงานต้องรับเอกสารด้วยตนเอง</p><p>3. กรณีไม่มาติดต่อรับเอกสารภายใน 30 วัน ทางฝ่าย HR จะดำเนินการทำลายเอกสารทันที</p></Section>
+    <header className="bc-form-head-hr">
+      <div className="bc-form-logo"><img src={logo} alt="Big Crane" /></div>
+      <div className="bc-form-head-title"><strong>บริษัท บิ๊กเครน แอนด์ อิควิปเม้นต์ เร้นทัลส์ จำกัด</strong><span>ใบรับเรื่องบุคคล</span></div>
+    </header>
+    <div className="bc-form-hr-document-meta"><Field label="เลขที่" value={form.docNo} /><Field label="วันที่" value={d(h, 'docDate')} /></div>
+    <section className="bc-form-hr-employee">
+      <h2>สำหรับพนักงาน</h2>
+      <div className="bc-form-hr-meta">
+        <Field label="ชื่อ - สกุล" value={txt(h, 'requestBy')} />
+        <Field label="ตำแหน่ง" value={txt(h, 'position')} />
+        <Field label="สังกัด" value={form.department ?? ''} />
+      </div>
+      <div className="bc-form-hr-categories">
+        <div>
+          <div className="bc-form-hr-category-heading"><u>ส่วนงาน</u> : สวัสดิการ</div>
+          {HR_WELFARE.map((label) => <Check key={label} checked={selected === label || selected === label.replace(/\s+\(\d+\)$/, '')}>{label}{label === 'ER อื่นๆ' && <Dotted />}</Check>)}
+        </div>
+        <div>
+          <div className="bc-form-hr-category-heading"><u>ส่วนงาน</u> : Payroll</div>
+          {HR_PAYROLL.map((label) => <Check key={label} checked={selected === label}>{label}{label === 'PR อื่นๆ' && <Dotted />}</Check>)}
+        </div>
+      </div>
+      <Section title="เรื่องที่แจ้ง" className="bc-form-hr-detail"><div>{txt(h, 'requestDetail')}</div></Section>
+    </section>
+    <div className="bc-form-hr-request-sign">
+      <HRSign label="ผู้ร้องขอ" name={txt(h, 'requestBy')} dateText={date(raw(h, 'reqDate', 'requestDate'))} />
+      <HRSign label="ผู้บังคับบัญชาต้นสังกัด" name={first?.approveBy ?? ''} dateText={date(first?.approveDate)} />
+    </div>
+    <Section title="สำหรับฝ่ายทรัพยากรมนุษย์" className="bc-form-hr-service">
+      <div className="bc-form-hr-service-signatures">
+        <HRSign label="ผู้รับเรื่อง" name={txt(h, 'receiptBy')} dateText={d(h, 'receiptDate')} />
+        <HRSign label="ผช./ผจก ฝ่ายทรัพยากรมนุษย์" name={txt(h, 'receipt_InspectorBy')} dateText={d(h, 'receipt_InspectorDate')} />
+      </div>
+      <h3>ผลการดำเนินงาน :</h3>
+      <div className="bc-form-hr-service-signatures">
+        <HRSign label="ผู้ดำเนินการ" name={txt(h, 'serviceBy')} dateText={d(h, 'serviceDate')} />
+        <HRSign label="ผู้รับเอกสาร" name={txt(h, 'receiptDocBy')} dateText={d(h, 'receiptDocDate')} />
+      </div>
+    </Section>
+    <Section title="นโยบาย :" className="bc-form-hr-policy">
+      <p>1. ดำเนินการด้านเอกสาร โดยมีเงื่อนไขดังนี้</p>
+      <p className="bc-form-hr-policy-sub">1.1 สแกนลายนิ้วมือ ดำเนินการภายใน 1 วันทำการ</p>
+      <p className="bc-form-hr-policy-sub">1.2 สวัสดิการช่วยเหลืองานศพ, สวัสดิการเยี่ยมไข้, ER อื่นๆ ดำเนินการภายใน 3 วันทำการ</p>
+      <p className="bc-form-hr-policy-sub">1.3 ทบทวนการคิดเงินเดือน, เงินประกัน, หนังสือรับรองเงินเดือน, รับรองการทำงาน, PR อื่นๆ ดำเนินการภายใน 3 วัน</p>
+      <p className="bc-form-hr-policy-sub">1.4 ใบเตือน ดำเนินการภายใน 7 วันทำการ</p>
+      <p>2. พนักงานต้องรับเอกสารด้วยตัวเอง</p>
+      <p>3. กรณีพนักงานไม่ติดต่อรับเอกสารหรือไม่มีการติดต่อภายใน 30 วัน ทางฝ่าย HR จะดำเนินการทำลายเอกสารทันที</p>
+    </Section>
     <Footer code="FM-BC/HR-005/12" revision="REV.:07 (14/09/63)" />
   </>;
 }
 
 function CRForm({ form }: { form: BCPrintForm }) {
   const h = form.header;
-  const first = approval(form.approvals, 1);
+  const printedAt = new Date();
   return <>
-    <Head form={form} title="ใบรับเรื่อง CR" subtitle="3/4-5 ม.9 ถ.บางนา-ตราด กม.18 ต.บางโฉลง อ.บางพลี จ.สมุทรปราการ 10540" />
-    <Section title="ส่วนที่ 1: รายละเอียดแจ้งเรื่อง" className="bc-form-cr-request"><div className="bc-form-check-grid"><Check checked={txt(h, 'subDepartid').includes('HV')}>HV</Check><Check checked={txt(h, 'subDepartid').includes('FL')}>FL</Check></div><div className="bc-form-field-grid"><Field label="ชื่อ" value={txt(h, 'requestBy')} /><Field label="ฝ่าย/แผนก" value={form.department ?? ''} /><Field label="วันที่ต้องการ" value={d(h, 'requestDate')} /><Field label="ประเภทที่แจ้ง" value={txt(h, 'requestType')} /><Field label="รายละเอียดที่แจ้ง" value={txt(h, 'requestSubType', 'requestSubOther')} /></div><div className="bc-form-ruled bc-form-cr-detail"><b>รายละเอียด</b> {txt(h, 'requestDetail')}</div><div className="bc-form-sign-grid"><Sign label="ผู้แจ้ง" name={txt(h, 'reqBy', 'requestBy')} dateText={d(h, 'reqDate')} /><Sign label="ผู้อนุมัติ" name={first?.approveBy ?? ''} dateText={date(first?.approveDate)} /></div></Section>
-    <Section title="ส่วนที่ 2: สำหรับเจ้าหน้าที่ CR" className="bc-form-cr-service"><div className="bc-form-field-grid"><Field label="ผู้รับเรื่อง" value={txt(h, 'receiveBy')} /><Field label="มอบหมายผู้ดำเนินการ" value={txt(h, 'requestService')} /><Field label="วันที่รับเรื่อง" value={d(h, 'receiveDate')} /><Field label="มาตรฐานการดำเนินการ" value={d(h, 'serviceStdDate')} /></div><div className="bc-form-ruled"><b>การดำเนินการ :</b> {txt(h, 'serviceDetail')}</div><div className="bc-form-sign-grid"><Sign label="ผู้ดำเนินการ" name={txt(h, 'serviceBy')} dateText={d(h, 'serviceDate')} /><Sign label="ผู้ตรวจสอบ" /></div></Section>
-    <Section title="ส่วนที่ 3: ข้อเสนอแนะ" className="bc-form-cr-close"><div className="bc-form-check-grid"><Check checked={yes(h, 'actionClose')}>ปิดจบรับแจ้งเรื่อง</Check><Check checked={yes(h, 'actionEdit')}>ผู้แจ้งขอแก้ไขเพิ่มเติม</Check><Check checked={yes(h, 'actionOther')}>อื่น ๆ</Check></div><div className="bc-form-ruled"><b>ข้อเสนอแนะ</b> {txt(h, 'actionDetail')}</div><Sign label="ผู้แจ้ง" name={txt(h, 'closeBy')} dateText={d(h, 'closeDate')} /></Section>
-    <Footer code="FM-BC/CR-001/01" revision="Rev.00 (01/09/63)" />
+    <DocumentHead form={form} title="ใบรับเรื่อง CR" />
+    <section className="bc-form-section bc-form-cr-request">
+      <div className="bc-form-cr-request-heading">
+        <h2>ส่วนที่ 1: รายละเอียดแจ้งเรื่อง</h2>
+        <Check checked={txt(h, 'subDepartid').includes('HV')}>HV</Check>
+        <Check checked={txt(h, 'subDepartid').includes('FL')}>FL</Check>
+      </div>
+      <div className="bc-form-cr-request-meta">
+        <div>ชื่อ : <span>{txt(h, 'requestBy')}</span></div>
+        <div>ฝ่าย/แผนก : <span>{form.department ?? ''}</span></div>
+        <div>วันที่ต้องการ : <span>{d(h, 'requestDate')}</span></div>
+      </div>
+      <div className="bc-form-cr-request-types">
+        <div>ประเภทที่แจ้ง : <span>{txt(h, 'requestType')}</span></div>
+        <div>รายละเอียดที่แจ้ง : <span>{txt(h, 'requestSubType', 'requestSubOther')}</span></div>
+      </div>
+      <div className="bc-form-cr-detail">รายละเอียด : {txt(h, 'requestDetail')}</div>
+      <div className="bc-form-cr-signatures">
+        <CRSign label="ผู้แจ้ง" />
+        <CRSign label="ผู้อนุมัติ" />
+      </div>
+    </section>
+    <Section title="ส่วนที่ 2: สำหรับเจ้าหน้าที่ CR" className="bc-form-cr-service">
+      <div className="bc-form-cr-service-meta">
+        <div>ผู้รับเรื่อง : <span>{txt(h, 'receiveBy')}</span></div>
+        <div>มอบหมายผู้ดำเนินการ : <span>{txt(h, 'requestService')}</span></div>
+        <div>วันที่รับเรื่อง : <span>{d(h, 'receiveDate')}</span></div>
+        <div>มาตรฐานการดำเนินการ : <span>{d(h, 'serviceStdDate')}</span></div>
+      </div>
+      <div className="bc-form-cr-service-detail">การดำเนินการ : {txt(h, 'serviceDetail')}</div>
+      <div className="bc-form-cr-signatures">
+        <CRSign label="ผู้ดำเนินการ" />
+        <CRSign label="ผู้ตรวจสอบ" />
+      </div>
+    </Section>
+    <Section title="ส่วนที่ 3: ข้อเสนอแนะ" className="bc-form-cr-close">
+      <div className="bc-form-cr-result">
+        <span>ผลดำเนินการ</span>
+        <Check checked={yes(h, 'actionClose')}>ปิดจบรับแจ้งเรื่อง</Check>
+        <Check checked={yes(h, 'actionEdit')}>ผู้แจ้งขอแก้ไขเพิ่มเติม</Check>
+        <Check checked={yes(h, 'actionOther')}><span className="bc-form-cr-other">อื่นๆ <Dotted /></span></Check>
+      </div>
+      <div className="bc-form-cr-suggestion-label">ข้อเสนอแนะ</div>
+      <div className="bc-form-cr-suggestion-lines">
+        <span>{txt(h, 'actionDetail')}</span>
+        <i aria-hidden="true" /><i aria-hidden="true" /><i aria-hidden="true" />
+      </div>
+      <div className="bc-form-cr-close-signature">
+        <CRSign label="ผู้แจ้ง" />
+      </div>
+    </Section>
+    <footer className="bc-form-footer bc-form-cr-footer">
+      <span>FM-BC/CR-001/01</span>
+      <span className="bc-form-cr-print-stamp">
+        <span>วันที่พิมพ์ {printedAt.toLocaleDateString('en-GB')}</span>
+        <span>เวลาที่พิมพ์ {printedAt.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', hour12: false })}</span>
+      </span>
+      <span>Rev.00 (01/09/63)</span>
+    </footer>
   </>;
 }
 
-const SV_REASONS = ['รถเสีย', 'ลูกค้า/ฝ่ายขาย ติดตามงานซ่อม', 'Operator ติดตามงานซ่อม', 'พนักงานขับรถ (พฤติกรรม)', 'ใบเปลี่ยนแปลงใบแจ้งหนี้ (กรณีรถเสีย)', 'อื่นๆ'];
+const SV_REASONS = ['รถเสีย', 'ลูกค้า/ฝ่ายขาย ติดตามงานซ่อม', 'Operator ติดตามงานซ่อม', 'พนักงานช่าง (พฤติกรรม)', 'ใบเปลี่ยนแปลงใบแจ้งหนี้ (กรณีรถเสีย)', 'อื่นๆ'];
 function SVForm({ form }: { form: BCPrintForm }) {
   const h = form.header;
-  const title = yes(h, 'typeHV') ? 'ใบรับเรื่องฝ่าย SV-HV' : 'ใบรับเรื่องฝ่าย SV-FL';
+  const svDepartment = yes(h, 'typeHV') ? 'SV-HV' : 'SV-FL';
+  const title = `ใบรับเรื่องฝ่าย ${svDepartment}`;
   return <>
-    <Head form={form} title={title} />
-    <Section title="ส่วนที่ 1.สำหรับผู้ร้องขอ" className="bc-form-sv-request"><div className="bc-form-check-grid"><Check checked={yes(h, 's1_Req_chkExternal')}>ลูกค้าภายนอก</Check><Check checked={yes(h, 's1_Req_chkInternal')}>หน่วยงานภายในองค์กรระบุ {form.internalDepartment ?? ''}</Check></div><div className="bc-form-radio-list">{SV_REASONS.map((label) => <span key={label}><i>{txt(h, 's1_Req_Request') === label ? '●' : ''}</i>{label}</span>)}</div><strong>สิ่งที่แนบมาด้วย</strong><div className="bc-form-check-grid"><Check checked={yes(h, 's1_Req_chkAttachDocCust')}>เอกสารจากลูกค้า</Check><Check checked={yes(h, 's1_Req_chkAttachPic')}>รูปถ่าย</Check><Check checked={yes(h, 's1_Req_chkAttachOther')}>อื่น ๆ {txt(h, 's1_Req_AttachOther')}</Check></div></Section>
-    <table className="bc-form-sv-lines"><thead><tr><th>ลำดับ</th><th>รายละเอียด</th><th>เบอร์รถ</th><th>วันที่ต้องการใช้งาน</th></tr></thead><tbody>{[...form.lines, ...Array.from({ length: Math.max(0, 4 - form.lines.length) }, () => null)].map((line, index) => <tr key={txt(line, 'recNo') || `blank-${index}`}><td>{txt(line, 's1_ReqLine_NO') || index + 1}</td><td>{txt(line, 's1_ReqLine_Details')}</td><td>{txt(line, 's1_ReqLine_CarId')}</td><td>{d(line, 's1_ReqLine_ReqDate')}</td></tr>)}</tbody></table>
-    <div className="bc-form-sign-grid bc-form-sv-request-sign"><Sign label="ผู้แจ้ง/ต้นสังกัด" name={txt(h, 'requestBy')} dateText={d(h, 'requestDate', true)} /><Sign label="ผู้จัดการฝ่ายต้นสังกัด" name={txt(h, 's1_Req_NameMgr')} dateText={d(h, 's1_Req_DateMgr', true)} /></div>
-    <Section title={`ส่วนที่ 2.สำหรับหน่วยงาน ${yes(h, 'typeHV') ? 'SV-HV' : 'SV-FL'} ดำเนินการแก้ไข`} className="bc-form-sv-service"><div className="bc-form-ruled"><b>ผลดำเนินการ :</b> {txt(h, 's2_SV_ServiceDetails')}</div><Field label="วันที่กำหนดเสร็จ" value={d(h, 's2_SV_DateComplete')} /><div className="bc-form-sign-grid"><Sign label="เจ้าหน้าที่ SV" name={txt(h, 's2_SV_Name')} dateText={d(h, 's2_SV_Date', true)} /><Sign label="ผู้จัดการฝ่าย SV" name={txt(h, 's2_SV_NameMgr')} dateText={d(h, 's2_SV_DateMgr', true)} /></div></Section>
-    <Section title="ส่วนที่ 3.สำหรับหน่วยงานผู้แจ้งเรื่องพิจารณา" className="bc-form-sv-review"><div className="bc-form-check-grid"><Check checked={yes(h, 's3_chkAccept')}>ยอมรับ</Check><Check checked={yes(h, 's3_chkDontAccept')}>ไม่ยอมรับ</Check></div><div className="bc-form-ruled">{txt(h, 's3_DontAcceptDetails')}</div><div className="bc-form-sign-grid"><Sign label="รับทราบ/ต้นสังกัด" name={txt(h, 's3_Name')} dateText={d(h, 's3_Date', true)} /><Sign label="ผู้จัดการฝ่ายต้นสังกัด" name={txt(h, 's3_NameMgr')} dateText={d(h, 's3_DateMgr', true)} /></div></Section>
-    <Section title="เงื่อนไข" className="bc-form-sv-terms"><p>1. กรณีแจ้งเรื่องรถเสีย หน่วยงาน SV ประสานงานภายใน 1 ชั่วโมง และแจ้งผลกลับผู้แจ้งเรื่องภายใน 3 ชั่วโมง</p><p>2. กรณีแจ้งเรื่องอื่น ๆ หน่วยงาน SV ประสานงานภายใน 3 วันนับจากวันที่ได้รับใบแจ้งเรื่อง</p></Section>
+    <SVHead form={form} title={title} />
+    <Section title="ส่วนที่ 1.สำหรับผู้ร้องขอ" className="bc-form-sv-request">
+      <div className="bc-form-sv-request-types">
+        <Check checked={yes(h, 's1_Req_chkExternal')}>ลูกค้าภายนอก</Check>
+        <Check checked={yes(h, 's1_Req_chkInternal')}><span className="bc-form-sv-check-value">หน่วยงานภายในองค์กรระบุ <Dotted>{form.internalDepartment ?? ''}</Dotted></span></Check>
+      </div>
+      <div className="bc-form-radio-list">{SV_REASONS.map((label) => <span key={label}>
+        <i>{txt(h, 's1_Req_Request') === label ? '✓' : ''}</i>
+        <span className="bc-form-sv-reason-label">{label}{label === 'อื่นๆ' && <Dotted>{txt(h, 's1_Req_Other')}</Dotted>}</span>
+      </span>)}</div>
+      <div className="bc-form-sv-attachment-label">สิ่งที่แนบมาด้วย</div>
+      <div className="bc-form-sv-attachments">
+        <Check checked={yes(h, 's1_Req_chkAttachDocCust')}>เอกสารจากลูกค้า</Check>
+        <Check checked={yes(h, 's1_Req_chkAttachPic')}>รูปถ่าย</Check>
+        <Check checked={yes(h, 's1_Req_chkAttachOther')}><span className="bc-form-sv-check-value">อื่นๆ <Dotted>{txt(h, 's1_Req_AttachOther')}</Dotted></span></Check>
+      </div>
+    </Section>
+    <table className="bc-form-sv-lines"><thead><tr><th>ลำดับ</th><th>รายละเอียด</th><th>เบอร์รถ</th><th>วันที่ต้องการใช้งาน</th></tr></thead><tbody>{[...form.lines, ...Array.from({ length: Math.max(0, 5 - form.lines.length) }, () => null)].map((line, index) => <tr key={txt(line, 'recNo') || `blank-${index}`}><td>{line ? txt(line, 's1_ReqLine_NO') || index + 1 : ''}</td><td>{txt(line, 's1_ReqLine_Details')}</td><td>{txt(line, 's1_ReqLine_CarId')}</td><td>{d(line, 's1_ReqLine_ReqDate')}</td></tr>)}</tbody></table>
+    <div className="bc-form-sv-request-sign">
+      <SVSign caption="ผู้แจ้ง" role="ต้นสังกัด" name={txt(h, 'requestBy')} signedAt={raw(h, 'requestDate')} />
+      <SVSign caption="ลงชื่อ" role="ผู้จัดการฝ่ายต้นสังกัด" name={txt(h, 's1_Req_NameMgr')} signedAt={raw(h, 's1_Req_DateMgr')} />
+    </div>
+    <Section title={`ส่วนที่ 2.สำหรับหน่วยงาน ${svDepartment} ดำเนินการแก้ไข`} className="bc-form-sv-service">
+      <div className="bc-form-sv-service-details">
+        <span>ผลดำเนินการ : {txt(h, 's2_SV_ServiceDetails')}</span>
+        {Array.from({ length: 5 }, (_, index) => <i key={index} aria-hidden="true" style={{ top: `${(index + 1) * 4.5}mm` }} />)}
+      </div>
+      <div className="bc-form-sv-complete-date"><Field label="วันที่กำหนดเสร็จ" value={d(h, 's2_SV_DateComplete')} /></div>
+      <div className="bc-form-sv-service-signatures">
+        <SVSign caption="ผู้รับเรื่อง" role={`เจ้าหน้าที่ ${svDepartment}`} name={txt(h, 's2_SV_Name')} signedAt={raw(h, 's2_SV_Date')} />
+        <SVSign caption="ผู้ตรวจสอบ" role={`ผู้จัดการฝ่าย ${svDepartment}`} name={txt(h, 's2_SV_NameMgr')} signedAt={raw(h, 's2_SV_DateMgr')} />
+      </div>
+    </Section>
+    <Section title="ส่วนที่ 3.สำหรับหน่วยงานผู้แจ้งเรื่องพิจารณา" className="bc-form-sv-review">
+      <div className="bc-form-sv-review-details">
+        <span className="bc-form-sv-review-options">
+          <span>ผลการพิจารณา</span>
+          <Check checked={yes(h, 's3_chkAccept')}>ยอมรับ</Check>
+          <Check checked={yes(h, 's3_chkDontAccept')}>ไม่ยอมรับ</Check>
+        </span>
+        <span className="bc-form-sv-review-text">{txt(h, 's3_DontAcceptDetails')}</span>
+        {Array.from({ length: 4 }, (_, index) => <i key={index} aria-hidden="true" style={{ top: `${(index + 1) * 4.5}mm` }} />)}
+      </div>
+      <div className="bc-form-sv-review-signatures">
+        <SVSign caption="ลงชื่อ" role="รับทราบ/ต้นสังกัด" name={txt(h, 's3_Name')} signedAt={raw(h, 's3_Date')} />
+        <SVSign caption="ผู้ตรวจสอบ" role="ผู้จัดการฝ่ายต้นสังกัด" name={txt(h, 's3_NameMgr')} signedAt={raw(h, 's3_DateMgr')} />
+      </div>
+    </Section>
+    <Section title="เงื่อนไข" className="bc-form-sv-terms">
+      <div className="bc-form-sv-terms-heading">1.กรณีแจ้งเรื่องรถเสีย</div>
+      <div className="bc-form-sv-terms-row">
+        <span>1.1 ทันกำหนด</span><span>:</span>
+        <span>หน่วยงาน SV ดำเนินการประสานงานภายใน 1 ชม. นับจากวันที่ได้รับใบแจ้งเรื่อง พร้อมทั้งส่งเอกสารให้ผู้แจ้งเรื่องทราบภายใน 3 ชม.</span>
+      </div>
+      <div className="bc-form-sv-terms-row">
+        <span>1.2 ไม่ทันกำหนด</span><span>:</span>
+        <span>หน่วยงาน SV ดำเนินการประสานงานเกิน 1 ชม. นับจากวันที่ได้รับใบแจ้งเรื่อง หรือส่งเอกสารให้ผู้แจ้งเรื่องทราบเกิน 3 ชม.</span>
+      </div>
+      <div className="bc-form-sv-terms-heading">2.กรณีแจ้งเรื่องอื่นๆ</div>
+      <div className="bc-form-sv-terms-row">
+        <span>2.1 ทันกำหนด</span><span>:</span>
+        <span>หน่วยงาน SV ดำเนินการประสานงานลูกค้าภายใน 3 วัน นับจากวันที่ได้รับใบแจ้งเรื่อง พร้อมทั้งดำเนินการส่งเอกสารให้ผู้แจ้งเรื่องรับทราบภายใน 3 วัน</span>
+      </div>
+      <div className="bc-form-sv-terms-row">
+        <span>2.2 ไม่ทันกำหนด</span><span>:</span>
+        <span>หน่วยงาน SV ดำเนินการประสานงานลูกค้าเกิน 3 วัน นับจากวันที่ได้รับใบแจ้งเรื่อง พร้อมทั้งดำเนินการส่งเอกสารให้ผู้แจ้งเรื่องรับทราบเกิน 3 วัน</span>
+      </div>
+    </Section>
     <Footer code="(P) FM-BC/SV-018/01" revision="REV.01 (12/04/67)" />
   </>;
 }
 
 function SQAForm({ form }: { form: BCPrintForm }) {
   const h = form.header;
+  const printedAt = new Date();
   return <>
-    <Head form={form} title="ใบรับเรื่อง SQA" subtitle="3/4-5 ม.9 ถ.บางนา-ตราด กม.18 ต.บางโฉลง อ.บางพลี จ.สมุทรปราการ 10540" />
-    <Section title="ส่วนที่ 1: รายละเอียดแจ้งเรื่อง" className="bc-form-sqa-request"><div className="bc-form-check-grid"><Check checked={yes(h, 'typeHV')}>HV</Check><Check checked={yes(h, 'typeFL')}>FL</Check></div><div className="bc-form-field-grid"><Field label="ชื่อ" value={txt(h, 'requestBy')} /><Field label="ฝ่าย/แผนก" value={form.department ?? ''} /><Field label="วันที่ต้องการ" value={d(h, 'requestDate')} /><Field label="ประเภทที่แจ้ง" value={txt(h, 'requestType')} /><Field label="รายละเอียดที่แจ้ง" value={txt(h, 'requestDetail')} /></div><div className="bc-form-ruled"><b>รายละเอียด :</b> {txt(h, 'details')}</div><Sign label="ผู้แจ้ง" name={txt(h, 'requestByName', 'requestBy')} dateText={d(h, 'requestByDate')} /></Section>
-    <Section title="ส่วนที่ 2: สำหรับเจ้าหน้าที่ SQA" className="bc-form-sqa-receive"><div className="bc-form-ruled"><b>มอบหมายผู้ดำเนินการ :</b> {txt(h, 'requestService')}</div><Sign label="ผู้รับเรื่อง" name={txt(h, 'receiveBy')} dateText={d(h, 'receiveDate')} /></Section>
-    <Section title="ส่วนที่ 3: Service" className="bc-form-sqa-service"><Field label="มาตรฐานการดำเนินการ" value={txt(h, 'serviceStd')} /><div className="bc-form-ruled"><b>การดำเนินการ :</b> {txt(h, 'serviceDetail')}</div><Sign label="ผู้ดำเนินการ" name={txt(h, 'serviceBy')} dateText={d(h, 'serviceDate')} /></Section>
-    <div className="bc-form-print-stamp">วันที่พิมพ์ {new Date().toLocaleDateString('en-GB')} &nbsp; เวลาที่พิมพ์ {new Date().toLocaleTimeString('th-TH', { hour12: false })}</div>
+    <DocumentHead form={form} title="ใบรับเรื่อง SQA" />
+    <section className="bc-form-section bc-form-sqa-request">
+      <div className="bc-form-sqa-request-heading">
+        <h2>ส่วนที่ 1: รายละเอียดแจ้งเรื่อง</h2><span>ส่วนงาน :</span>
+        <Check checked={yes(h, 'typeHV')}>HV</Check><Check checked={yes(h, 'typeFL')}>FL</Check>
+      </div>
+      <div className="bc-form-sqa-request-meta">
+        <Field label="ชื่อ:" value={txt(h, 'requestBy')} />
+        <Field label="ฝ่าย/แผนก :" value={form.department ?? ''} />
+        <Field label="วันที่ต้องการ :" value={d(h, 'requestDate')} />
+      </div>
+      <div className="bc-form-sqa-request-fields">
+        <Field label="ประเภทที่แจ้ง :" value={txt(h, 'requestType')} />
+        <Field label="รายละเอียดที่แจ้ง :" value={txt(h, 'requestDetail')} />
+      </div>
+      <SQARuledField label="รายละเอียด :" value={txt(h, 'details')} lines={5} />
+      <SQASign label="ผู้แจ้ง" name={txt(h, 'requestByName', 'requestBy')} position={txt(h, 'requestByPosition')} dateText={d(h, 'requestByDate')} />
+    </section>
+    <Section title="ส่วนที่ 2: สำหรับเจ้าหน้าที่ SQA" className="bc-form-sqa-receive">
+      <SQARuledField label="มอบหมายผู้ดำเนินการ :" value={txt(h, 'requestService')} lines={2} className="bc-form-sqa-assignment" />
+      <SQASign label="ผู้รับเรื่อง" name={txt(h, 'receiveBy')} dateText={d(h, 'receiveDate')} />
+    </Section>
+    <Section title="ส่วนที่ 3: Service" className="bc-form-sqa-service">
+      <SQARuledField label="มาตรฐานการดำเนินการ :" value={txt(h, 'serviceStd')} lines={2} className="bc-form-sqa-standard" />
+      <SQARuledField label="การดำเนินการ :" value={txt(h, 'serviceDetail')} lines={9} className="bc-form-sqa-service-detail" />
+      <SQASign label="ผู้ดำเนินการ" name={txt(h, 'serviceBy')} position={txt(h, 'servicePosition')} dateText={d(h, 'serviceDate')} />
+    </Section>
+    <div className="bc-form-print-stamp bc-form-sqa-print-stamp">
+      <span>วันที่พิมพ์ {printedAt.toLocaleDateString('en-GB')}</span>
+      <span>เวลาที่พิมพ์ {printedAt.toLocaleTimeString('th-TH', { hour12: false })}</span>
+    </div>
   </>;
 }
 

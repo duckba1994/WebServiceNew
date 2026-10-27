@@ -3,7 +3,8 @@ import { fetchBCPrintForm, printModuleOf } from './bcPrintForms';
 
 jest.mock('./client', () => ({ apiGet: jest.fn() }));
 
-test('BC print modules include HR-PR and GA', () => {
+test('BC print modules include the HR_PR request module and department aliases', () => {
+  expect(printModuleOf('HR_PR')).toBe('HRPR');
   expect(printModuleOf('HR-PR')).toBe('HRPR');
   expect(printModuleOf('SV-HV')).toBe('SV');
   expect(printModuleOf('GA')).toBe('GA');

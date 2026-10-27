@@ -1,6 +1,28 @@
 .bc-work-order-print { page: bc-work-order; box-sizing: border-box; width: 210mm; min-height: 297mm; padding: 7mm 8mm 6mm; background: #fff; color: #111; font-size: 11px; line-height: 1.3; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 .bc-work-order-print, .bc-work-order-print * { box-sizing: border-box; font-family: inherit; }
 .bc-form-head { display: grid; grid-template-columns: 25mm minmax(0, 1fr) 55mm; min-height: 21mm; border: 1px solid #111; }
+.bc-form-head-af { grid-template-columns: 18mm minmax(0, 1fr) 62mm; }
+.bc-form-head-sv { grid-template-columns: 18mm minmax(0, 1fr) 45mm; min-height: 16mm; }
+.bc-form-head-sv .bc-form-logo { border-right: 0; }
+.bc-form-head-sv .bc-form-logo img { width: 15mm; height: 14mm; }
+.bc-form-head-sv .bc-form-head-title { gap: 2mm; }
+.bc-form-head-sv .bc-form-head-title span { font-size: 11px; }
+.bc-form-sv-head-meta { display: flex; flex-direction: column; justify-content: space-between; gap: 2mm; padding: 1.5mm 1mm 1mm; font-size: 10px; }
+.bc-form-sv-head-meta > div { display: flex; gap: 2mm; }
+.bc-form-sv-head-meta .bc-form-field { gap: 0.5mm; white-space: nowrap; }
+.bc-form-sv-head-meta .bc-form-dotted { min-width: 0; }
+.bc-form-head-cr { grid-template-columns: 25mm minmax(0, 1fr) 41mm; min-height: 26mm; }
+.bc-form-head-sqa { grid-template-columns: 25mm minmax(0, 1fr) 37mm; min-height: 24mm; }
+.bc-form-head-sqa .bc-form-logo { border-right: 0; }
+.bc-form-head-sqa .bc-form-logo img { width: 20mm; height: 22mm; }
+.bc-form-head-cr .bc-form-head-title, .bc-form-head-sqa .bc-form-head-title { gap: 1.5mm; }
+.bc-form-head-cr .bc-form-head-title small, .bc-form-head-sqa .bc-form-head-title small { font-size: 10px; }
+.bc-form-document-head-meta { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: repeat(4, 1fr); text-align: center; }
+.bc-form-document-head-meta > :nth-child(-n + 2) { grid-column: 1 / -1; }
+.bc-form-document-head-meta > :not(:nth-last-child(-n + 2)) { border-bottom: 1px solid #111; }
+.bc-form-document-head-meta > :nth-child(4), .bc-form-document-head-meta > :nth-child(6) { border-left: 1px solid #111; }
+.bc-form-document-head-meta > * { display: flex; align-items: center; justify-content: center; min-width: 0; font-size: 10px; font-weight: 400; }
+.bc-form-head-af .bc-form-logo img { width: 15mm; }
 .bc-form-logo { display: flex; align-items: center; justify-content: center; border-right: 1px solid #111; }
 .bc-form-logo img { width: 20mm; height: 18mm; object-fit: contain; }
 .bc-form-head-title { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1mm; border-right: 1px solid #111; text-align: center; }
@@ -91,16 +113,103 @@
 .bc-form-im .bc-form-footer { margin-top: auto; padding-top: 1mm; }
 .bc-form-footer { display: flex; justify-content: space-between; margin: 1mm 1mm 0; font-size: 8px; }
 .bc-form-ruled { min-height: 18mm; margin: 1mm 2mm; padding: 0.5mm 1mm; line-height: 5mm; white-space: pre-wrap; overflow-wrap: anywhere; background-image: repeating-linear-gradient(to bottom, transparent 0 calc(5mm - 1px), #777 calc(5mm - 1px) 5mm); }
-.bc-form-cr-request { min-height: 86mm; }.bc-form-cr-service { min-height: 76mm; }.bc-form-cr-close { min-height: 65mm; }
-.bc-form-cr-request .bc-form-cr-detail { min-height: 41mm; }.bc-form-cr-close .bc-form-ruled { min-height: 27mm; }
-.bc-form-sqa-request { min-height: 88mm; }.bc-form-sqa-receive { min-height: 44mm; margin-top: 1mm; border-top: 1px solid #111; }.bc-form-sqa-service { min-height: 94mm; margin-top: 1mm; border-top: 1px solid #111; }
-.bc-form-sqa-request .bc-form-ruled { min-height: 43mm; }.bc-form-sqa-service .bc-form-ruled { min-height: 60mm; }
+.bc-form-cr-request { display: flex; flex-direction: column; min-height: 93mm; }
+.bc-form-cr-request-heading { display: grid; grid-template-columns: 39% 17% minmax(0, 1fr); align-items: center; min-height: 4mm; }
+.bc-form-cr-request-heading h2 { margin: 0; }
+.bc-form-cr-request-meta, .bc-form-cr-request-types { display: grid; column-gap: 2mm; margin: 1mm 3mm 0; line-height: 5mm; }
+.bc-form-cr-request-meta { grid-template-columns: 37% 34% minmax(0, 1fr); }
+.bc-form-cr-request-types { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.bc-form-cr-request-meta > div, .bc-form-cr-request-types > div { min-width: 0; overflow-wrap: anywhere; }
+.bc-form-cr-request-meta span, .bc-form-cr-request-types span { margin-left: 1mm; }
+.bc-form-cr-request .bc-form-cr-detail { flex: 1; min-height: 45mm; margin: 4mm 3mm 2mm; line-height: 5mm; white-space: pre-wrap; overflow-wrap: anywhere; }
+.bc-form-cr-signatures { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 15mm; margin: 0 8mm 0 10mm; }
+.bc-form-cr-sign { display: grid; grid-template-columns: 53mm minmax(0, 1fr); grid-template-rows: repeat(2, minmax(7mm, auto)) auto; column-gap: 1mm; align-items: baseline; }
+.bc-form-cr-sign > .bc-form-field { width: 100%; }
+.bc-form-cr-sign > .bc-form-field:nth-child(n + 3) { grid-column: 1; }
+.bc-form-cr-sign .bc-form-dotted { text-align: center; }
+.bc-form-cr-service { display: flex; flex-direction: column; min-height: 94mm; }
+.bc-form-cr-service-meta { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 2mm; margin: 0 3mm; line-height: 5mm; }
+.bc-form-cr-service-meta > div { min-width: 0; overflow-wrap: anywhere; }
+.bc-form-cr-service-meta span { margin-left: 1mm; }
+.bc-form-cr-service-detail { flex: 1; min-height: 48mm; margin: 0 3mm 2mm; line-height: 5mm; white-space: pre-wrap; overflow-wrap: anywhere; }
+.bc-form-cr-close { display: flex; flex-direction: column; min-height: 58mm; padding-left: 5mm; padding-right: 5mm; }
+.bc-form-cr-close h2 { margin-bottom: 1mm; }
+.bc-form-cr-result { display: grid; grid-template-columns: 27mm 51mm 48mm minmax(0, 1fr); align-items: baseline; min-height: 5mm; margin: 0 3mm; }
+.bc-form-cr-other { display: inline-flex; align-items: baseline; gap: 2mm; width: 100%; min-width: 0; }
+.bc-form-cr-other .bc-form-dotted { min-width: 0; }
+.bc-form-cr-suggestion-label { line-height: 5mm; margin: 0 3mm; }
+.bc-form-cr-suggestion-lines { position: relative; min-height: 18mm; margin: 0 3mm; line-height: 6mm; white-space: pre-wrap; overflow-wrap: anywhere; }
+.bc-form-cr-suggestion-lines > span { position: relative; z-index: 1; }
+.bc-form-cr-suggestion-lines > i { position: absolute; left: 0; right: 0; border-bottom: 1px dotted #555; }
+.bc-form-cr-suggestion-lines > i:nth-of-type(1) { top: 6mm; }
+.bc-form-cr-suggestion-lines > i:nth-of-type(2) { top: 12mm; }
+.bc-form-cr-suggestion-lines > i:nth-of-type(3) { top: 18mm; }
+.bc-form-cr-close-signature { align-self: center; width: 65mm; margin-top: 5mm; }
+.bc-form-cr-footer { align-items: baseline; gap: 3mm; white-space: nowrap; }
+.bc-form-cr-print-stamp { display: flex; gap: 5mm; margin-left: auto; }
+.bc-form-sqa-request { display: flex; flex-direction: column; min-height: 94mm; padding: 2mm 3mm; }
+.bc-form-sqa-request-heading { display: grid; grid-template-columns: 34% 17mm 34mm minmax(0, 1fr); align-items: center; min-height: 4mm; }
+.bc-form-sqa-request-heading h2 { margin: 0; }
+.bc-form-sqa-request-meta { display: grid; grid-template-columns: 44% 23% minmax(0, 1fr); gap: 2mm; margin: 3mm 5mm 0; }
+.bc-form-sqa-request-fields { display: grid; row-gap: 3mm; margin: 3mm 5mm 0; }
+.bc-form-sqa .bc-form-field { line-height: 5mm; }
+.bc-form-sqa .bc-form-dotted { min-width: 0; }
+.bc-form-sqa-ruled-field { display: grid; grid-template-columns: 21mm minmax(0, 1fr); margin: 3mm 5mm 0; line-height: 4.5mm; }
+.bc-form-sqa-ruled-lines { position: relative; white-space: pre-wrap; overflow-wrap: anywhere; }
+.bc-form-sqa-ruled-lines > span { position: relative; z-index: 1; }
+.bc-form-sqa-ruled-lines > i { position: absolute; left: 0; right: 0; border-bottom: 1px dotted #555; }
+.bc-form-sqa-signature { display: flex; flex-direction: column; align-items: flex-start; gap: 2mm; align-self: center; width: 80mm; margin-top: auto; padding-top: 8mm; }
+.bc-form-sqa-signature > div { display: grid; grid-template-columns: 64mm minmax(0, 1fr); align-items: baseline; gap: 1mm; width: 100%; }
+.bc-form-sqa-signature > div .bc-form-field { width: 64mm; }
+.bc-form-sqa-signature > .bc-form-field { width: 74mm; margin-left: -5mm; }
+.bc-form-sqa-signature > .bc-form-field:last-child { width: 54mm; margin-left: 5mm; }
+.bc-form-sqa-signature .bc-form-dotted { text-align: center; }
+.bc-form-sqa-receive, .bc-form-sqa-service { display: flex; flex-direction: column; margin-top: 1mm; border-top: 1px solid #111; padding: 2mm 3mm; }
+.bc-form-sqa-receive { min-height: 48mm; }
+.bc-form-sqa-service { min-height: 100mm; }
+.bc-form-sqa-assignment { grid-template-columns: 34mm minmax(0, 1fr); }
+.bc-form-sqa-standard { grid-template-columns: 36mm minmax(0, 1fr); }
+.bc-form-sqa-service-detail { grid-template-columns: 23mm minmax(0, 1fr); margin-top: 2mm; }
 .bc-form-print-stamp { text-align: right; margin: 1mm 1mm 0; font-size: 8px; }
-.bc-form-hr-meta { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1mm 4mm; border: 1px solid #111; border-top: 0; padding: 1mm 2mm; }.bc-form-hr-meta > :first-child { grid-column: span 2; }
-.bc-form-hr-categories { display: grid; grid-template-columns: 1fr 1fr; gap: 5mm; border: 1px solid #111; border-top: 0; padding: 1mm 2mm; }.bc-form-hr-categories > div { display: flex; flex-direction: column; gap: 1mm; }.bc-form-hr-categories strong { margin-bottom: 1mm; }
-.bc-form-hr-detail { min-height: 59mm; }.bc-form-hr-detail > div { min-height: 53mm; padding: 1mm; overflow-wrap: anywhere; }
-.bc-form-hr-request-sign { border: 1px solid #111; border-top: 0; margin: 0; padding: 2mm; }.bc-form-hr-service { min-height: 39mm; }
-.bc-form-hr-policy { font-size: 9px; }.bc-form-hr-policy p { margin: 0.5mm 0 0 4mm; }
+.bc-form-sqa-print-stamp { display: flex; justify-content: flex-end; gap: 3mm; margin-right: 7mm; }
+.bc-form-head-hr { position: relative; display: flex; align-items: center; justify-content: center; min-height: 18mm; border: 1px solid #111; }
+.bc-form-head-hr .bc-form-logo { position: absolute; left: 8mm; width: 18mm; border: 0; }
+.bc-form-head-hr .bc-form-logo img { width: 20mm; height: 16mm; }
+.bc-form-head-hr .bc-form-head-title { gap: 1mm; border: 0; margin-left: 8mm; }
+.bc-form-head-hr .bc-form-head-title strong { font-size: 21px; }
+.bc-form-head-hr .bc-form-head-title span { font-size: 17px; }
+.bc-form-hr-document-meta { display: flex; justify-content: space-between; min-height: 7mm; padding: 1mm 2mm; border: 1px solid #111; border-top: 0; border-bottom: 0; font-size: 13px; }
+.bc-form-hr-document-meta > .bc-form-field:first-child { width: 70mm; }
+.bc-form-hr-document-meta > .bc-form-field:last-child { width: 43mm; }
+.bc-form-hr-employee { padding: 0 2mm 4mm; border: 1px solid #111; border-top: 0; border-bottom: 0; font-size: 13px; }
+.bc-form-hr-employee h2 { margin: 0; font-size: 14px; text-decoration: underline; }
+.bc-form-hr-meta { display: grid; grid-template-columns: 39% 32% minmax(0, 1fr); gap: 2mm; margin-top: 3mm; }
+.bc-form-hr-categories { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 5mm; margin-top: 1mm; }
+.bc-form-hr-categories > div { display: flex; flex-direction: column; }
+.bc-form-hr-category-heading { min-height: 9mm; }
+.bc-form-hr-categories .bc-form-check { min-height: 6.5mm; align-items: baseline; }
+.bc-form-hr-categories .bc-form-check i { width: 3.4mm; height: 3.4mm; flex-basis: 3.4mm; }
+.bc-form-hr-categories .bc-form-dotted { min-width: 0; }
+.bc-form-hr-detail { min-height: 60mm; margin: 1mm 1mm 0; border: 1px solid #111; padding: 1mm; }
+.bc-form-hr-detail h2 { margin: 0 0 1mm; font-size: 10px; text-decoration: none; }
+.bc-form-hr-detail > div { min-height: 53mm; white-space: pre-wrap; overflow-wrap: anywhere; }
+.bc-form-hr-request-sign, .bc-form-hr-service-signatures { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 8mm; }
+.bc-form-hr-request-sign { min-height: 17mm; border: 1px solid #111; margin: 0; padding: 2mm 5mm 1mm; font-size: 13px; }
+.bc-form-hr-signature > div { display: grid; grid-template-columns: 45mm minmax(0, 1fr); gap: 1mm; align-items: baseline; min-height: 7mm; }
+.bc-form-hr-signature > .bc-form-dotted { display: block; width: 33mm; margin-left: 12mm; min-height: 5mm; }
+.bc-form-hr-signature .bc-form-dotted { min-width: 0; text-align: center; }
+.bc-form-hr-signature > div > span:last-child { white-space: nowrap; }
+.bc-form-hrpr { display: flex; flex-direction: column; }
+.bc-form-hr-service { min-height: 47mm; padding: 2mm 3mm 1mm; font-size: 13px; }
+.bc-form-hr-service h2 { margin-bottom: 3mm; font-size: 14px; text-decoration: underline; }
+.bc-form-hr-service h3 { margin: 2mm 0 1.5mm; font-size: 14px; line-height: 5mm; text-decoration: underline; }
+.bc-form-hr-service-signatures { margin: 0 2mm; }
+.bc-form-hr-policy { padding: 1mm 0; font-size: 11px; line-height: 5mm; }
+.bc-form-hr-policy h2 { margin: 0 0 1mm; font-size: 13px; text-decoration: underline; }
+.bc-form-hr-policy p { margin: 0 2mm 1.5mm 9mm; }
+.bc-form-hr-policy p.bc-form-hr-policy-sub { margin-left: 14mm; }
+.bc-form-hr-policy p:last-child { margin-bottom: 0; }
+.bc-form-hrpr .bc-form-footer { margin-top: auto; padding-top: 3mm; }
 .bc-form-ps-request { min-height: 40mm; }
 .bc-form-ps-request-types { grid-template-columns: 31% 30% 20% minmax(0, 1fr); gap: 0; margin: 1mm 2mm 0 10mm; }
 .bc-form-ps-attachment-rows { display: flex; flex-direction: column; gap: 1mm; margin: 0 8mm 1mm 10mm; }
@@ -122,11 +231,130 @@
 .bc-form-ps-table-extra .bc-form-field { width: 49%; padding: 0 2mm 0 1mm; white-space: nowrap; }
 .bc-form-ps-table-extra .bc-form-dotted { min-width: 0; }
 .bc-form-ps-main-lines { min-height: 20mm; margin-top: 2mm; border-left: 1px solid #111; border-right: 1px solid #111; border-bottom: 1px solid #111; }
-.bc-form-ps-people > div:first-child { display: flex; flex-wrap: wrap; column-gap: 12mm; row-gap: 1mm; }
+.bc-form-ps-people-dates { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.bc-form-ps-people-dates .bc-form-field { justify-self: start; }
+.bc-form-ps-people-dates .bc-form-dotted { flex: 0 0 28mm; }
+.bc-form-ps-people-signatures { display: flex; justify-content: space-between; margin: 4mm 34mm 0 27mm; }
+.bc-form-ps-request-sign { display: flex; flex-direction: column; align-items: center; row-gap: 1mm; width: 38mm; min-width: 0; line-height: 4mm; text-align: center; }
+.bc-form-ps-request-sign-line { display: block; width: 27mm; height: 3mm; border-bottom: 1px dotted #333; }
+.bc-form-ps-request-sign-name-underline { min-width: 27mm; border-bottom: 1px dotted #333; }
+.bc-form-ps-request-sign-date { display: flex; align-items: baseline; gap: 1mm; width: 100%; white-space: nowrap; }
+.bc-form-ps-request-sign-date .bc-form-dotted { min-width: 0; }
+.bc-form-ps-service-fields { display: grid; grid-template-columns: 43% minmax(0, 1fr); column-gap: 5mm; margin: 0 7mm 2mm 5mm; }
+.bc-form-ps-service-column { display: flex; flex-direction: column; min-width: 0; }
+.bc-form-ps-service-column > .bc-form-check, .bc-form-ps-service-column > .bc-form-field { display: flex; align-items: baseline; min-height: 4mm; width: 100%; }
+.bc-form-ps-service-column:nth-child(2) > .bc-form-field { padding-left: 4.5mm; }
+.bc-form-ps-service-column .bc-form-dotted { min-width: 0; }
+.bc-form-ps-result-head { display: grid; grid-template-columns: 68mm 42mm minmax(0, 1fr); align-items: center; }
+.bc-form-ps-result-remark { position: relative; min-height: 10mm; margin: 1mm 12mm 0 7mm; }
+.bc-form-ps-result-remark > span { position: absolute; top: 0; left: 0; line-height: 5mm; }
+.bc-form-ps-result-remark > div { position: relative; z-index: 1; min-height: 10mm; margin-left: 15mm; line-height: 5mm; white-space: pre-wrap; overflow-wrap: anywhere; }
+.bc-form-ps-result-remark::before, .bc-form-ps-result-remark::after { content: ''; position: absolute; right: 0; border-bottom: 1px dotted #333; }
+.bc-form-ps-result-remark::before { top: 5mm; left: 15mm; }
+.bc-form-ps-result-remark::after { top: 10mm; left: 3mm; }
 .bc-form-ps-service { min-height: 33mm; }.bc-form-ps-result { min-height: 25mm; }.bc-form-ps-people .bc-form-sign-grid { margin-top: 3mm; }
-.bc-form-af-request { min-height: 22mm; }.bc-form-af-signatures { min-height: 17mm; }.bc-form-af-detail { min-height: 52mm; }.bc-form-af-quality { min-height: 42mm; }.bc-form-af-it { min-height: 19mm; }
-.bc-form-af-detail > .bc-form-field, .bc-form-af-quality > .bc-form-field, .bc-form-ps-result > .bc-form-field { display: flex; margin: 1.3mm 2mm; }
-.bc-form-sv-request { min-height: 57mm; }.bc-form-radio-list { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1mm; margin: 2mm 18mm; }.bc-form-radio-list span { display: flex; align-items: center; gap: 1mm; }.bc-form-radio-list i { display: inline-flex; align-items: center; justify-content: center; width: 3mm; height: 3mm; border: 1px solid #111; border-radius: 50%; font-size: 7px; font-style: normal; }
-.bc-form-sv-lines th:first-child { width: 7mm; }.bc-form-sv-lines th:nth-child(3) { width: 20mm; }.bc-form-sv-lines th:nth-child(4) { width: 25mm; }.bc-form-sv-lines tbody tr { height: 5mm; }
-.bc-form-sv-service { min-height: 48mm; }.bc-form-sv-review { min-height: 37mm; }.bc-form-sv-terms { min-height: 39mm; font-size: 9px; }.bc-form-sv-terms p { margin: 1mm 0 2mm 4mm; }
+.bc-form-af-head-date-time { display: flex; align-items: baseline; gap: 1mm; white-space: nowrap; }
+.bc-form-af-head-date-time .bc-form-field { gap: 0.5mm; }
+.bc-form-af-head-date-time .bc-form-dotted { flex: 0 0 auto; min-width: 0; }
+.bc-form-af-head-date-time .bc-form-field:first-child .bc-form-dotted { width: 26mm; }
+.bc-form-af-head-date-time .bc-form-field:last-child .bc-form-dotted { width: 12mm; }
+.bc-form-af-request-meta { display: grid; grid-template-columns: 38% minmax(0, 1fr); justify-content: initial; padding-left: 4mm; }
+.bc-form-af-request-meta > .bc-form-field:first-child { width: 65mm; }
+.bc-form-af-request-meta > .bc-form-field:last-child { width: 50mm; }
+.bc-form-af-request > .bc-form-check-grid { grid-template-columns: 20% 39% 23% minmax(0, 1fr); gap: 3mm 0; margin: 1mm 3mm 2mm 6mm; }
+.bc-form-af-col-item { width: 46%; }.bc-form-af-col-qty, .bc-form-af-col-unit { width: 7%; }.bc-form-af-col-reason { width: 40%; }
+.bc-form-lines.bc-form-af-lines th { width: auto; white-space: normal; }
+.bc-form-af-lines tbody tr { height: 36mm; }
+.bc-form-af-lines tbody td:first-child { text-align: left; }
+.bc-form-af-lines tbody td:nth-child(2), .bc-form-af-lines tbody td:nth-child(3) { text-align: center; }
+.bc-form-af-plan-date { justify-content: flex-start; }
+.bc-form-af-plan-date .bc-form-field { width: 70mm; }
+.bc-form-af .bc-form-sign { grid-template-columns: 32mm minmax(0, 1fr); grid-template-rows: minmax(5mm, auto) auto; column-gap: 1mm; }
+.bc-form-af .bc-form-sign > .bc-form-field:last-child { width: 32mm; }
+.bc-form-af-sign-grid-three .bc-form-sign > .bc-form-field:last-child { grid-column: 1 / -1; }
+.bc-form-af-signatures > .bc-form-sign-grid { margin-top: 2mm; }
+.bc-form-af-sign-grid-three, .bc-form-af-closing-signatures { margin-left: 1mm; margin-right: 1mm; }
+.bc-form-af-signatures > .bc-form-sign-grid:not(.bc-form-sign-grid-three) { grid-template-columns: repeat(3, minmax(0, 1fr)); column-gap: 2mm; margin-left: 1mm; margin-right: 1mm; }
+.bc-form-af-signatures > .bc-form-sign-grid:not(.bc-form-sign-grid-three) > :nth-child(2), .bc-form-af-received-signatures > :nth-child(2), .bc-form-af-quality-signatures > :nth-child(2), .bc-form-af-it > .bc-form-sign-grid > :nth-child(2) { grid-column: 3; }
+.bc-form-af-ruled-field { position: relative; min-height: 10mm; margin: 0 1mm; }
+.bc-form-af-ruled-field > span { position: absolute; top: 0; left: 0; line-height: 5mm; }
+.bc-form-af-ruled-field > div { position: relative; z-index: 1; min-height: 10mm; margin-left: 27mm; line-height: 5mm; white-space: pre-wrap; overflow-wrap: anywhere; }
+.bc-form-af-ruled-field::before, .bc-form-af-ruled-field::after { content: ''; position: absolute; right: 0; border-bottom: 1px dotted #333; }
+.bc-form-af-ruled-field::before { top: 5mm; left: 27mm; }
+.bc-form-af-ruled-field::after { top: 10mm; left: 0; }
+.bc-form-af-close-date { margin: 1mm -2mm 0; border-top: 1px solid #111; padding: 1mm 3mm; }
+.bc-form-af-close-date .bc-form-field { display: flex; width: 48mm; }
+.bc-form-af-closing-signatures { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 2mm; margin: 2mm 1mm 0; }
+.bc-form-af-closing-signatures .bc-form-af-closing-sign span { white-space: nowrap; }
+.bc-form-af-closing-sign > div { display: grid; grid-template-columns: 32mm minmax(0, 1fr); gap: 1mm; align-items: baseline; min-height: 5mm; }
+.bc-form-af-closing-sign .bc-form-field { width: 100%; }
+.bc-form-af-closing-sign span { min-width: 0; font-size: 11px; }
+.bc-form-af-closing-sign .bc-form-dotted { text-align: center; }
+.bc-form-af-received { min-height: 19mm; padding-top: 1mm; padding-bottom: 1mm; }
+.bc-form-af-received-signatures, .bc-form-af-quality-signatures { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); column-gap: 2mm; margin: 2mm 1mm 0; }
+.bc-form-af-received-signatures .bc-form-af-closing-sign span, .bc-form-af-quality-signatures .bc-form-af-closing-sign span { white-space: nowrap; }
+.bc-form-af-quality-options { display: grid; grid-template-columns: 24% 18.5% 27.5% minmax(0, 1fr); grid-auto-rows: minmax(3.5mm, auto); align-items: center; row-gap: 0.5mm; margin: 0 1mm; }
+.bc-form-af-quality-options > :nth-child(2) { grid-column: span 2; }
+.bc-form-af-quality-options > strong { font-weight: 600; }
+.bc-form-af-quality-dar { display: inline-flex; align-items: baseline; gap: 1mm; }
+.bc-form-af-quality-dar .bc-form-dotted { flex: 0 0 25mm; min-width: 0; }
+.bc-form-af-quality-description { margin-top: 0.5mm; margin-bottom: 2mm; }
+.bc-form-af-quality-description::before, .bc-form-af-quality-description::after { height: 1px; border: 0; background: repeating-linear-gradient(to right, #555 0 1px, transparent 1px 3px); }
+.bc-form-af-quality-signatures { margin-top: 0; }
+.bc-form-af-quality .bc-form-af-closing-sign > div { min-height: 5mm; }
+.bc-form-af-quality { padding-top: 1mm; padding-bottom: 1mm; }
+.bc-form-af-it { display: grid; grid-template-columns: 10mm minmax(0, 1fr); column-gap: 1mm; align-content: start; }
+.bc-form-af-it h2 { grid-column: 1; align-self: center; margin: 0; }
+.bc-form-af-it > .bc-form-field-grid { grid-column: 2; align-items: baseline; margin: 0; }
+.bc-form-af-it > .bc-form-sign-grid { grid-column: 1 / -1; grid-template-columns: repeat(3, minmax(0, 1fr)); column-gap: 2mm; margin: 2mm 1mm 0; }
+.bc-form-af-request { min-height: 22mm; }.bc-form-af-signatures { min-height: 17mm; }.bc-form-af-detail { min-height: 46mm; }.bc-form-af-quality { min-height: 38mm; }.bc-form-af-it { min-height: 19mm; }
+.bc-form-sv-request { min-height: 57mm; }
+.bc-form-sv-request h2 { margin-bottom: 1mm; }
+.bc-form-sv-request-types { display: grid; grid-template-columns: 47% minmax(0, 1fr); min-height: 5.5mm; margin-left: 22mm; }
+.bc-form-sv-check-value { display: inline-flex; align-items: baseline; gap: 2mm; width: 100%; min-width: 0; }
+.bc-form-sv-check-value .bc-form-dotted { min-width: 0; }
+.bc-form-radio-list { display: grid; grid-template-columns: minmax(0, 1fr); grid-auto-rows: minmax(5.5mm, auto); margin-left: 22mm; }
+.bc-form-radio-list > span { display: flex; align-items: baseline; gap: 1.5mm; min-width: 0; }
+.bc-form-radio-list i { display: inline-flex; align-items: center; justify-content: center; width: 3mm; height: 3mm; flex: 0 0 3mm; border: 1px solid #111; border-radius: 50%; font-size: 9px; font-style: normal; }
+.bc-form-sv-reason-label { display: inline-flex; align-items: baseline; flex: 1; min-width: 0; }
+.bc-form-sv-reason-label .bc-form-dotted { min-width: 0; }
+.bc-form-sv-attachment-label { min-height: 5mm; }
+.bc-form-sv-attachments { display: grid; grid-template-columns: 55mm 38mm minmax(0, 1fr); min-height: 5mm; margin-left: 22mm; }
+.bc-form-sv-lines th { padding: 0.6mm 0.5mm; font-weight: 400; white-space: nowrap; }
+.bc-form-sv-lines th:first-child { width: 13mm; }
+.bc-form-sv-lines th:nth-child(3) { width: 23mm; }
+.bc-form-sv-lines th:nth-child(4) { width: 27mm; }
+.bc-form-sv-lines tbody tr { height: 5.3mm; }
+.bc-form-sv-lines tbody td { border-top: 1px dotted #999; border-bottom: 1px dotted #999; }
+.bc-form-sv-lines tbody tr:last-child td { border-bottom: 1px solid #111; }
+.bc-form-sv-lines tbody td:nth-child(3), .bc-form-sv-lines tbody td:nth-child(4) { text-align: center; }
+.bc-form-sv-request-sign { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 42mm; margin: 0; padding: 1.5mm 6mm 0.8mm; }
+.bc-form-sv-signature { min-width: 0; }
+.bc-form-sv-sign-name { display: grid; grid-template-columns: 53mm minmax(0, 1fr); align-items: baseline; column-gap: 1mm; min-height: 5mm; }
+.bc-form-sv-signature:last-child .bc-form-sv-sign-name { grid-template-columns: 44mm minmax(0, 1fr); }
+.bc-form-sv-sign-name > span:last-child { white-space: nowrap; }
+.bc-form-sv-sign-date { display: grid; grid-template-columns: 30mm 24mm; column-gap: 2mm; align-items: baseline; min-height: 5mm; }
+.bc-form-sv-signature .bc-form-dotted { min-width: 0; text-align: center; }
+.bc-form-sv-service { min-height: 52mm; }
+.bc-form-sv-service-details { position: relative; min-height: 22.5mm; line-height: 4.5mm; white-space: pre-wrap; overflow-wrap: anywhere; }
+.bc-form-sv-service-details > span { position: relative; z-index: 1; }
+.bc-form-sv-service-details > i { position: absolute; left: 0; right: 0; border-bottom: 1px dotted #555; }
+.bc-form-sv-service-details > i:first-of-type { left: 20mm; }
+.bc-form-sv-complete-date { margin-top: 3mm; }
+.bc-form-sv-complete-date .bc-form-field { width: 55mm; }
+.bc-form-sv-complete-date .bc-form-dotted { text-align: center; }
+.bc-form-sv-service-signatures { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 42mm; margin: 1mm 4mm 0; }
+.bc-form-sv-review { min-height: 39mm; }
+.bc-form-sv-review-details { display: flow-root; position: relative; min-height: 18mm; line-height: 4.5mm; white-space: pre-wrap; overflow-wrap: anywhere; }
+.bc-form-sv-review-options { display: grid; grid-template-columns: 31mm 44mm 27mm; float: left; width: 102mm; min-height: 4.5mm; align-items: baseline; white-space: normal; }
+.bc-form-sv-review-text { position: relative; z-index: 1; }
+.bc-form-sv-review-details > i { position: absolute; left: 0; right: 0; border-bottom: 1px dotted #555; }
+.bc-form-sv-review-details > i:first-of-type { left: 102mm; }
+.bc-form-sv-review-signatures { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 42mm; margin: 2mm 4mm 0; }
+.bc-form-sv { display: flex; flex-direction: column; }
+.bc-form-sv-terms { min-height: 53mm; font-size: 11px; line-height: 4mm; }
+.bc-form-sv-terms h2 { margin-bottom: 0.5mm; text-decoration: underline; }
+.bc-form-sv-terms-heading { text-decoration: underline; }
+.bc-form-sv-terms-row { display: grid; grid-template-columns: 33mm 3mm minmax(0, 1fr); margin: 0.5mm 0 1mm 17mm; }
+.bc-form-sv .bc-form-footer { margin-top: auto; padding-top: 1mm; }
 @page bc-work-order { size: A4 portrait; margin: 0; }

@@ -2,7 +2,7 @@ import { apiGet } from './client';
 import { BCPrintForm, BCPrintModule } from '../types/bcPrintForm';
 
 export const PRINT_MODULES: Record<string, BCPrintModule> = {
-  GA: 'GA', IM: 'IM', PS: 'PS', AF: 'AF', HR: 'HRPR', 'HR-PR': 'HRPR', HRPR: 'HRPR',
+  GA: 'GA', IM: 'IM', PS: 'PS', AF: 'AF', HR: 'HRPR', 'HR-PR': 'HRPR', HR_PR: 'HRPR', HRPR: 'HRPR',
   CR: 'CR', SV: 'SV', 'SV-HV': 'SV', 'SV-FL': 'SV', SQA: 'SQA',
 };
 
